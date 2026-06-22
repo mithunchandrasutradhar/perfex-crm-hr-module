@@ -1,0 +1,134 @@
+<?php
+defined('BASEPATH') or exit('No direct script access allowed');
+
+class Helpdesk extends AdminController
+{
+    public function __construct()
+    {
+        parent::__construct();
+        $this->load->model('hr_module/Helpdesk_model');
+        $this->load->model('hr_module/Hr_module_model');
+        $this->load->model('hr_module/Departments_model');
+    }
+
+    public function index()
+    {
+        if (staff_cant('view', 'hr_helpdesk')) access_denied('hr_helpdesk');
+        if ($this->input->is_ajax_request() && !$this->input->post()) {
+            $this->app->get_table_data(module_views_path('hr_module', 'helpdesk/table'));
+            return;
+        }
+        $data['title']       = _l('hr_helpdesk_list');
+        $data['departments'] = $this->Departments_model->get_active();
+        $data['employees']   = $this->Hr_module_model->get_active_employees_dropdown();
+        $this->load->view('hr_module/helpdesk/index', $data);
+    }
+
+    public function submit()
+    {
+        if (staff_cant('create', 'hr_helpdesk')) access_denied('hr_helpdesk');
+        if ($this->input->post()) {
+            $data = [
+                'employee_id' => (int) $this->input->post('employee_id'),
+                'subject'     => $this->input->post('subject', true),
+                'category'    => $this->input->post('category', true),
+                'priority'    => $this->input->post('priority'),
+                'message'     => $this->input->post('message', true),
+            ];
+            $this->_handle_attachment($data, 'attachment');
+            $result = $this->Helpdesk_model->submit($data);
+            if ($result['success']) {
+                set_alert('success', $result['message']);
+                redirect(admin_url('hr_module/helpdesk/view/' . $result['id']));
+            }
+            set_alert('danger', $result['message']);
+            redirect(admin_url('hr_module/helpdesk/submit'));
+        }
+        $data['title']     = _l('hr_helpdesk_add');
+        $data['employees'] = $this->Hr_module_model->get_active_employees_dropdown();
+        $this->load->view('hr_module/helpdesk/submit', $data);
+    }
+
+    public function view($id)
+    {
+        if (staff_cant('view', 'hr_helpdesk')) access_denied('hr_helpdesk');
+        $ticket = $this->Helpdesk_model->get($id);
+        if (!$ticket) show_404();
+        $data['title']   = _l('hr_helpdesk_view');
+        $data['ticket']  = $ticket;
+        $data['replies'] = $this->Helpdesk_model->get_replies($id);
+        $data['staff']   = $this->_get_staff_dropdown();
+        $this->load->view('hr_module/helpdesk/view', $data);
+    }
+
+    public function reply($id)
+    {
+        if (staff_cant('edit', 'hr_helpdesk')) access_denied('hr_helpdesk');
+        if (!$this->input->post()) redirect(admin_url('hr_module/helpdesk/view/' . $id));
+        $message = $this->input->post('message', true);
+        if (!trim($message)) {
+            set_alert('danger', 'Reply message cannot be empty.');
+            redirect(admin_url('hr_module/helpdesk/view/' . $id));
+        }
+        $attachment = null;
+        $data = [];
+        $this->_handle_attachment($data, 'attachment');
+        if (!empty($data['attachment'])) $attachment = $data['attachment'];
+        $this->Helpdesk_model->reply($id, $message, get_staff_user_id(), $attachment);
+
+        // Handle assign + status update
+        if ($this->input->post('assigned_to') !== null) {
+            $this->Helpdesk_model->assign($id, (int) $this->input->post('assigned_to'));
+        }
+        if ($this->input->post('status')) {
+            $this->Helpdesk_model->set_status($id, $this->input->post('status'));
+        }
+        set_alert('success', 'Reply posted.');
+        redirect(admin_url('hr_module/helpdesk/view/' . $id));
+    }
+
+    public function close($id)
+    {
+        if (staff_cant('edit', 'hr_helpdesk')) access_denied('hr_helpdesk');
+        $ticket = $this->Helpdesk_model->get($id);
+        if (!$ticket) show_404();
+        $new_status = $ticket->status === 'closed' ? 'open' : 'closed';
+        $this->Helpdesk_model->set_status($id, $new_status);
+        $msg = $new_status === 'closed' ? 'Ticket closed.' : 'Ticket reopened.';
+        set_alert('success', $msg);
+        redirect(admin_url('hr_module/helpdesk/view/' . $id));
+    }
+
+    public function delete($id)
+    {
+        if (staff_cant('delete', 'hr_helpdesk')) access_denied('hr_helpdesk');
+        $this->Helpdesk_model->delete($id);
+        set_alert('success', _l('hr_deleted_successfully'));
+        redirect(admin_url('hr_module/helpdesk'));
+    }
+
+    private function _handle_attachment(&$data, $field)
+    {
+        if (empty($_FILES[$field]['name'])) return;
+        $path = FCPATH . 'uploads/hr_module/helpdesk/';
+        if (!is_dir($path)) mkdir($path, 0755, true);
+        $this->load->library('upload', [
+            'upload_path'   => $path,
+            'allowed_types' => 'pdf|doc|docx|jpg|jpeg|png|txt',
+            'max_size'      => 5120,
+            'encrypt_name'  => true,
+        ]);
+        if ($this->upload->do_upload($field)) {
+            $data['attachment'] = $this->upload->data('file_name');
+        }
+    }
+
+    private function _get_staff_dropdown()
+    {
+        $rows = $this->db->select('staffid, CONCAT(firstname," ",lastname) as name')
+            ->where('active', 1)->get(db_prefix() . 'staff')->result();
+        $out = ['' => '-- Unassigned --'];
+        foreach ($rows as $r) $out[$r->staffid] = $r->name;
+        return $out;
+    }
+}

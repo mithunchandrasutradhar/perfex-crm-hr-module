@@ -1,0 +1,508 @@
+<?php
+defined('BASEPATH') or exit('No direct script access allowed');
+
+// Module
+$lang['hr_module']                         = 'HR Management';
+$lang['hr_module_dashboard']               = 'HR Dashboard';
+$lang['hr_module_settings']                = 'HR Settings';
+
+// Menu items
+$lang['hr_menu_employees']                 = 'Employees';
+$lang['hr_menu_departments']               = 'Departments';
+$lang['hr_menu_designations']              = 'Designations';
+$lang['hr_menu_leave']                     = 'Leave Management';
+$lang['hr_menu_leave_requests']            = 'Leave Requests';
+$lang['hr_menu_leave_types']               = 'Leave Types';
+$lang['hr_menu_leave_balances']            = 'Leave Balances';
+$lang['hr_menu_attendance']                = 'Attendance';
+$lang['hr_menu_attendance_logs']           = 'Attendance Logs';
+$lang['hr_menu_zkteco']                    = 'ZKTeco Devices';
+$lang['hr_menu_payroll']                   = 'Payroll';
+$lang['hr_menu_payroll_items']             = 'Payroll Items';
+$lang['hr_menu_loans']                     = 'Loans';
+$lang['hr_menu_overtime']                  = 'Overtime';
+$lang['hr_menu_performance']               = 'Performance';
+$lang['hr_menu_training']                  = 'Training';
+$lang['hr_menu_helpdesk']                  = 'HR Helpdesk';
+$lang['hr_menu_contracts']                 = 'HR Contracts';
+$lang['hr_menu_reports']                   = 'HR Reports';
+
+// Permissions
+$lang['hr_perm_employees']                 = 'Employees';
+$lang['hr_perm_departments']               = 'Departments';
+$lang['hr_perm_leave']                     = 'Leave Management';
+$lang['hr_perm_attendance']                = 'Attendance';
+$lang['hr_perm_payroll']                   = 'Payroll';
+$lang['hr_perm_loans']                     = 'Loans';
+$lang['hr_perm_overtime']                  = 'Overtime';
+$lang['hr_perm_performance']               = 'Performance';
+$lang['hr_perm_training']                  = 'Training';
+$lang['hr_perm_helpdesk']                  = 'HR Helpdesk';
+$lang['hr_perm_contracts']                 = 'HR Contracts';
+$lang['hr_perm_zkteco']                    = 'ZKTeco Devices';
+$lang['hr_perm_reports']                   = 'HR Reports';
+$lang['hr_perm_settings']                  = 'HR Settings';
+
+// Common
+$lang['hr_add']                            = 'Add';
+$lang['hr_edit']                           = 'Edit';
+$lang['hr_delete']                         = 'Delete';
+$lang['hr_view']                           = 'View';
+$lang['hr_save']                           = 'Save';
+$lang['hr_cancel']                         = 'Cancel';
+$lang['hr_confirm']                        = 'Confirm';
+$lang['hr_status']                         = 'Status';
+$lang['hr_active']                         = 'Active';
+$lang['hr_inactive']                       = 'Inactive';
+$lang['hr_name']                           = 'Name';
+$lang['hr_description']                    = 'Description';
+$lang['hr_date']                           = 'Date';
+$lang['hr_from_date']                      = 'From Date';
+$lang['hr_to_date']                        = 'To Date';
+$lang['hr_created_at']                     = 'Created At';
+$lang['hr_updated_at']                     = 'Updated At';
+$lang['hr_actions']                        = 'Actions';
+$lang['hr_search']                         = 'Search';
+$lang['hr_no_data']                        = 'No data found';
+$lang['hr_total']                          = 'Total';
+$lang['hr_approved']                       = 'Approved';
+$lang['hr_rejected']                       = 'Rejected';
+$lang['hr_pending']                        = 'Pending';
+$lang['hr_notes']                          = 'Notes';
+$lang['hr_remarks']                        = 'Remarks';
+$lang['hr_type']                           = 'Type';
+$lang['hr_amount']                         = 'Amount';
+$lang['hr_days']                           = 'Days';
+$lang['hr_hours']                          = 'Hours';
+$lang['hr_attachments']                    = 'Attachments';
+$lang['hr_upload']                         = 'Upload';
+$lang['hr_export']                         = 'Export';
+$lang['hr_print']                          = 'Print';
+$lang['hr_employee']                       = 'Employee';
+$lang['hr_department']                     = 'Department';
+$lang['hr_designation']                    = 'Designation';
+$lang['hr_gender']                         = 'Gender';
+$lang['hr_male']                           = 'Male';
+$lang['hr_female']                         = 'Female';
+$lang['hr_other']                          = 'Other';
+$lang['hr_dob']                            = 'Date of Birth';
+$lang['hr_phone']                          = 'Phone';
+$lang['hr_email']                          = 'Email';
+$lang['hr_address']                        = 'Address';
+$lang['hr_yes']                            = 'Yes';
+$lang['hr_no']                             = 'No';
+$lang['hr_select']                         = 'Select';
+$lang['hr_all']                            = 'All';
+$lang['hr_none']                           = 'None';
+$lang['hr_filter']                         = 'Filter';
+$lang['hr_reset']                          = 'Reset';
+$lang['hr_submit']                         = 'Submit';
+$lang['hr_back']                           = 'Back';
+$lang['hr_close']                          = 'Close';
+$lang['hr_loading']                        = 'Loading...';
+
+// Dashboard
+$lang['hr_dashboard_title']                = 'HR Dashboard';
+$lang['hr_dashboard_total_employees']      = 'Total Employees';
+$lang['hr_dashboard_active_employees']     = 'Active Employees';
+$lang['hr_dashboard_on_leave_today']       = 'On Leave Today';
+$lang['hr_dashboard_pending_leaves']       = 'Pending Leave Requests';
+$lang['hr_dashboard_pending_loans']        = 'Pending Loan Requests';
+$lang['hr_dashboard_pending_overtime']     = 'Pending Overtime Requests';
+$lang['hr_dashboard_attendance_today']     = "Today's Attendance";
+$lang['hr_dashboard_departments']          = 'Total Departments';
+$lang['hr_dashboard_recent_activity']      = 'Recent Activity';
+$lang['hr_dashboard_quick_actions']        = 'Quick Actions';
+$lang['hr_dashboard_present_today']        = 'Present Today';
+$lang['hr_dashboard_absent_today']         = 'Absent Today';
+$lang['hr_dashboard_late_today']           = 'Late Today';
+$lang['hr_dashboard_upcoming_leaves']      = 'Upcoming Leaves';
+$lang['hr_dashboard_payroll_due']          = 'Payroll Due';
+
+// Employees
+$lang['hr_employee_list']                  = 'Employee List';
+$lang['hr_employee_add']                   = 'Add Employee';
+$lang['hr_employee_edit']                  = 'Edit Employee';
+$lang['hr_employee_view']                  = 'View Employee';
+$lang['hr_employee_profile']               = 'Employee Profile';
+$lang['hr_employee_id']                    = 'Employee ID';
+$lang['hr_employee_code']                  = 'Employee Code';
+$lang['hr_employee_first_name']            = 'First Name';
+$lang['hr_employee_last_name']             = 'Last Name';
+$lang['hr_employee_full_name']             = 'Full Name';
+$lang['hr_employee_joining_date']          = 'Joining Date';
+$lang['hr_employee_end_date']              = 'End Date';
+$lang['hr_employee_staff_linked']          = 'Linked Staff Account';
+$lang['hr_employee_basic_salary']          = 'Basic Salary';
+$lang['hr_employee_bank_account']          = 'Bank Account';
+$lang['hr_employee_bank_name']             = 'Bank Name';
+$lang['hr_employee_bank_branch']           = 'Bank Branch';
+$lang['hr_employee_tin']                   = 'TIN Number';
+$lang['hr_employee_nid']                   = 'NID Number';
+$lang['hr_employee_passport']              = 'Passport Number';
+$lang['hr_employee_emergency_contact']     = 'Emergency Contact';
+$lang['hr_employee_blood_group']           = 'Blood Group';
+$lang['hr_employee_religion']              = 'Religion';
+$lang['hr_employee_marital_status']        = 'Marital Status';
+$lang['hr_employee_education']             = 'Education';
+$lang['hr_employee_experience']            = 'Experience';
+$lang['hr_employee_skills']                = 'Skills';
+$lang['hr_employee_photo']                 = 'Photo';
+$lang['hr_employee_added']                 = 'Employee added successfully';
+$lang['hr_employee_updated']               = 'Employee updated successfully';
+$lang['hr_employee_deleted']               = 'Employee deleted successfully';
+$lang['hr_employee_not_found']             = 'Employee not found';
+$lang['hr_employee_documents']             = 'Documents';
+$lang['hr_employee_work_info']             = 'Work Information';
+$lang['hr_employee_personal_info']         = 'Personal Information';
+$lang['hr_employee_bank_info']             = 'Bank Information';
+
+// Departments
+$lang['hr_department_list']                = 'Department List';
+$lang['hr_department_add']                 = 'Add Department';
+$lang['hr_department_edit']                = 'Edit Department';
+$lang['hr_department_head']                = 'Department Head';
+$lang['hr_department_parent']              = 'Parent Department';
+$lang['hr_department_code']                = 'Department Code';
+$lang['hr_department_added']               = 'Department added successfully';
+$lang['hr_department_updated']             = 'Department updated successfully';
+$lang['hr_department_deleted']             = 'Department deleted successfully';
+
+// Designations
+$lang['hr_designation_list']               = 'Designation List';
+$lang['hr_designation_add']                = 'Add Designation';
+$lang['hr_designation_edit']               = 'Edit Designation';
+$lang['hr_designation_added']              = 'Designation added successfully';
+$lang['hr_designation_updated']            = 'Designation updated successfully';
+$lang['hr_designation_deleted']            = 'Designation deleted successfully';
+
+// Leave
+$lang['hr_leave_list']                     = 'Leave Requests';
+$lang['hr_leave_add']                      = 'Apply for Leave';
+$lang['hr_leave_edit']                     = 'Edit Leave Request';
+$lang['hr_leave_view']                     = 'View Leave Request';
+$lang['hr_leave_type']                     = 'Leave Type';
+$lang['hr_leave_types_list']               = 'Leave Types';
+$lang['hr_leave_type_add']                 = 'Add Leave Type';
+$lang['hr_leave_type_edit']                = 'Edit Leave Type';
+$lang['hr_leave_days']                     = 'Leave Days';
+$lang['hr_leave_reason']                   = 'Leave Reason';
+$lang['hr_leave_approve']                  = 'Approve';
+$lang['hr_leave_reject']                   = 'Reject';
+$lang['hr_leave_cancel']                   = 'Cancel Leave';
+$lang['hr_leave_balance']                  = 'Leave Balance';
+$lang['hr_leave_balances_list']            = 'Leave Balances';
+$lang['hr_leave_allocated']                = 'Allocated';
+$lang['hr_leave_used']                     = 'Used';
+$lang['hr_leave_remaining']                = 'Remaining';
+$lang['hr_leave_year']                     = 'Year';
+$lang['hr_leave_half_day']                 = 'Half Day';
+$lang['hr_leave_status_pending']           = 'Pending';
+$lang['hr_leave_status_approved']          = 'Approved';
+$lang['hr_leave_status_rejected']          = 'Rejected';
+$lang['hr_leave_status_cancelled']         = 'Cancelled';
+$lang['hr_leave_approved_msg']             = 'Leave request approved';
+$lang['hr_leave_rejected_msg']             = 'Leave request rejected';
+$lang['hr_leave_applied_msg']              = 'Leave request submitted';
+$lang['hr_leave_max_days']                 = 'Maximum Days Per Year';
+$lang['hr_leave_carry_forward']            = 'Carry Forward';
+$lang['hr_leave_requires_attachment']      = 'Requires Attachment';
+$lang['hr_leave_type_added']               = 'Leave type added successfully';
+$lang['hr_leave_type_updated']             = 'Leave type updated successfully';
+$lang['hr_leave_type_deleted']             = 'Leave type deleted successfully';
+
+// Attendance
+$lang['hr_attendance_list']                = 'Attendance Logs';
+$lang['hr_attendance_add']                 = 'Add Attendance';
+$lang['hr_attendance_edit']                = 'Edit Attendance';
+$lang['hr_attendance_check_in']            = 'Check In';
+$lang['hr_attendance_check_out']           = 'Check Out';
+$lang['hr_attendance_date']                = 'Date';
+$lang['hr_attendance_in_time']             = 'In Time';
+$lang['hr_attendance_out_time']            = 'Out Time';
+$lang['hr_attendance_working_hours']       = 'Working Hours';
+$lang['hr_attendance_status']              = 'Status';
+$lang['hr_attendance_present']             = 'Present';
+$lang['hr_attendance_absent']              = 'Absent';
+$lang['hr_attendance_late']                = 'Late';
+$lang['hr_attendance_half_day']            = 'Half Day';
+$lang['hr_attendance_source_manual']       = 'Manual';
+$lang['hr_attendance_source_zkteco']       = 'ZKTeco';
+$lang['hr_attendance_source_web']          = 'Web';
+$lang['hr_attendance_added']               = 'Attendance record added';
+$lang['hr_attendance_updated']             = 'Attendance record updated';
+$lang['hr_attendance_deleted']             = 'Attendance record deleted';
+$lang['hr_attendance_report']              = 'Attendance Report';
+$lang['hr_attendance_monthly']             = 'Monthly Attendance';
+$lang['hr_attendance_import']              = 'Import Attendance';
+
+// ZKTeco
+$lang['hr_zkteco_devices']                 = 'ZKTeco Devices';
+$lang['hr_zkteco_add']                     = 'Add Device';
+$lang['hr_zkteco_add_device']              = 'Add Device';
+$lang['hr_zkteco_edit']                    = 'Edit Device';
+$lang['hr_zkteco_edit_device']             = 'Edit Device';
+$lang['hr_zkteco_device_name']             = 'Device Name';
+$lang['hr_zkteco_ip_address']              = 'IP Address';
+$lang['hr_zkteco_port']                    = 'Port';
+$lang['hr_zkteco_serial_number']           = 'Serial Number';
+$lang['hr_zkteco_location']                = 'Location';
+$lang['hr_zkteco_sync_now']                = 'Sync Now';
+$lang['hr_zkteco_last_sync']               = 'Last Synced';
+$lang['hr_zkteco_sync_logs']               = 'Sync Logs';
+$lang['hr_zkteco_records_synced']          = 'Records Synced';
+$lang['hr_zkteco_device_added']            = 'Device added successfully';
+$lang['hr_zkteco_device_updated']          = 'Device updated successfully';
+$lang['hr_zkteco_device_deleted']          = 'Device deleted successfully';
+$lang['hr_zkteco_mapping']                 = 'Device User Mapping';
+$lang['hr_zkteco_device_user_id']          = 'Device User ID';
+
+// Payroll
+$lang['hr_payroll_list']                   = 'Payroll List';
+$lang['hr_payroll_generate']               = 'Generate Payroll';
+$lang['hr_payroll_view']                   = 'View Payroll';
+$lang['hr_payroll_period']                 = 'Pay Period';
+$lang['hr_payroll_month']                  = 'Month';
+$lang['hr_payroll_year']                   = 'Year';
+$lang['hr_payroll_basic_salary']           = 'Basic Salary';
+$lang['hr_payroll_gross_salary']           = 'Gross Salary';
+$lang['hr_payroll_net_salary']             = 'Net Salary';
+$lang['hr_payroll_total_allowances']       = 'Total Allowances';
+$lang['hr_payroll_total_deductions']       = 'Total Deductions';
+$lang['hr_payroll_allowances']             = 'Allowances';
+$lang['hr_payroll_deductions']             = 'Deductions';
+$lang['hr_payroll_tax']                    = 'Tax';
+$lang['hr_payroll_bonus']                  = 'Bonus';
+$lang['hr_payroll_overtime_pay']           = 'Overtime Pay';
+$lang['hr_payroll_loan_deduction']         = 'Loan Deduction';
+$lang['hr_payroll_status_draft']           = 'Draft';
+$lang['hr_payroll_status_approved']        = 'Approved';
+$lang['hr_payroll_status_paid']            = 'Paid';
+$lang['hr_payroll_approve']                = 'Approve Payroll';
+$lang['hr_payroll_mark_paid']              = 'Mark as Paid';
+$lang['hr_payroll_generated']              = 'Payroll generated successfully';
+$lang['hr_payroll_approved']               = 'Payroll approved';
+$lang['hr_payroll_paid']                   = 'Payroll marked as paid';
+$lang['hr_payroll_slip']                   = 'Pay Slip';
+$lang['hr_payroll_items_list']             = 'Payroll Items';
+$lang['hr_payroll_item_add']               = 'Add Payroll Item';
+$lang['hr_payroll_item_edit']              = 'Edit Payroll Item';
+$lang['hr_payroll_item_type_allowance']    = 'Allowance';
+$lang['hr_payroll_item_type_deduction']    = 'Deduction';
+$lang['hr_payroll_item_added']             = 'Payroll item added';
+$lang['hr_payroll_item_updated']           = 'Payroll item updated';
+$lang['hr_payroll_item_deleted']           = 'Payroll item deleted';
+$lang['hr_payroll_payment_method']         = 'Payment Method';
+$lang['hr_payroll_bank_transfer']          = 'Bank Transfer';
+$lang['hr_payroll_cash']                   = 'Cash';
+$lang['hr_payroll_cheque']                 = 'Cheque';
+
+// Loans
+$lang['hr_loan_list']                      = 'Loan Requests';
+$lang['hr_loan_add']                       = 'Apply for Loan';
+$lang['hr_loan_edit']                      = 'Edit Loan';
+$lang['hr_loan_view']                      = 'View Loan';
+$lang['hr_loan_amount']                    = 'Loan Amount';
+$lang['hr_loan_reason']                    = 'Loan Reason';
+$lang['hr_loan_repayment_months']          = 'Repayment (Months)';
+$lang['hr_loan_monthly_installment']       = 'Monthly Installment';
+$lang['hr_loan_total_repaid']              = 'Total Repaid';
+$lang['hr_loan_outstanding']               = 'Outstanding Balance';
+$lang['hr_loan_approve']                   = 'Approve Loan';
+$lang['hr_loan_reject']                    = 'Reject Loan';
+$lang['hr_loan_status_pending']            = 'Pending';
+$lang['hr_loan_status_approved']           = 'Approved';
+$lang['hr_loan_status_rejected']           = 'Rejected';
+$lang['hr_loan_status_repaying']           = 'Repaying';
+$lang['hr_loan_status_completed']          = 'Completed';
+$lang['hr_loan_approved_msg']              = 'Loan approved successfully';
+$lang['hr_loan_rejected_msg']              = 'Loan rejected';
+$lang['hr_loan_applied_msg']               = 'Loan request submitted';
+$lang['hr_loan_disbursement_date']         = 'Disbursement Date';
+$lang['hr_loan_repayments']                = 'Repayment History';
+
+// Overtime
+$lang['hr_overtime_list']                  = 'Overtime Requests';
+$lang['hr_overtime_add']                   = 'Request Overtime';
+$lang['hr_overtime_edit']                  = 'Edit Overtime';
+$lang['hr_overtime_view']                  = 'View Overtime';
+$lang['hr_overtime_date']                  = 'Overtime Date';
+$lang['hr_overtime_hours']                 = 'Hours';
+$lang['hr_overtime_rate']                  = 'Rate Multiplier';
+$lang['hr_overtime_total_amount']          = 'Total Amount';
+$lang['hr_overtime_reason']                = 'Reason';
+$lang['hr_overtime_approve']               = 'Approve';
+$lang['hr_overtime_reject']                = 'Reject';
+$lang['hr_overtime_approved_msg']          = 'Overtime approved';
+$lang['hr_overtime_rejected_msg']          = 'Overtime rejected';
+$lang['hr_overtime_applied_msg']           = 'Overtime request submitted';
+
+// Performance
+$lang['hr_performance_list']               = 'Performance Reviews';
+$lang['hr_performance_add']                = 'Create Review';
+$lang['hr_performance_edit']               = 'Edit Review';
+$lang['hr_performance_view']               = 'View Review';
+$lang['hr_performance_period']             = 'Review Period';
+$lang['hr_performance_reviewer']           = 'Reviewer';
+$lang['hr_performance_score']              = 'Score';
+$lang['hr_performance_criteria']           = 'Criteria';
+$lang['hr_performance_self_assessment']    = 'Self Assessment';
+$lang['hr_performance_manager_review']     = 'Manager Review';
+$lang['hr_performance_final_score']        = 'Final Score';
+$lang['hr_performance_rating']             = 'Rating';
+$lang['hr_performance_added']              = 'Performance review created';
+$lang['hr_performance_updated']            = 'Performance review updated';
+$lang['hr_performance_deleted']            = 'Performance review deleted';
+
+// Training
+$lang['hr_training_list']                  = 'Training Programs';
+$lang['hr_training_add']                   = 'Add Training';
+$lang['hr_training_edit']                  = 'Edit Training';
+$lang['hr_training_view']                  = 'View Training';
+$lang['hr_training_title']                 = 'Training Title';
+$lang['hr_training_trainer']               = 'Trainer/Instructor';
+$lang['hr_training_venue']                 = 'Venue';
+$lang['hr_training_start_date']            = 'Start Date';
+$lang['hr_training_end_date']              = 'End Date';
+$lang['hr_training_cost']                  = 'Cost';
+$lang['hr_training_capacity']              = 'Capacity';
+$lang['hr_training_enrolled']              = 'Enrolled';
+$lang['hr_training_status_scheduled']      = 'Scheduled';
+$lang['hr_training_status_ongoing']        = 'Ongoing';
+$lang['hr_training_status_completed']      = 'Completed';
+$lang['hr_training_status_cancelled']      = 'Cancelled';
+$lang['hr_training_participants']          = 'Participants';
+$lang['hr_training_enroll']                = 'Enroll';
+$lang['hr_training_added']                 = 'Training added successfully';
+$lang['hr_training_updated']               = 'Training updated successfully';
+$lang['hr_training_deleted']               = 'Training deleted successfully';
+
+// Helpdesk
+$lang['hr_helpdesk_list']                  = 'HR Helpdesk Tickets';
+$lang['hr_helpdesk_add']                   = 'Submit Ticket';
+$lang['hr_helpdesk_view']                  = 'View Ticket';
+$lang['hr_helpdesk_subject']               = 'Subject';
+$lang['hr_helpdesk_category']              = 'Category';
+$lang['hr_helpdesk_priority']              = 'Priority';
+$lang['hr_helpdesk_priority_low']          = 'Low';
+$lang['hr_helpdesk_priority_medium']       = 'Medium';
+$lang['hr_helpdesk_priority_high']         = 'High';
+$lang['hr_helpdesk_status_open']           = 'Open';
+$lang['hr_helpdesk_status_in_progress']    = 'In Progress';
+$lang['hr_helpdesk_status_resolved']       = 'Resolved';
+$lang['hr_helpdesk_status_closed']         = 'Closed';
+$lang['hr_helpdesk_assigned_to']           = 'Assigned To';
+$lang['hr_helpdesk_message']               = 'Message';
+$lang['hr_helpdesk_reply']                 = 'Reply';
+$lang['hr_helpdesk_replies']               = 'Replies';
+$lang['hr_helpdesk_close']                 = 'Close Ticket';
+$lang['hr_helpdesk_reopen']                = 'Reopen Ticket';
+$lang['hr_helpdesk_added']                 = 'Ticket submitted successfully';
+
+// Contracts
+$lang['hr_contract_list']                  = 'HR Contracts';
+$lang['hr_contract_add']                   = 'Add Contract';
+$lang['hr_contract_edit']                  = 'Edit Contract';
+$lang['hr_contract_view']                  = 'View Contract';
+$lang['hr_contract_title']                 = 'Contract Title';
+$lang['hr_contract_start_date']            = 'Start Date';
+$lang['hr_contract_end_date']              = 'End Date';
+$lang['hr_contract_type']                  = 'Contract Type';
+$lang['hr_contract_type_permanent']        = 'Permanent';
+$lang['hr_contract_type_fixed']            = 'Fixed Term';
+$lang['hr_contract_type_probation']        = 'Probation';
+$lang['hr_contract_type_internship']       = 'Internship';
+$lang['hr_contract_type_casual']           = 'Casual';
+$lang['hr_contract_status_active']         = 'Active';
+$lang['hr_contract_status_expired']        = 'Expired';
+$lang['hr_contract_status_terminated']     = 'Terminated';
+$lang['hr_contract_status_pending']        = 'Pending';
+$lang['hr_contract_signed']                = 'Signed';
+$lang['hr_contract_sign_date']             = 'Sign Date';
+$lang['hr_contract_added']                 = 'Contract added successfully';
+$lang['hr_contract_updated']               = 'Contract updated successfully';
+$lang['hr_contract_deleted']               = 'Contract deleted successfully';
+
+// Reports
+$lang['hr_report_attendance']              = 'Attendance Report';
+$lang['hr_report_leave']                   = 'Leave Report';
+$lang['hr_report_payroll']                 = 'Payroll Report';
+$lang['hr_report_loan']                    = 'Loan Report';
+$lang['hr_report_overtime']                = 'Overtime Report';
+$lang['hr_report_performance']             = 'Performance Report';
+$lang['hr_report_training']                = 'Training Report';
+$lang['hr_report_headcount']               = 'Headcount Report';
+$lang['hr_report_department']              = 'Department Summary';
+$lang['hr_report_salary']                  = 'Salary Summary';
+$lang['hr_report_turnover']                = 'Employee Turnover';
+$lang['hr_report_generate']                = 'Generate Report';
+$lang['hr_report_period']                  = 'Report Period';
+$lang['hr_report_download']                = 'Download Report';
+
+// Settings
+$lang['hr_settings_general']               = 'General Settings';
+$lang['hr_settings_leave']                 = 'Leave Settings';
+$lang['hr_settings_attendance']            = 'Attendance Settings';
+$lang['hr_settings_payroll']               = 'Payroll Settings';
+$lang['hr_settings_notifications']         = 'Notification Settings';
+$lang['hr_settings_zkteco']                = 'ZKTeco Settings';
+$lang['hr_settings_saved']                 = 'Settings saved successfully';
+$lang['hr_settings_currency']              = 'Currency';
+$lang['hr_settings_fiscal_year_start']     = 'Fiscal Year Start Month';
+$lang['hr_settings_working_days']          = 'Working Days Per Week';
+$lang['hr_settings_working_hours']         = 'Working Hours Per Day';
+$lang['hr_settings_office_start_time']     = 'Office Start Time';
+$lang['hr_settings_office_end_time']       = 'Office End Time';
+$lang['hr_settings_late_threshold']        = 'Late Threshold (minutes)';
+$lang['hr_settings_overtime_rate']         = 'Default Overtime Rate';
+$lang['hr_settings_employee_id_prefix']    = 'Employee ID Prefix';
+$lang['hr_settings_payroll_day']           = 'Payroll Generation Day';
+$lang['hr_settings_notify_leave_apply']    = 'Notify on Leave Apply';
+$lang['hr_settings_notify_leave_approve']  = 'Notify on Leave Approve/Reject';
+$lang['hr_settings_notify_loan_apply']     = 'Notify on Loan Apply';
+$lang['hr_settings_notify_payroll']        = 'Notify on Payroll Generation';
+$lang['hr_settings_zkteco_enabled']        = 'Enable ZKTeco Integration';
+$lang['hr_settings_zkteco_sync_interval']  = 'Sync Interval (minutes)';
+
+// Notifications
+$lang['hr_notif_leave_applied']            = 'New leave request from {employee}';
+$lang['hr_notif_leave_approved']           = 'Your leave request has been approved';
+$lang['hr_notif_leave_rejected']           = 'Your leave request has been rejected';
+$lang['hr_notif_loan_applied']             = 'New loan request from {employee}';
+$lang['hr_notif_loan_approved']            = 'Your loan request has been approved';
+$lang['hr_notif_loan_rejected']            = 'Your loan request has been rejected';
+$lang['hr_notif_overtime_applied']         = 'New overtime request from {employee}';
+$lang['hr_notif_overtime_approved']        = 'Your overtime request has been approved';
+$lang['hr_notif_payroll_generated']        = 'Payroll for {month} has been generated';
+$lang['hr_notif_contract_expiry']          = 'Contract expiring soon for {employee}';
+$lang['hr_notif_training_enrolled']        = 'You have been enrolled in {training}';
+$lang['hr_notif_helpdesk_replied']         = 'New reply on your HR ticket #{id}';
+$lang['hr_notif_performance_review']       = 'New performance review has been created';
+
+// Audit
+$lang['hr_audit_trail']                    = 'Audit Trail';
+$lang['hr_audit_module']                   = 'Module';
+$lang['hr_audit_action']                   = 'Action';
+$lang['hr_audit_record_id']                = 'Record ID';
+$lang['hr_audit_old_value']                = 'Old Value';
+$lang['hr_audit_new_value']                = 'New Value';
+$lang['hr_audit_performed_by']             = 'Performed By';
+$lang['hr_audit_performed_at']             = 'Performed At';
+$lang['hr_audit_ip_address']               = 'IP Address';
+
+// Validation messages
+$lang['hr_val_required']                   = 'This field is required';
+$lang['hr_val_numeric']                    = 'This field must be numeric';
+$lang['hr_val_date']                       = 'Invalid date format';
+$lang['hr_val_min_length']                 = 'Minimum length not met';
+$lang['hr_val_max_length']                 = 'Maximum length exceeded';
+$lang['hr_val_date_range']                 = 'End date must be after start date';
+$lang['hr_val_insufficient_leave']         = 'Insufficient leave balance';
+$lang['hr_val_overlapping_leave']          = 'Overlapping leave request exists';
+$lang['hr_val_duplicate_attendance']       = 'Attendance record already exists for this date';
+
+// Errors
+$lang['hr_error_permission']               = 'You do not have permission to perform this action';
+$lang['hr_error_not_found']                = 'Record not found';
+$lang['hr_error_delete_failed']            = 'Could not delete record';
+$lang['hr_error_save_failed']              = 'Could not save record';
