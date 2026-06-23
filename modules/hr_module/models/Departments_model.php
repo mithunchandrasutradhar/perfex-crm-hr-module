@@ -1,6 +1,11 @@
 <?php
 defined('BASEPATH') or exit('No direct script access allowed');
 
+/**
+ * Read-only wrapper around Perfex's core tbldepartments table.
+ * HR departments are no longer managed in a separate table — the CRM
+ * support-ticket department list is shared across all modules.
+ */
 class Departments_model extends App_Model
 {
     private $table;
@@ -8,64 +13,24 @@ class Departments_model extends App_Model
     public function __construct()
     {
         parent::__construct();
-        $this->table = db_prefix() . 'hr_departments';
+        $this->table = db_prefix() . 'departments';
     }
 
     public function get($id = null)
     {
         if ($id) {
-            $this->db->where('id', $id);
+            $this->db->select('departmentid as id, name')->where('departmentid', $id);
             return $this->db->get($this->table)->row();
         }
-        $this->db->order_by('name', 'ASC');
+        $this->db->select('departmentid as id, name')->order_by('name', 'ASC');
         return $this->db->get($this->table)->result();
     }
 
+    // Returns all departments; alias departmentid→id for backward compat with form selects.
     public function get_active()
     {
-        $this->db->where('status', 1);
-        $this->db->order_by('name', 'ASC');
+        $this->db->select('departmentid as id, name')->order_by('name', 'ASC');
         return $this->db->get($this->table)->result();
-    }
-
-    public function add($data)
-    {
-        $data['created_at'] = date('Y-m-d H:i:s');
-        $this->db->insert($this->table, $data);
-        $id = $this->db->insert_id();
-        if ($id) {
-            log_activity('HR Department Added [ID: ' . $id . ', Name: ' . $data['name'] . ']');
-        }
-        return $id;
-    }
-
-    public function update($data, $id)
-    {
-        $data['updated_at'] = date('Y-m-d H:i:s');
-        $this->db->where('id', $id);
-        $this->db->update($this->table, $data);
-        if ($this->db->affected_rows() > 0) {
-            log_activity('HR Department Updated [ID: ' . $id . ']');
-            return true;
-        }
-        return false;
-    }
-
-    public function delete($id)
-    {
-        // Check if any employees belong to this department
-        $this->db->where('department_id', $id);
-        $count = $this->db->count_all_results(db_prefix() . 'hr_employees');
-        if ($count > 0) {
-            return ['success' => false, 'message' => 'Cannot delete department with assigned employees'];
-        }
-        $this->db->where('id', $id);
-        $this->db->delete($this->table);
-        if ($this->db->affected_rows() > 0) {
-            log_activity('HR Department Deleted [ID: ' . $id . ']');
-            return ['success' => true];
-        }
-        return ['success' => false, 'message' => 'Record not found'];
     }
 
     public function total_employees($dept_id)

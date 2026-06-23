@@ -14,10 +14,10 @@ class Attendance_model extends App_Model
     public function get($id = null)
     {
         $this->db->select('a.*, CONCAT(e.first_name," ",e.last_name) as employee_name,
-            e.employee_code, d.name as department_name')
+            e.employee_code, d.name as department_name', false)
             ->from($this->table . ' a')
             ->join(db_prefix() . 'hr_employees e', 'e.id = a.employee_id', 'left')
-            ->join(db_prefix() . 'hr_departments d', 'd.id = e.department_id', 'left');
+            ->join(db_prefix() . 'departments d', 'd.departmentid = e.department_id', 'left');
         if ($id) {
             $this->db->where('a.id', $id);
             return $this->db->get()->row();
@@ -28,10 +28,10 @@ class Attendance_model extends App_Model
     public function get_for_table($filters = [])
     {
         $this->db->select('a.*, CONCAT(e.first_name," ",e.last_name) as employee_name,
-            e.employee_code, d.name as department_name')
+            e.employee_code, d.name as department_name', false)
             ->from($this->table . ' a')
             ->join(db_prefix() . 'hr_employees e', 'e.id = a.employee_id', 'left')
-            ->join(db_prefix() . 'hr_departments d', 'd.id = e.department_id', 'left');
+            ->join(db_prefix() . 'departments d', 'd.departmentid = e.department_id', 'left');
 
         if (!empty($filters['employee_id']))   $this->db->where('a.employee_id', $filters['employee_id']);
         if (!empty($filters['department_id'])) $this->db->where('e.department_id', $filters['department_id']);

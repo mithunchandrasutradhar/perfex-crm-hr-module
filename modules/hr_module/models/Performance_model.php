@@ -11,10 +11,10 @@ class Performance_model extends App_Model
             ->select('r.*, e.first_name, e.last_name, e.employee_code,
                       d.name as department_name, ds.name as designation_name,
                       CONCAT(s.firstname," ",s.lastname) as reviewer_name,
-                      CONCAT(cb.firstname," ",cb.lastname) as created_by_name')
+                      CONCAT(cb.firstname," ",cb.lastname) as created_by_name', false)
             ->from(db_prefix() . $this->table . ' r')
             ->join(db_prefix() . 'hr_employees e',    'e.id = r.employee_id',       'left')
-            ->join(db_prefix() . 'hr_departments d',  'd.id = e.department_id',     'left')
+            ->join(db_prefix() . 'departments d', 'd.departmentid = e.department_id', 'left')
             ->join(db_prefix() . 'hr_designations ds','ds.id = e.designation_id',   'left')
             ->join(db_prefix() . 'staff s',           's.staffid = r.reviewer_id',  'left')
             ->join(db_prefix() . 'staff cb',          'cb.staffid = r.created_by',  'left')
@@ -28,10 +28,10 @@ class Performance_model extends App_Model
                            r.final_score, r.rating, r.status, r.created_at,
                            e.first_name, e.last_name, e.employee_code,
                            d.name as department_name,
-                           CONCAT(s.firstname," ",s.lastname) as reviewer_name')
+                           CONCAT(s.firstname," ",s.lastname) as reviewer_name', false)
             ->from(db_prefix() . $this->table . ' r')
             ->join(db_prefix() . 'hr_employees e', 'e.id = r.employee_id', 'left')
-            ->join(db_prefix() . 'hr_departments d', 'd.id = e.department_id', 'left')
+            ->join(db_prefix() . 'departments d', 'd.departmentid = e.department_id', 'left')
             ->join(db_prefix() . 'staff s', 's.staffid = r.reviewer_id', 'left');
 
         if (!empty($filters['employee_id']))   $this->db->where('r.employee_id', $filters['employee_id']);

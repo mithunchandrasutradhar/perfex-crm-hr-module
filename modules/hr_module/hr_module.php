@@ -140,13 +140,13 @@ function hr_module_init_menu_items()
         ]);
     }
 
-    // Departments
+    // Designations
     if (staff_can('view', 'hr_departments')) {
         $CI->app_menu->add_sidebar_children_item('human-resource', [
-            'slug'     => 'hr-departments',
-            'name'     => _l('hr_menu_departments'),
-            'href'     => admin_url('hr_module/departments'),
-            'position' => 3,
+            'slug'     => 'hr-designations',
+            'name'     => _l('hr_menu_designations'),
+            'href'     => admin_url('hr_module/designations'),
+            'position' => 4,
         ]);
     }
 

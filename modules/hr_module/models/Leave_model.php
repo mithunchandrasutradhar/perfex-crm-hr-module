@@ -63,7 +63,7 @@ class Leave_model extends App_Model
     {
         $this->db->select('r.*, lt.name as leave_type_name,
             CONCAT(e.first_name," ",e.last_name) as employee_name, e.employee_code,
-            CONCAT(sa.firstname," ",sa.lastname) as approved_by_name')
+            CONCAT(sa.firstname," ",sa.lastname) as approved_by_name', false)
             ->from($this->tbl_requests . ' r')
             ->join(db_prefix() . 'hr_leave_types lt', 'lt.id = r.leave_type_id', 'left')
             ->join(db_prefix() . 'hr_employees e', 'e.id = r.employee_id', 'left')
@@ -207,11 +207,11 @@ class Leave_model extends App_Model
         if (!$year) $year = date('Y');
         $this->db->select('b.*, lt.name as leave_type_name,
             CONCAT(e.first_name," ",e.last_name) as employee_name, e.employee_code,
-            d.name as department_name')
+            d.name as department_name', false)
             ->from($this->tbl_balances . ' b')
             ->join($this->tbl_types . ' lt', 'lt.id = b.leave_type_id', 'left')
             ->join(db_prefix() . 'hr_employees e', 'e.id = b.employee_id', 'left')
-            ->join(db_prefix() . 'hr_departments d', 'd.id = e.department_id', 'left')
+            ->join(db_prefix() . 'departments d', 'd.departmentid = e.department_id', 'left')
             ->where('b.year', $year);
         if ($dept_id) $this->db->where('e.department_id', $dept_id);
         $this->db->order_by('employee_name, lt.name', 'ASC');

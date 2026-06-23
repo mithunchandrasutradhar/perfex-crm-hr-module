@@ -55,12 +55,12 @@ class Payroll_model extends App_Model
     {
         return $this->db
             ->select('p.*, e.first_name, e.last_name, e.employee_code, e.basic_salary as emp_basic,
-                      e.email, e.phone, e.joining_date, e.bank_name, e.bank_account_no,
+                      e.email, e.phone, e.joining_date, e.bank_name, e.bank_account,
                       d.name as department_name, ds.name as designation_name,
-                      CONCAT(s.firstname," ",s.lastname) as approved_by_name')
+                      CONCAT(s.firstname," ",s.lastname) as approved_by_name', false)
             ->from(db_prefix() . $this->table . ' p')
             ->join(db_prefix() . 'hr_employees e', 'e.id = p.employee_id', 'left')
-            ->join(db_prefix() . 'hr_departments d', 'd.id = e.department_id', 'left')
+            ->join(db_prefix() . 'departments d', 'd.departmentid = e.department_id', 'left')
             ->join(db_prefix() . 'hr_designations ds', 'ds.id = e.designation_id', 'left')
             ->join(db_prefix() . 'staff s', 's.staffid = p.approved_by', 'left')
             ->where('p.id', $id)
@@ -75,7 +75,7 @@ class Payroll_model extends App_Model
                            d.name as department_name')
             ->from(db_prefix() . $this->table . ' p')
             ->join(db_prefix() . 'hr_employees e', 'e.id = p.employee_id', 'left')
-            ->join(db_prefix() . 'hr_departments d', 'd.id = e.department_id', 'left');
+            ->join(db_prefix() . 'departments d', 'd.departmentid = e.department_id', 'left');
 
         if (!empty($filters['employee_id']))   $this->db->where('p.employee_id', $filters['employee_id']);
         if (!empty($filters['department_id'])) $this->db->where('e.department_id', $filters['department_id']);
@@ -142,8 +142,8 @@ class Payroll_model extends App_Model
         $present_days  = $summary['present']        ?? 0;
         $absent_days   = $summary['absent']         ?? 0;
 
-        // Loan deduction
-        $loan_deduction = $this->_pending_loan_deduction($employee_id);
+        // Loan deduction — only if employee submitted an approved deduction request for this month
+        $loan_deduction = $this->_pending_loan_deduction($employee_id, $month, $year);
 
         // Approved overtime pay for this month
         $overtime_amount = $this->_approved_overtime_amount($employee_id, $month, $year);
@@ -234,18 +234,22 @@ class Payroll_model extends App_Model
 
     // ─── Internal helpers ────────────────────────────────────────────────────
 
-    private function _pending_loan_deduction($employee_id)
+    private function _pending_loan_deduction($employee_id, $month, $year)
     {
-        if (!$this->db->table_exists(db_prefix() . 'hr_loans')) return 0;
-        $loan = $this->db
-            ->select('monthly_installment')
-            ->where('employee_id', $employee_id)
-            ->where_in('status', ['approved', 'active'])
-            ->where('outstanding >', 0)
-            ->order_by('id')
+        if (!$this->db->table_exists(db_prefix() . 'hr_loan_deduction_requests')) return 0;
+        $req = $this->db
+            ->select('r.amount')
+            ->from(db_prefix() . 'hr_loan_deduction_requests r')
+            ->join(db_prefix() . 'hr_loans l', 'l.id = r.loan_id', 'left')
+            ->where('r.employee_id', $employee_id)
+            ->where('r.pay_month',   $month)
+            ->where('r.pay_year',    $year)
+            ->where('r.status',      'approved')
+            ->where('l.outstanding >', 0)
+            ->order_by('r.id')
             ->limit(1)
-            ->get(db_prefix() . 'hr_loans')->row();
-        return $loan ? (float) $loan->monthly_installment : 0;
+            ->get()->row();
+        return $req ? (float) $req->amount : 0;
     }
 
     private function _record_loan_repayment($employee_id, $payroll_id, $amount)

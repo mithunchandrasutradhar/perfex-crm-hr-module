@@ -320,6 +320,13 @@ $lang['hr_loan_rejected_msg']              = 'Loan rejected';
 $lang['hr_loan_applied_msg']               = 'Loan request submitted';
 $lang['hr_loan_disbursement_date']         = 'Disbursement Date';
 $lang['hr_loan_repayments']                = 'Repayment History';
+$lang['hr_loan_deduction_requests']        = 'Deduction Requests';
+$lang['hr_loan_deduction_request']         = 'Request Monthly Deduction';
+$lang['hr_loan_deduction_submitted']       = 'Deduction request submitted';
+$lang['hr_loan_deduction_updated']         = 'Deduction request updated';
+$lang['hr_loan_deduction_approved']        = 'Deduction request approved';
+$lang['hr_loan_deduction_rejected']        = 'Deduction request rejected';
+$lang['hr_loan_no_deduction_this_month']   = 'No deduction request for this month';
 
 // Overtime
 $lang['hr_overtime_list']                  = 'Overtime Requests';
@@ -506,3 +513,19 @@ $lang['hr_error_permission']               = 'You do not have permission to perf
 $lang['hr_error_not_found']                = 'Record not found';
 $lang['hr_error_delete_failed']            = 'Could not delete record';
 $lang['hr_error_save_failed']              = 'Could not save record';
+
+// Additional keys not in original file
+$lang['hr_deleted_successfully']           = 'Record deleted successfully';
+$lang['hr_reports']                        = 'HR Reports';
+$lang['hr_error_saving']                   = 'Could not save record. Please try again.';
+$lang['hr_leave_approved']                 = 'Leave request approved successfully';
+$lang['hr_updated_successfully']           = 'Record updated successfully';
+
+// Field labels used in views
+$lang['hr_employees']                      = 'Employees';
+$lang['hr_start_date']                     = 'Start Date';
+$lang['hr_end_date']                       = 'End Date';
+$lang['hr_save_changes']                   = 'Save Changes';
+$lang['hr_employee_dob']                   = 'Date of Birth';
+$lang['hr_contract_content']               = 'Contract Content';
+$lang['hr_contract_value']                 = 'Contract Value';

@@ -9,7 +9,7 @@ class Reports_model extends App_Model
         $this->db->select('a.*, e.first_name, e.last_name, e.employee_code, d.name as department_name')
             ->from(db_prefix() . 'hr_attendance a')
             ->join(db_prefix() . 'hr_employees e', 'e.id = a.employee_id', 'left')
-            ->join(db_prefix() . 'hr_departments d', 'd.id = e.department_id', 'left');
+            ->join(db_prefix() . 'departments d', 'd.departmentid = e.department_id', 'left');
         if (!empty($f['employee_id']))   $this->db->where('a.employee_id', $f['employee_id']);
         if (!empty($f['department_id'])) $this->db->where('e.department_id', $f['department_id']);
         if (!empty($f['status']))        $this->db->where('a.status', $f['status']);
@@ -35,10 +35,10 @@ class Reports_model extends App_Model
     // ── Leave ─────────────────────────────────────────────────────────────────
     public function leave($f = [])
     {
-        $this->db->select('l.*, e.first_name, e.last_name, e.employee_code, d.name as department_name, lt.name as leave_type_name')
+        $this->db->select('l.*, l.total_days as days_requested, e.first_name, e.last_name, e.employee_code, d.name as department_name, lt.name as leave_type_name')
             ->from(db_prefix() . 'hr_leave_requests l')
             ->join(db_prefix() . 'hr_employees e',    'e.id = l.employee_id', 'left')
-            ->join(db_prefix() . 'hr_departments d',  'd.id = e.department_id', 'left')
+            ->join(db_prefix() . 'departments d', 'd.departmentid = e.department_id', 'left')
             ->join(db_prefix() . 'hr_leave_types lt', 'lt.id = l.leave_type_id', 'left');
         if (!empty($f['employee_id']))   $this->db->where('l.employee_id', $f['employee_id']);
         if (!empty($f['department_id'])) $this->db->where('e.department_id', $f['department_id']);
@@ -52,10 +52,10 @@ class Reports_model extends App_Model
     // ── Payroll ───────────────────────────────────────────────────────────────
     public function payroll($f = [])
     {
-        $this->db->select('p.*, e.first_name, e.last_name, e.employee_code, d.name as department_name')
+        $this->db->select('p.*, p.gross_salary as gross_earnings, e.first_name, e.last_name, e.employee_code, d.name as department_name')
             ->from(db_prefix() . 'hr_payroll p')
             ->join(db_prefix() . 'hr_employees e', 'e.id = p.employee_id', 'left')
-            ->join(db_prefix() . 'hr_departments d', 'd.id = e.department_id', 'left');
+            ->join(db_prefix() . 'departments d', 'd.departmentid = e.department_id', 'left');
         if (!empty($f['department_id'])) $this->db->where('e.department_id', $f['department_id']);
         if (!empty($f['status']))        $this->db->where('p.status', $f['status']);
         if (!empty($f['month']))         $this->db->where('p.pay_month', $f['month']);
@@ -69,7 +69,7 @@ class Reports_model extends App_Model
         $this->db->select('l.*, e.first_name, e.last_name, e.employee_code, d.name as department_name')
             ->from(db_prefix() . 'hr_loans l')
             ->join(db_prefix() . 'hr_employees e', 'e.id = l.employee_id', 'left')
-            ->join(db_prefix() . 'hr_departments d', 'd.id = e.department_id', 'left');
+            ->join(db_prefix() . 'departments d', 'd.departmentid = e.department_id', 'left');
         if (!empty($f['department_id'])) $this->db->where('e.department_id', $f['department_id']);
         if (!empty($f['status']))        $this->db->where('l.status', $f['status']);
         return $this->db->order_by('l.created_at DESC')->get()->result();
@@ -81,7 +81,7 @@ class Reports_model extends App_Model
         $this->db->select('o.*, e.first_name, e.last_name, e.employee_code, d.name as department_name')
             ->from(db_prefix() . 'hr_overtime o')
             ->join(db_prefix() . 'hr_employees e', 'e.id = o.employee_id', 'left')
-            ->join(db_prefix() . 'hr_departments d', 'd.id = e.department_id', 'left');
+            ->join(db_prefix() . 'departments d', 'd.departmentid = e.department_id', 'left');
         if (!empty($f['department_id'])) $this->db->where('e.department_id', $f['department_id']);
         if (!empty($f['status']))        $this->db->where('o.status', $f['status']);
         if (!empty($f['from_date']))     $this->db->where('o.overtime_date >=', $f['from_date']);
@@ -93,13 +93,13 @@ class Reports_model extends App_Model
     public function performance($f = [])
     {
         $this->db->select('p.*, e.first_name, e.last_name, e.employee_code, d.name as department_name,
-                           CONCAT(s.firstname," ",s.lastname) as reviewer_name')
+                           CONCAT(s.firstname," ",s.lastname) as reviewer_name', false)
             ->from(db_prefix() . 'hr_performance_reviews p')
             ->join(db_prefix() . 'hr_employees e',  'e.id = p.employee_id', 'left')
-            ->join(db_prefix() . 'hr_departments d', 'd.id = e.department_id', 'left')
+            ->join(db_prefix() . 'departments d', 'd.departmentid = e.department_id', 'left')
             ->join(db_prefix() . 'staff s',          's.staffid = p.reviewer_id', 'left');
         if (!empty($f['department_id'])) $this->db->where('e.department_id', $f['department_id']);
-        if (!empty($f['year']))          $this->db->where('YEAR(p.review_period_start)', $f['year']);
+        if (!empty($f['year']))          $this->db->where('YEAR(p.review_period_from)', $f['year']);
         if (!empty($f['rating']))        $this->db->where('p.rating', $f['rating']);
         if (!empty($f['status']))        $this->db->where('p.status', $f['status']);
         return $this->db->order_by('p.created_at DESC')->get()->result();
@@ -110,8 +110,8 @@ class Reports_model extends App_Model
     {
         $this->db->select('t.*,
             (SELECT COUNT(*) FROM ' . db_prefix() . 'hr_training_participants tp WHERE tp.training_id = t.id) as enrolled,
-            (SELECT COUNT(*) FROM ' . db_prefix() . 'hr_training_participants tp WHERE tp.training_id = t.id AND tp.status = "completed") as completed')
-            ->from(db_prefix() . 'hr_training_programs t');
+            (SELECT COUNT(*) FROM ' . db_prefix() . 'hr_training_participants tp WHERE tp.training_id = t.id AND tp.completed = 1) as completed')
+            ->from(db_prefix() . 'hr_training t');
         if (!empty($f['status']))    $this->db->where('t.status', $f['status']);
         if (!empty($f['year']))      $this->db->where('YEAR(t.start_date)', $f['year']);
         return $this->db->order_by('t.start_date DESC')->get()->result();
@@ -130,7 +130,7 @@ class Reports_model extends App_Model
             SUM(CASE WHEN e.gender = "male" THEN 1 ELSE 0 END) as male,
             SUM(CASE WHEN e.gender = "female" THEN 1 ELSE 0 END) as female')
             ->from(db_prefix() . 'hr_employees e')
-            ->join(db_prefix() . 'hr_departments d', 'd.id = e.department_id', 'left')
+            ->join(db_prefix() . 'departments d', 'd.departmentid = e.department_id', 'left')
             ->group_by('e.department_id');
         return $this->db->get()->result();
     }
@@ -143,14 +143,14 @@ class Reports_model extends App_Model
 
         $this->db->select('e.*, d.name as department_name, ds.name as designation_name')
             ->from(db_prefix() . 'hr_employees e')
-            ->join(db_prefix() . 'hr_departments d', 'd.id = e.department_id', 'left')
+            ->join(db_prefix() . 'departments d', 'd.departmentid = e.department_id', 'left')
             ->join(db_prefix() . 'hr_designations ds', 'ds.id = e.designation_id', 'left')
             ->where('e.status', 1);
         if ($dept_id) $this->db->where('e.department_id', $dept_id);
         $employees = $this->db->order_by('e.first_name')->get()->result();
 
         // Leave taken this year
-        $leave = $this->db->select('l.employee_id, SUM(l.days_requested) as total_days')
+        $leave = $this->db->select('l.employee_id, SUM(l.total_days) as total_days')
             ->from(db_prefix() . 'hr_leave_requests l')
             ->join(db_prefix() . 'hr_employees e', 'e.id = l.employee_id', 'left')
             ->where('l.status', 'approved')
@@ -179,7 +179,7 @@ class Reports_model extends App_Model
         $this->db->select('e.first_name, e.last_name, e.employee_code, e.basic_salary, e.employment_type,
                            d.name as department_name, ds.name as designation_name')
             ->from(db_prefix() . 'hr_employees e')
-            ->join(db_prefix() . 'hr_departments d', 'd.id = e.department_id', 'left')
+            ->join(db_prefix() . 'departments d', 'd.departmentid = e.department_id', 'left')
             ->join(db_prefix() . 'hr_designations ds', 'ds.id = e.designation_id', 'left')
             ->where('e.status', 1);
         if (!empty($f['department_id'])) $this->db->where('e.department_id', $f['department_id']);
@@ -195,7 +195,7 @@ class Reports_model extends App_Model
             MAX(e.basic_salary) as max_salary,
             SUM(e.basic_salary) as total_salary')
             ->from(db_prefix() . 'hr_employees e')
-            ->join(db_prefix() . 'hr_departments d', 'd.id = e.department_id', 'left')
+            ->join(db_prefix() . 'departments d', 'd.departmentid = e.department_id', 'left')
             ->where('e.status', 1)
             ->group_by('e.department_id');
         return $this->db->get()->result();

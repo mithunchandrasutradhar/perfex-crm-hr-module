@@ -39,6 +39,7 @@
       <form id="designationForm">
         <div class="modal-body">
           <input type="hidden" id="desig_id" name="desig_id" value="">
+          <input type="hidden" name="<?php echo $this->security->get_csrf_token_name(); ?>" value="<?php echo $this->security->get_csrf_hash(); ?>">
           <div class="form-group">
             <label><?php echo _l('hr_name'); ?> <span class="text-danger">*</span></label>
             <input type="text" name="name" id="desig_name" class="form-control" required>
@@ -97,9 +98,11 @@ $(function () {
             $('#desig_name').val(data.name);
             $('#desig_dept').val(data.department_id);
             $('#desig_description').val(data.description);
-            $('#desig_status').prop('checked', data.status == 1);
+            $('#desig_status').prop('checked', parseInt(data.status) === 1);
             $('#desigModalTitle').text('<?php echo _l('hr_designation_edit'); ?>');
             $('#designationModal').modal('show');
+        }).fail(function () {
+            alert_float('danger', 'Failed to load designation data.');
         });
     });
 

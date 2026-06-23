@@ -11,10 +11,10 @@ class Helpdesk_model extends App_Model
         return $this->db
             ->select('t.*, e.first_name, e.last_name, e.employee_code,
                       d.name as department_name,
-                      CONCAT(s.firstname," ",s.lastname) as assigned_name')
+                      CONCAT(s.firstname," ",s.lastname) as assigned_name', false)
             ->from(db_prefix() . $this->table . ' t')
             ->join(db_prefix() . 'hr_employees e',   'e.id = t.employee_id',      'left')
-            ->join(db_prefix() . 'hr_departments d', 'd.id = e.department_id',    'left')
+            ->join(db_prefix() . 'departments d', 'd.departmentid = e.department_id', 'left')
             ->join(db_prefix() . 'staff s',          's.staffid = t.assigned_to', 'left')
             ->where('t.id', $id)
             ->get()->row();
@@ -25,10 +25,10 @@ class Helpdesk_model extends App_Model
         $this->db->select('t.id, t.subject, t.category, t.priority, t.status, t.created_at, t.updated_at,
                            e.first_name, e.last_name, e.employee_code, d.name as department_name,
                            CONCAT(s.firstname," ",s.lastname) as assigned_name,
-                           (SELECT COUNT(*) FROM '.db_prefix().$this->reply_table.' r WHERE r.ticket_id=t.id) as reply_count')
+                           (SELECT COUNT(*) FROM '.db_prefix().$this->reply_table.' r WHERE r.ticket_id=t.id) as reply_count', false)
             ->from(db_prefix() . $this->table . ' t')
             ->join(db_prefix() . 'hr_employees e',   'e.id = t.employee_id',      'left')
-            ->join(db_prefix() . 'hr_departments d', 'd.id = e.department_id',    'left')
+            ->join(db_prefix() . 'departments d', 'd.departmentid = e.department_id', 'left')
             ->join(db_prefix() . 'staff s',          's.staffid = t.assigned_to', 'left');
 
         if (!empty($filters['employee_id']))   $this->db->where('t.employee_id', $filters['employee_id']);
@@ -42,7 +42,7 @@ class Helpdesk_model extends App_Model
     public function get_replies($ticket_id)
     {
         return $this->db
-            ->select('r.*, CONCAT(s.firstname," ",s.lastname) as staff_name, s.profile_image')
+            ->select('r.*, CONCAT(s.firstname," ",s.lastname) as staff_name, s.profile_image', false)
             ->from(db_prefix() . $this->reply_table . ' r')
             ->join(db_prefix() . 'staff s', 's.staffid = r.staff_id', 'left')
             ->where('r.ticket_id', $ticket_id)

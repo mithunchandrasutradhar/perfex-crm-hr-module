@@ -67,9 +67,8 @@ class Hr_module_model extends App_Model
         $this->db->where('status', 1);
         $stats['active_employees'] = $this->db->count_all_results(db_prefix() . 'hr_employees');
 
-        // Total departments
-        $this->db->where('status', 1);
-        $stats['total_departments'] = $this->db->count_all_results(db_prefix() . 'hr_departments');
+        // Total departments (from Perfex core departments table)
+        $stats['total_departments'] = $this->db->count_all(db_prefix() . 'departments');
 
         // On leave today
         $this->db->where('status', 'approved');
@@ -137,10 +136,13 @@ class Hr_module_model extends App_Model
 
     public function get_active_employees_dropdown()
     {
-        $this->db->select('id, CONCAT(first_name, " ", last_name) as name, employee_code');
-        $this->db->where('status', 1);
-        $this->db->order_by('first_name', 'ASC');
-        $rows   = $this->db->get(db_prefix() . 'hr_employees')->result();
+        $this->db->select('e.id, e.employee_code,
+                CONCAT(COALESCE(s.firstname, e.first_name), " ", COALESCE(s.lastname, e.last_name)) as name', false)
+            ->from(db_prefix() . 'hr_employees e')
+            ->join(db_prefix() . 'staff s', 's.staffid = e.staff_id', 'left')
+            ->where('e.status', 1)
+            ->order_by('s.firstname, e.first_name', 'ASC');
+        $rows   = $this->db->get()->result();
         $result = [];
         foreach ($rows as $row) {
             $result[$row->id] = $row->employee_code . ' - ' . $row->name;
@@ -150,10 +152,9 @@ class Hr_module_model extends App_Model
 
     public function get_departments_dropdown()
     {
-        $this->db->select('id, name');
-        $this->db->where('status', 1);
+        $this->db->select('departmentid as id, name');
         $this->db->order_by('name', 'ASC');
-        $rows   = $this->db->get(db_prefix() . 'hr_departments')->result();
+        $rows   = $this->db->get(db_prefix() . 'departments')->result();
         $result = [];
         foreach ($rows as $row) {
             $result[$row->id] = $row->name;

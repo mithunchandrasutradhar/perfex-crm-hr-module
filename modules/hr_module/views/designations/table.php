@@ -1,17 +1,26 @@
 <?php
 defined('BASEPATH') or exit('No direct script access allowed');
 
-$this->load->model('hr_module/Designations_model');
-$this->load->model('hr_module/Departments_model');
-$rows = $this->Designations_model->get();
+$CI = &get_instance();
+$CI->load->model('hr_module/Designations_model');
+$CI->load->model('hr_module/Departments_model');
+
+$rows = $CI->Designations_model->get();
+
+$output = [
+    'draw'                 => intval($CI->input->post('draw')),
+    'iTotalRecords'        => count($rows),
+    'iTotalDisplayRecords' => count($rows),
+    'aaData'               => [],
+];
 
 foreach ($rows as $row) {
-    $dept  = '-';
+    $dept = '-';
     if ($row->department_id) {
-        $d = $this->Departments_model->get($row->department_id);
+        $d = $CI->Departments_model->get($row->department_id);
         if ($d) $dept = htmlspecialchars($d->name);
     }
-    $total = $this->Designations_model->total_employees($row->id);
+    $total = $CI->Designations_model->total_employees($row->id);
     $badge = $row->status == 1
         ? '<span class="label label-success">' . _l('hr_active') . '</span>'
         : '<span class="label label-default">' . _l('hr_inactive') . '</span>';
@@ -24,11 +33,11 @@ foreach ($rows as $row) {
         $actions .= '<a href="#" class="btn btn-danger btn-xs hr-delete-desig" data-id="' . $row->id . '" data-name="' . htmlspecialchars($row->name) . '" title="' . _l('hr_delete') . '"><i class="fa fa-times"></i></a>';
     }
 
-    echo '<tr>';
-    echo '<td>' . htmlspecialchars($row->name) . '</td>';
-    echo '<td>' . $dept . '</td>';
-    echo '<td>' . $total . '</td>';
-    echo '<td>' . $badge . '</td>';
-    echo '<td>' . $actions . '</td>';
-    echo '</tr>';
+    $output['aaData'][] = [
+        htmlspecialchars($row->name),
+        $dept,
+        $total,
+        $badge,
+        $actions,
+    ];
 }

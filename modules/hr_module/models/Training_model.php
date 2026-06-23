@@ -90,7 +90,7 @@ class Training_model extends App_Model
                       d.name as department_name, ds.name as designation_name')
             ->from(db_prefix() . $this->parts_table . ' p')
             ->join(db_prefix() . 'hr_employees e',    'e.id = p.employee_id',      'left')
-            ->join(db_prefix() . 'hr_departments d',  'd.id = e.department_id',    'left')
+            ->join(db_prefix() . 'departments d', 'd.departmentid = e.department_id', 'left')
             ->join(db_prefix() . 'hr_designations ds','ds.id = e.designation_id',  'left')
             ->where('p.training_id', $training_id)
             ->order_by('e.first_name')

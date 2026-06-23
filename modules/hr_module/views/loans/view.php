@@ -1,6 +1,18 @@
 <?php defined('BASEPATH') or exit('No direct script access allowed');
 $badge = ['pending'=>'default','approved'=>'warning','active'=>'info','rejected'=>'danger','closed'=>'success'];
 $pct   = $loan->amount > 0 ? min(100, round(($loan->total_repaid / $loan->amount) * 100)) : 0;
+
+// Find current month's deduction request (if any)
+$cur_month = (int) date('n');
+$cur_year  = (int) date('Y');
+$cur_req   = null;
+foreach ($deduction_requests as $dr) {
+    if ((int)$dr->pay_month === $cur_month && (int)$dr->pay_year === $cur_year) {
+        $cur_req = $dr;
+        break;
+    }
+}
+$req_badge = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'danger'];
 ?>
 <?php init_head(); ?>
 <div id="wrapper">
@@ -53,7 +65,7 @@ $pct   = $loan->amount > 0 ? min(100, round(($loan->total_repaid / $loan->amount
               </div></div></div>
               <div class="col-md-3"><div class="panel_s" style="background:#eff6ff"><div class="panel-body tw-text-center tw-py-2">
                 <div class="tw-font-bold tw-text-lg text-primary"><?php echo number_format($loan->monthly_installment,2); ?></div>
-                <div class="tw-text-xs text-muted">Monthly Installment</div>
+                <div class="tw-text-xs text-muted">Default Installment</div>
               </div></div></div>
             </div>
 
@@ -94,6 +106,27 @@ $pct   = $loan->amount > 0 ? min(100, round(($loan->total_repaid / $loan->amount
               </table>
             </div>
             <?php endif; ?>
+
+            <!-- Deduction request history -->
+            <?php if (!empty($deduction_requests)): ?>
+            <h5 class="tw-font-semibold tw-mt-4">Monthly Deduction Request History</h5>
+            <div class="table-responsive">
+              <table class="table table-condensed table-hover">
+                <thead><tr><th>Month</th><th>Requested Amount</th><th>Status</th><th>Reviewed By</th><th>Notes</th></tr></thead>
+                <tbody>
+                  <?php foreach ($deduction_requests as $dr): ?>
+                  <tr>
+                    <td><?php echo date('F Y', mktime(0,0,0,$dr->pay_month,1,$dr->pay_year)); ?></td>
+                    <td><?php echo number_format($dr->amount, 2); ?></td>
+                    <td><span class="label label-<?php echo $req_badge[$dr->status] ?? 'default'; ?>"><?php echo ucfirst($dr->status); ?></span></td>
+                    <td><?php echo $dr->reviewed_by_name ? htmlspecialchars($dr->reviewed_by_name) : '-'; ?></td>
+                    <td><?php echo $dr->notes ? htmlspecialchars($dr->notes) : '-'; ?></td>
+                  </tr>
+                  <?php endforeach; ?>
+                </tbody>
+              </table>
+            </div>
+            <?php endif; ?>
           </div>
         </div>
       </div>
@@ -119,28 +152,96 @@ $pct   = $loan->amount > 0 ? min(100, round(($loan->total_repaid / $loan->amount
           </div>
         </div>
 
+        <!-- Monthly deduction request (current month) -->
+        <?php if (in_array($loan->status, ['approved','active']) && $loan->outstanding > 0): ?>
+        <div class="panel_s" style="border:1px solid #e2e8f0">
+          <div class="panel-body">
+            <h5 class="tw-font-semibold tw-mb-3">
+              Deduction for <?php echo date('F Y'); ?>
+            </h5>
+
+            <?php if ($cur_req && $cur_req->status === 'approved'): ?>
+              <div class="alert alert-success tw-py-2 tw-mb-2">
+                <i class="fa fa-check-circle tw-mr-1"></i>
+                <strong><?php echo number_format($cur_req->amount, 2); ?></strong> approved — will deduct on payroll.
+              </div>
+              <?php if (staff_can('edit','hr_loans')): ?>
+              <button class="btn btn-xs btn-default tw-mt-1" disabled title="Already approved">
+                <i class="fa fa-lock tw-mr-1"></i>Locked
+              </button>
+              <?php endif; ?>
+
+            <?php elseif ($cur_req && $cur_req->status === 'pending'): ?>
+              <div class="alert alert-warning tw-py-2 tw-mb-2">
+                <i class="fa fa-clock-o tw-mr-1"></i>
+                <strong><?php echo number_format($cur_req->amount, 2); ?></strong> — pending HR approval.
+              </div>
+              <?php if (staff_can('edit','hr_loans')): ?>
+              <button class="btn btn-xs btn-success tw-mr-1"
+                      onclick="document.getElementById('appForm<?php echo $cur_req->id;?>').submit()">
+                <i class="fa fa-check tw-mr-1"></i>Approve
+              </button>
+              <form id="appForm<?php echo $cur_req->id;?>" method="post"
+                    action="<?php echo admin_url('hr_module/loans/approve_deduction/'.$cur_req->id); ?>" style="display:none"></form>
+              <button class="btn btn-xs btn-danger tw-mr-1"
+                      onclick="document.getElementById('rejForm<?php echo $cur_req->id;?>').submit()">
+                <i class="fa fa-times tw-mr-1"></i>Reject
+              </button>
+              <form id="rejForm<?php echo $cur_req->id;?>" method="post"
+                    action="<?php echo admin_url('hr_module/loans/reject_deduction/'.$cur_req->id); ?>" style="display:none"></form>
+              <button class="btn btn-xs btn-default tw-mt-1" data-toggle="modal" data-target="#deductModal">
+                <i class="fa fa-edit tw-mr-1"></i>Edit Request
+              </button>
+              <?php endif; ?>
+
+            <?php elseif ($cur_req && $cur_req->status === 'rejected'): ?>
+              <div class="alert alert-danger tw-py-2 tw-mb-2">
+                <i class="fa fa-times-circle tw-mr-1"></i>
+                Request for <strong><?php echo number_format($cur_req->amount, 2); ?></strong> was rejected.
+              </div>
+              <?php if (staff_can('edit','hr_loans')): ?>
+              <button class="btn btn-sm btn-primary btn-block" data-toggle="modal" data-target="#deductModal">
+                <i class="fa fa-redo tw-mr-1"></i>Re-request Deduction
+              </button>
+              <?php endif; ?>
+
+            <?php else: ?>
+              <p class="text-muted tw-text-sm tw-mb-2">No deduction request for this month.<br>
+                <small>Payroll will <strong>not</strong> deduct unless a request is submitted and approved.</small>
+              </p>
+              <?php if (staff_can('edit','hr_loans')): ?>
+              <button class="btn btn-sm btn-primary btn-block" data-toggle="modal" data-target="#deductModal">
+                <i class="fa fa-plus tw-mr-1"></i>Request Deduction
+              </button>
+              <?php endif; ?>
+            <?php endif; ?>
+          </div>
+        </div>
+        <?php endif; ?>
+
         <!-- Actions -->
         <div class="panel_s">
           <div class="panel-body">
             <h5 class="tw-font-semibold tw-mb-3">Actions</h5>
 
             <?php if ($loan->status === 'pending' && staff_can('edit','hr_loans')): ?>
-            <!-- Approve -->
             <button class="btn btn-success btn-block tw-mb-2" data-toggle="modal" data-target="#approveModal">
               <i class="fa fa-check tw-mr-1"></i><?php echo _l('hr_loan_approve'); ?>
             </button>
-            <!-- Reject -->
             <button class="btn btn-danger btn-block tw-mb-2" data-toggle="modal" data-target="#rejectModal">
               <i class="fa fa-times tw-mr-1"></i><?php echo _l('hr_loan_reject'); ?>
             </button>
             <?php endif; ?>
 
             <?php if (in_array($loan->status, ['approved','active']) && staff_can('edit','hr_loans')): ?>
-            <!-- Manual repayment -->
             <button class="btn btn-primary btn-block tw-mb-2" data-toggle="modal" data-target="#repayModal">
               <i class="fa fa-money-bill-wave tw-mr-1"></i>Record Repayment
             </button>
             <?php endif; ?>
+
+            <a href="<?php echo admin_url('hr_module/loans/deduction_requests'); ?>" class="btn btn-default btn-block tw-mb-2">
+              <i class="fa fa-list tw-mr-1"></i>All Deduction Requests
+            </a>
 
             <?php if (!in_array($loan->status, ['active','closed']) && staff_can('delete','hr_loans')): ?>
             <a href="<?php echo admin_url('hr_module/loans/delete/'.$loan->id); ?>" class="btn btn-default btn-block _delete">
@@ -153,6 +254,68 @@ $pct   = $loan->amount > 0 ? min(100, round(($loan->total_repaid / $loan->amount
     </div>
   </div>
 </div>
+
+<!-- Request Deduction Modal -->
+<?php if (in_array($loan->status, ['approved','active']) && staff_can('edit','hr_loans')): ?>
+<div class="modal fade" id="deductModal" tabindex="-1">
+  <div class="modal-dialog"><div class="modal-content">
+    <div class="modal-header">
+      <button class="close" data-dismiss="modal"><span>&times;</span></button>
+      <h4 class="modal-title">Request Monthly Deduction</h4>
+    </div>
+    <?php echo form_open(admin_url('hr_module/loans/request_deduction/'.$loan->id)); ?>
+    <div class="modal-body">
+      <div class="row">
+        <div class="col-md-6">
+          <div class="form-group">
+            <label>Month <span class="text-danger">*</span></label>
+            <select name="pay_month" class="form-control" required>
+              <?php for ($m = 1; $m <= 12; $m++): ?>
+              <option value="<?php echo $m; ?>" <?php echo $m === $cur_month ? 'selected' : ''; ?>>
+                <?php echo date('F', mktime(0,0,0,$m,1)); ?>
+              </option>
+              <?php endfor; ?>
+            </select>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="form-group">
+            <label>Year <span class="text-danger">*</span></label>
+            <select name="pay_year" class="form-control" required>
+              <?php for ($y = $cur_year - 1; $y <= $cur_year + 1; $y++): ?>
+              <option value="<?php echo $y; ?>" <?php echo $y === $cur_year ? 'selected' : ''; ?>><?php echo $y; ?></option>
+              <?php endfor; ?>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Deduction Amount <span class="text-danger">*</span></label>
+        <div class="input-group">
+          <span class="input-group-addon"><?php echo get_option('currency_symbol') ?: 'BDT'; ?></span>
+          <input type="number" step="0.01" min="0.01" max="<?php echo $loan->outstanding; ?>"
+                 name="amount" id="deductAmount" class="form-control"
+                 value="<?php echo $cur_req ? $cur_req->amount : $loan->monthly_installment; ?>" required>
+        </div>
+        <p class="help-block tw-text-xs">
+          Default installment: <strong><?php echo number_format($loan->monthly_installment, 2); ?></strong>
+          &nbsp;&middot;&nbsp; Outstanding: <strong><?php echo number_format($loan->outstanding, 2); ?></strong>
+        </p>
+      </div>
+      <div class="form-group">
+        <label>Notes <small class="text-muted">(optional — reason for custom amount or skip)</small></label>
+        <textarea name="notes" class="form-control" rows="2"
+                  placeholder="e.g. Partial payment this month due to..."><?php echo $cur_req ? htmlspecialchars($cur_req->notes ?? '') : ''; ?></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+      <button type="submit" class="btn btn-primary"><i class="fa fa-paper-plane tw-mr-1"></i>Submit Request</button>
+    </div>
+    <?php echo form_close(); ?>
+  </div></div>
+</div>
+<?php endif; ?>
 
 <!-- Approve Modal -->
 <div class="modal fade" id="approveModal" tabindex="-1">

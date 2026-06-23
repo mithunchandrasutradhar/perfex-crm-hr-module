@@ -55,7 +55,7 @@ $company_name = get_option('companyname') ?: 'Company Name';
       </tr>
       <tr>
         <td>Joining Date:</td><td><?php echo $payroll->joining_date ? date('d M Y',strtotime($payroll->joining_date)) : '-'; ?></td>
-        <td>Bank Account:</td><td><?php echo $payroll->bank_account_no ?: '-'; ?></td>
+        <td>Bank Account:</td><td><?php echo $payroll->bank_account ?: '-'; ?></td>
       </tr>
       <tr>
         <td>Pay Period:</td><td><?php echo date('F Y',mktime(0,0,0,$payroll->pay_month,1,$payroll->pay_year)); ?></td>

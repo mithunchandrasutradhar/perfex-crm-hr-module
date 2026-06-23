@@ -10,10 +10,10 @@ class Hr_contracts_model extends App_Model
         return $this->db
             ->select('c.*, e.first_name, e.last_name, e.employee_code,
                       d.name as department_name, ds.name as designation_name,
-                      CONCAT(s.firstname," ",s.lastname) as created_by_name')
+                      CONCAT(s.firstname," ",s.lastname) as created_by_name', false)
             ->from(db_prefix() . $this->table . ' c')
             ->join(db_prefix() . 'hr_employees e',    'e.id = c.employee_id',      'left')
-            ->join(db_prefix() . 'hr_departments d',  'd.id = e.department_id',    'left')
+            ->join(db_prefix() . 'departments d', 'd.departmentid = e.department_id', 'left')
             ->join(db_prefix() . 'hr_designations ds','ds.id = e.designation_id',  'left')
             ->join(db_prefix() . 'staff s',           's.staffid = c.created_by',  'left')
             ->where('c.id', $id)
@@ -27,7 +27,7 @@ class Hr_contracts_model extends App_Model
                            e.first_name, e.last_name, e.employee_code, d.name as department_name')
             ->from(db_prefix() . $this->table . ' c')
             ->join(db_prefix() . 'hr_employees e', 'e.id = c.employee_id', 'left')
-            ->join(db_prefix() . 'hr_departments d', 'd.id = e.department_id', 'left');
+            ->join(db_prefix() . 'departments d', 'd.departmentid = e.department_id', 'left');
 
         if (!empty($filters['employee_id']))   $this->db->where('c.employee_id', $filters['employee_id']);
         if (!empty($filters['department_id'])) $this->db->where('e.department_id', $filters['department_id']);

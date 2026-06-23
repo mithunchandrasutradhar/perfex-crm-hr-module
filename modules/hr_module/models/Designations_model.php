@@ -44,11 +44,8 @@ class Designations_model extends App_Model
         $data['updated_at'] = date('Y-m-d H:i:s');
         $this->db->where('id', $id);
         $this->db->update($this->table, $data);
-        if ($this->db->affected_rows() > 0) {
-            log_activity('HR Designation Updated [ID: ' . $id . ']');
-            return true;
-        }
-        return false;
+        log_activity('HR Designation Updated [ID: ' . $id . ']');
+        return true;
     }
 
     public function delete($id)

@@ -9,11 +9,12 @@ $route['hr_module/settings']                      = 'hr_module/Settings/index';
 $route['hr_module/settings/save']                 = 'hr_module/Settings/save';
 
 // Employees
-$route['hr_module/employees']                     = 'hr_module/Employees/index';
-$route['hr_module/employees/add']                 = 'hr_module/Employees/add';
-$route['hr_module/employees/edit/(:num)']         = 'hr_module/Employees/edit/$1';
-$route['hr_module/employees/view/(:num)']         = 'hr_module/Employees/view/$1';
-$route['hr_module/employees/delete/(:num)']       = 'hr_module/Employees/delete/$1';
+$route['hr_module/employees']                              = 'hr_module/Employees/index';
+$route['hr_module/employees/add']                          = 'hr_module/Employees/add';
+$route['hr_module/employees/edit/(:num)']                  = 'hr_module/Employees/edit/$1';
+$route['hr_module/employees/view/(:num)']                  = 'hr_module/Employees/view/$1';
+$route['hr_module/employees/delete/(:num)']                = 'hr_module/Employees/delete/$1';
+$route['hr_module/employees/get_designations_by_dept']     = 'hr_module/Employees/get_designations_by_dept';
 
 // Departments
 $route['hr_module/departments']                   = 'hr_module/Departments/index';
@@ -56,6 +57,7 @@ $route['hr_module/attendance/add']                = 'hr_module/Attendance/add';
 $route['hr_module/attendance/edit/(:num)']        = 'hr_module/Attendance/edit/$1';
 $route['hr_module/attendance/delete/(:num)']      = 'hr_module/Attendance/delete/$1';
 $route['hr_module/attendance/report']             = 'hr_module/Attendance/report';
+$route['hr_module/attendance/monthly']            = 'hr_module/Attendance/monthly';
 $route['hr_module/attendance/import']             = 'hr_module/Attendance/import';
 
 // ZKTeco Devices

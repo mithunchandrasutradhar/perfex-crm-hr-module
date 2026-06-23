@@ -47,8 +47,8 @@ class Reports extends AdminController
         $f = $this->_get_filters(['employee_id','department_id','status','leave_type_id','from_date','to_date']);
 
         $rows = $this->Reports_model->leave($f);
-        $this->load->model('hr_module/Leave_types_model');
-        $leave_types = $this->Leave_types_model->get_all();
+        $this->load->model('hr_module/Leave_model');
+        $leave_types = $this->Leave_model->get_active_types();
 
         if ($this->input->get('export') === 'csv') {
             $this->_export_csv($rows, ['employee_code','first_name','last_name','department_name','leave_type_name','from_date','to_date','days_requested','status'], 'leave_report');

@@ -30,11 +30,12 @@ class Loans extends AdminController
 
         if ($this->input->post()) {
             $data = [
-                'employee_id'      => (int) $this->input->post('employee_id'),
-                'amount'           => (float) $this->input->post('amount'),
-                'reason'           => $this->input->post('reason', true),
-                'repayment_months' => (int) $this->input->post('repayment_months'),
-                'notes'            => $this->input->post('notes', true),
+                'employee_id'         => (int) $this->input->post('employee_id'),
+                'amount'              => (float) $this->input->post('amount'),
+                'reason'              => $this->input->post('reason', true),
+                'repayment_months'    => (int) $this->input->post('repayment_months'),
+                'monthly_installment' => (float) $this->input->post('monthly_installment'),
+                'notes'               => $this->input->post('notes', true),
             ];
 
             // Handle attachment
@@ -72,9 +73,10 @@ class Loans extends AdminController
         if (staff_cant('view', 'hr_loans')) access_denied('hr_loans');
         $loan = $this->Loans_model->get($id);
         if (!$loan) show_404();
-        $data['title']      = _l('hr_loan_view');
-        $data['loan']       = $loan;
-        $data['repayments'] = $this->Loans_model->get_repayments($id);
+        $data['title']               = _l('hr_loan_view');
+        $data['loan']                = $loan;
+        $data['repayments']          = $this->Loans_model->get_repayments($id);
+        $data['deduction_requests']  = $this->Loans_model->get_deduction_requests(['loan_id' => $id]);
         $this->load->view('hr_module/loans/view', $data);
     }
 
@@ -117,5 +119,60 @@ class Loans extends AdminController
         if ($result['success']) set_alert('success', _l('hr_deleted_successfully'));
         else                    set_alert('danger',  $result['message']);
         redirect(admin_url('hr_module/loans'));
+    }
+
+    // ── Deduction Requests ────────────────────────────────────────────────────
+
+    public function deduction_requests()
+    {
+        if (staff_cant('view', 'hr_loans')) access_denied('hr_loans');
+        $filters = [];
+        foreach (['status','pay_month','pay_year','employee_id'] as $k) {
+            $v = $this->input->get($k);
+            if ($v !== null && $v !== '') $filters[$k] = $v;
+        }
+        $data['title']    = 'Loan Deduction Requests';
+        $data['requests'] = $this->Loans_model->get_deduction_requests($filters);
+        $data['filters']  = $filters;
+        $this->load->view('hr_module/loans/deduction_requests', $data);
+    }
+
+    public function request_deduction($loan_id)
+    {
+        if (staff_cant('edit', 'hr_loans')) access_denied('hr_loans');
+        if ($this->input->post()) {
+            $result = $this->Loans_model->submit_deduction_request(
+                $loan_id,
+                (int)   $this->input->post('pay_month'),
+                (int)   $this->input->post('pay_year'),
+                (float) $this->input->post('amount'),
+                $this->input->post('notes', true)
+            );
+            if ($result['success']) set_alert('success', $result['message']);
+            else                    set_alert('danger',  $result['message']);
+        }
+        redirect(admin_url('hr_module/loans/view/' . $loan_id));
+    }
+
+    public function approve_deduction($id)
+    {
+        if (staff_cant('edit', 'hr_loans')) access_denied('hr_loans');
+        $req    = $this->Loans_model->get_deduction_request($id);
+        $result = $this->Loans_model->approve_deduction($id);
+        if ($result['success']) set_alert('success', $result['message']);
+        else                    set_alert('danger',  $result['message']);
+        $back = $req ? admin_url('hr_module/loans/view/' . $req->loan_id) : admin_url('hr_module/loans/deduction_requests');
+        redirect($back);
+    }
+
+    public function reject_deduction($id)
+    {
+        if (staff_cant('edit', 'hr_loans')) access_denied('hr_loans');
+        $req    = $this->Loans_model->get_deduction_request($id);
+        $result = $this->Loans_model->reject_deduction($id);
+        if ($result['success']) set_alert('success', $result['message']);
+        else                    set_alert('danger',  $result['message']);
+        $back = $req ? admin_url('hr_module/loans/view/' . $req->loan_id) : admin_url('hr_module/loans/deduction_requests');
+        redirect($back);
     }
 }

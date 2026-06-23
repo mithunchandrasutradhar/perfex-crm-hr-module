@@ -10,10 +10,10 @@ class Overtime_model extends App_Model
         return $this->db
             ->select('o.*, e.first_name, e.last_name, e.employee_code, e.basic_salary,
                       d.name as department_name, ds.name as designation_name,
-                      CONCAT(s.firstname," ",s.lastname) as approved_by_name')
+                      CONCAT(s.firstname," ",s.lastname) as approved_by_name', false)
             ->from(db_prefix() . $this->table . ' o')
             ->join(db_prefix() . 'hr_employees e',    'e.id = o.employee_id',      'left')
-            ->join(db_prefix() . 'hr_departments d',  'd.id = e.department_id',    'left')
+            ->join(db_prefix() . 'departments d', 'd.departmentid = e.department_id', 'left')
             ->join(db_prefix() . 'hr_designations ds','ds.id = e.designation_id',  'left')
             ->join(db_prefix() . 'staff s',           's.staffid = o.approved_by', 'left')
             ->where('o.id', $id)
@@ -28,7 +28,7 @@ class Overtime_model extends App_Model
                            d.name as department_name')
             ->from(db_prefix() . $this->table . ' o')
             ->join(db_prefix() . 'hr_employees e', 'e.id = o.employee_id', 'left')
-            ->join(db_prefix() . 'hr_departments d', 'd.id = e.department_id', 'left');
+            ->join(db_prefix() . 'departments d', 'd.departmentid = e.department_id', 'left');
 
         if (!empty($filters['employee_id']))   $this->db->where('o.employee_id', $filters['employee_id']);
         if (!empty($filters['department_id'])) $this->db->where('e.department_id', $filters['department_id']);

@@ -47,7 +47,7 @@
 <?php init_tail(); ?>
 <script>
 $(function(){
-    var table = initDataTable('.table-hr-employees', window.location.href, [0], [1]);
+    var table = initDataTable('.table-hr-employees', window.location.href, [0, 8], [0, 8]);
 
     function reloadWithFilters() {
         var url = window.location.href.split('?')[0]

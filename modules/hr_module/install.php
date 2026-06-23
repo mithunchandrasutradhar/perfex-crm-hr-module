@@ -38,6 +38,13 @@ if (!$CI->db->table_exists(db_prefix() . 'hr_designations')) {
     $CI->db->query('ALTER TABLE `' . db_prefix() . 'hr_designations`
       MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1;');
 }
+// Upgrade: add status column if the table existed before it was added to the schema
+if ($CI->db->table_exists(db_prefix() . 'hr_designations')) {
+    $col = $CI->db->query("SHOW COLUMNS FROM `" . db_prefix() . "hr_designations` LIKE 'status'")->num_rows();
+    if ($col === 0) {
+        $CI->db->query("ALTER TABLE `" . db_prefix() . "hr_designations` ADD COLUMN `status` tinyint(1) NOT NULL DEFAULT 1");
+    }
+}
 
 // 3. Employees
 if (!$CI->db->table_exists(db_prefix() . 'hr_employees')) {
