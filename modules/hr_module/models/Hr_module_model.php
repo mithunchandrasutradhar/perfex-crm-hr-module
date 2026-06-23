@@ -100,6 +100,103 @@ class Hr_module_model extends App_Model
         return $stats;
     }
 
+    public function get_employee_dashboard_stats($employee_id)
+    {
+        $stats = [];
+        $today = date('Y-m-d');
+        $year  = (int) date('Y');
+        $month = (int) date('n');
+
+        // Attendance today
+        $att = $this->db->where('employee_id', $employee_id)
+            ->where('attendance_date', $today)
+            ->get(db_prefix() . 'hr_attendance')->row();
+        $stats['attendance_today'] = $att ? $att->status : null;
+
+        // Leave balance — total remaining days this year
+        $this->db->select('SUM(allocated_days + carry_forward_days - used_days) as remaining', false)
+            ->where('employee_id', $employee_id)
+            ->where('year', $year);
+        $bal = $this->db->get(db_prefix() . 'hr_leave_balances')->row();
+        $stats['leave_balance_remaining'] = ($bal && $bal->remaining !== null) ? (float) $bal->remaining : 0;
+
+        // Used leave days this year
+        $this->db->select('SUM(used_days) as used', false)
+            ->where('employee_id', $employee_id)
+            ->where('year', $year);
+        $used = $this->db->get(db_prefix() . 'hr_leave_balances')->row();
+        $stats['leave_days_used'] = ($used && $used->used !== null) ? (float) $used->used : 0;
+
+        // Pending leave requests
+        $this->db->where('employee_id', $employee_id)->where('status', 'pending');
+        $stats['pending_leaves'] = $this->db->count_all_results(db_prefix() . 'hr_leave_requests');
+
+        // Approved leave requests this year
+        $this->db->where('employee_id', $employee_id)
+            ->where('status', 'approved')
+            ->where('YEAR(from_date)', $year);
+        $stats['approved_leaves'] = $this->db->count_all_results(db_prefix() . 'hr_leave_requests');
+
+        // Active loan
+        $loan = $this->db->where('employee_id', $employee_id)
+            ->where('status', 'active')
+            ->order_by('id', 'DESC')
+            ->limit(1)
+            ->get(db_prefix() . 'hr_loans')->row();
+        $stats['active_loan'] = $loan;
+
+        // Pending overtime this month
+        $this->db->where('employee_id', $employee_id)->where('status', 'pending');
+        $stats['pending_overtime'] = $this->db->count_all_results(db_prefix() . 'hr_overtime');
+
+        // Approved overtime hours this month
+        $this->db->select('SUM(hours) as total_hours', false)
+            ->where('employee_id', $employee_id)
+            ->where('status', 'approved')
+            ->where('MONTH(overtime_date)', $month)
+            ->where('YEAR(overtime_date)', $year);
+        $ot = $this->db->get(db_prefix() . 'hr_overtime')->row();
+        $stats['approved_overtime_hours'] = ($ot && $ot->total_hours !== null) ? (float) $ot->total_hours : 0;
+
+        // Open helpdesk tickets
+        $this->db->where('employee_id', $employee_id)->where_in('status', ['open', 'in_progress']);
+        $stats['open_tickets'] = $this->db->count_all_results(db_prefix() . 'hr_helpdesk');
+
+        // Current month payroll
+        $payroll = $this->db->where('employee_id', $employee_id)
+            ->where('pay_month', $month)
+            ->where('pay_year', $year)
+            ->get(db_prefix() . 'hr_payroll')->row();
+        if (!$payroll) {
+            // Try last month
+            $lm = $month === 1 ? 12 : $month - 1;
+            $ly = $month === 1 ? $year - 1 : $year;
+            $payroll = $this->db->where('employee_id', $employee_id)
+                ->where('pay_month', $lm)->where('pay_year', $ly)
+                ->get(db_prefix() . 'hr_payroll')->row();
+        }
+        $stats['latest_payroll'] = $payroll;
+
+        // Latest performance review
+        $perf = $this->db->where('employee_id', $employee_id)
+            ->order_by('id', 'DESC')->limit(1)
+            ->get(db_prefix() . 'hr_performance_reviews')->row();
+        $stats['latest_review'] = $perf;
+
+        // Upcoming / ongoing trainings (enrolled, not yet completed)
+        $this->db->select('t.id, t.title, t.start_date, t.end_date, t.status', false)
+            ->from(db_prefix() . 'hr_training_participants p')
+            ->join(db_prefix() . 'hr_training t', 't.id = p.training_id', 'left')
+            ->where('p.employee_id', $employee_id)
+            ->where('p.completed', 0)
+            ->where_in('t.status', ['scheduled', 'in_progress'])
+            ->order_by('t.start_date', 'ASC')
+            ->limit(3);
+        $stats['upcoming_trainings'] = $this->db->get()->result();
+
+        return $stats;
+    }
+
     // ─── Audit Trail ──────────────────────────────────────────────────────
 
     public function log_audit($module, $action, $record_id, $old_value = null, $new_value = null)

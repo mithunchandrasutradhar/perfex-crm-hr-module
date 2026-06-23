@@ -187,11 +187,9 @@ $enrolled_ids = array_column((array)$participants, 'employee_id');
       <div style="max-height:340px;overflow-y:auto;border:1px solid #e2e8f0;border-radius:6px;padding:8px" id="enroll-list">
         <?php foreach ($employees as $eid => $ename): ?>
         <?php if (in_array($eid, $enrolled_ids)) continue; ?>
-        <div class="checkbox">
-          <label>
-            <input type="checkbox" class="enroll-chk" value="<?php echo $eid; ?>">
-            <?php echo htmlspecialchars($ename); ?>
-          </label>
+        <div class="checkbox checkbox-primary">
+          <input type="checkbox" class="enroll-chk" id="enroll-<?php echo $eid; ?>" value="<?php echo $eid; ?>">
+          <label for="enroll-<?php echo $eid; ?>"><?php echo htmlspecialchars($ename); ?></label>
         </div>
         <?php endforeach; ?>
       </div>

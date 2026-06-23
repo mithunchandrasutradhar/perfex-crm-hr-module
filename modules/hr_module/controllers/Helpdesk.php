@@ -13,7 +13,7 @@ class Helpdesk extends AdminController
 
     public function index()
     {
-        if (staff_cant('view', 'hr_helpdesk')) access_denied('hr_helpdesk');
+        if (staff_cant('view', 'hr_helpdesk') && staff_cant('view_own', 'hr_helpdesk')) access_denied('hr_helpdesk');
         if ($this->input->is_ajax_request() && !$this->input->post()) {
             $this->app->get_table_data(module_views_path('hr_module', 'helpdesk/table'));
             return;
@@ -27,9 +27,13 @@ class Helpdesk extends AdminController
     public function submit()
     {
         if (staff_cant('create', 'hr_helpdesk')) access_denied('hr_helpdesk');
+        $own_only   = !staff_can('view', 'hr_helpdesk') && staff_can('view_own', 'hr_helpdesk');
+        $own_emp_id = $own_only ? hr_get_own_employee_id() : 0;
+
         if ($this->input->post()) {
+            $posted_emp_id = (int) $this->input->post('employee_id');
             $data = [
-                'employee_id' => (int) $this->input->post('employee_id'),
+                'employee_id' => $own_only ? $own_emp_id : $posted_emp_id,
                 'subject'     => $this->input->post('subject', true),
                 'category'    => $this->input->post('category', true),
                 'priority'    => $this->input->post('priority'),
@@ -44,16 +48,29 @@ class Helpdesk extends AdminController
             set_alert('danger', $result['message']);
             redirect(admin_url('hr_module/helpdesk/submit'));
         }
-        $data['title']     = _l('hr_helpdesk_add');
-        $data['employees'] = $this->Hr_module_model->get_active_employees_dropdown();
+        $data['title']      = _l('hr_helpdesk_add');
+        $data['own_only']   = $own_only;
+        $data['own_emp_id'] = $own_emp_id;
+        if ($own_only) {
+            $this->load->model('hr_module/Employees_model');
+            $emp = $this->Employees_model->get($own_emp_id);
+            $data['employees'] = $own_emp_id && $emp
+                ? [$own_emp_id => $emp->first_name . ' ' . $emp->last_name]
+                : [];
+        } else {
+            $data['employees'] = $this->Hr_module_model->get_active_employees_dropdown();
+        }
         $this->load->view('hr_module/helpdesk/submit', $data);
     }
 
     public function view($id)
     {
-        if (staff_cant('view', 'hr_helpdesk')) access_denied('hr_helpdesk');
+        if (staff_cant('view', 'hr_helpdesk') && staff_cant('view_own', 'hr_helpdesk')) access_denied('hr_helpdesk');
         $ticket = $this->Helpdesk_model->get($id);
         if (!$ticket) show_404();
+        if (!staff_can('view', 'hr_helpdesk') && staff_can('view_own', 'hr_helpdesk')) {
+            if ((int) $ticket->employee_id !== hr_get_own_employee_id()) access_denied('hr_helpdesk');
+        }
         $data['title']   = _l('hr_helpdesk_view');
         $data['ticket']  = $ticket;
         $data['replies'] = $this->Helpdesk_model->get_replies($id);

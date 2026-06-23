@@ -48,64 +48,59 @@ register_language_files(HR_MODULE_NAME, [HR_MODULE_NAME]);
 
 function hr_module_register_permissions()
 {
-    $caps = [];
-    $cap  = ['view' => _l('permission_view'), 'create' => _l('permission_create'), 'edit' => _l('permission_edit'), 'delete' => _l('permission_delete')];
+    $view_global = _l('permission_view') . ' (' . _l('permission_global') . ')';
+    $view_own    = _l('permission_view_own');
+    $create      = _l('permission_create');
+    $edit        = _l('permission_edit');
+    $delete      = _l('permission_delete');
+    $approve     = 'Approve/Reject';
 
-    // Employees
-    $caps['capabilities'] = $cap;
-    register_staff_capabilities('hr_employees', $caps, _l('hr_perm_employees'));
+    // Personal-data features: view_own (own records) + view (all records) + full CRUD
+    $cap_personal = [
+        'view_own' => $view_own,
+        'view'     => $view_global,
+        'create'   => $create,
+        'edit'     => $edit,
+        'delete'   => $delete,
+    ];
+    // Personal-data features that also have an approval workflow
+    $cap_personal_approve = array_merge($cap_personal, ['approve' => $approve]);
+    // Config/reference tables: no view_own, just global view + CRUD
+    $cap_config = [
+        'view'   => $view_global,
+        'create' => $create,
+        'edit'   => $edit,
+        'delete' => $delete,
+    ];
 
-    // Departments
-    $caps['capabilities'] = $cap;
-    register_staff_capabilities('hr_departments', $caps, _l('hr_perm_departments'));
+    register_staff_capabilities('hr_employees',   ['capabilities' => $cap_personal],         _l('hr_perm_employees'));
+    register_staff_capabilities('hr_departments',  ['capabilities' => $cap_config],            _l('hr_perm_departments'));
+    register_staff_capabilities('hr_leave',        ['capabilities' => $cap_personal_approve],  _l('hr_perm_leave'));
+    register_staff_capabilities('hr_attendance',   ['capabilities' => $cap_personal],          _l('hr_perm_attendance'));
+    register_staff_capabilities('hr_payroll',      ['capabilities' => $cap_personal_approve],  _l('hr_perm_payroll'));
+    register_staff_capabilities('hr_loans',        ['capabilities' => $cap_personal_approve],  _l('hr_perm_loans'));
+    register_staff_capabilities('hr_overtime',     ['capabilities' => $cap_personal_approve],  _l('hr_perm_overtime'));
+    register_staff_capabilities('hr_performance',  ['capabilities' => $cap_personal],          _l('hr_perm_performance'));
+    register_staff_capabilities('hr_training',     ['capabilities' => $cap_personal],          _l('hr_perm_training'));
+    register_staff_capabilities('hr_helpdesk',     ['capabilities' => $cap_personal],          _l('hr_perm_helpdesk'));
+    register_staff_capabilities('hr_contracts',    ['capabilities' => $cap_personal],          _l('hr_perm_contracts'));
+    register_staff_capabilities('hr_zkteco',       ['capabilities' => $cap_config],            _l('hr_perm_zkteco'));
+    register_staff_capabilities('hr_reports',      ['capabilities' => ['view' => $view_global]], _l('hr_perm_reports'));
+    register_staff_capabilities('hr_settings',     ['capabilities' => ['view' => $view_global, 'edit' => $edit]], _l('hr_perm_settings'));
+}
 
-    // Leave Management
-    $caps['capabilities'] = array_merge($cap, ['approve' => _l('permission_view') . ' (Approve/Reject)']);
-    register_staff_capabilities('hr_leave', $caps, _l('hr_perm_leave'));
-
-    // Attendance
-    $caps['capabilities'] = $cap;
-    register_staff_capabilities('hr_attendance', $caps, _l('hr_perm_attendance'));
-
-    // Payroll
-    $caps['capabilities'] = array_merge($cap, ['approve' => _l('permission_view') . ' (Approve)']);
-    register_staff_capabilities('hr_payroll', $caps, _l('hr_perm_payroll'));
-
-    // Loans
-    $caps['capabilities'] = array_merge($cap, ['approve' => _l('permission_view') . ' (Approve/Reject)']);
-    register_staff_capabilities('hr_loans', $caps, _l('hr_perm_loans'));
-
-    // Overtime
-    $caps['capabilities'] = array_merge($cap, ['approve' => _l('permission_view') . ' (Approve/Reject)']);
-    register_staff_capabilities('hr_overtime', $caps, _l('hr_perm_overtime'));
-
-    // Performance
-    $caps['capabilities'] = $cap;
-    register_staff_capabilities('hr_performance', $caps, _l('hr_perm_performance'));
-
-    // Training
-    $caps['capabilities'] = $cap;
-    register_staff_capabilities('hr_training', $caps, _l('hr_perm_training'));
-
-    // Helpdesk
-    $caps['capabilities'] = $cap;
-    register_staff_capabilities('hr_helpdesk', $caps, _l('hr_perm_helpdesk'));
-
-    // ZKTeco
-    $caps['capabilities'] = $cap;
-    register_staff_capabilities('hr_zkteco', $caps, _l('hr_perm_zkteco'));
-
-    // Contracts
-    $caps['capabilities'] = $cap;
-    register_staff_capabilities('hr_contracts', $caps, _l('hr_perm_contracts'));
-
-    // Reports
-    $caps['capabilities'] = ['view' => _l('permission_view')];
-    register_staff_capabilities('hr_reports', $caps, _l('hr_perm_reports'));
-
-    // Settings
-    $caps['capabilities'] = ['view' => _l('permission_view'), 'edit' => _l('permission_edit')];
-    register_staff_capabilities('hr_settings', $caps, _l('hr_perm_settings'));
+/**
+ * Returns the hr_employees.id for the currently logged-in staff member, or 0 if none.
+ * Used for view_own permission filtering.
+ */
+function hr_get_own_employee_id()
+{
+    $CI = &get_instance();
+    if (!class_exists('Employees_model', false)) {
+        $CI->load->model('hr_module/Employees_model');
+    }
+    $emp = $CI->Employees_model->get_by_staff_id(get_staff_user_id());
+    return $emp ? (int) $emp->id : 0;
 }
 
 // ─── Menu ─────────────────────────────────────────────────────────────────
@@ -130,7 +125,8 @@ function hr_module_init_menu_items()
         'position' => 1,
     ]);
 
-    // Employees
+    // Employees — only show the list page to users with global view (admins/HR managers)
+    // Staff with view_own see their info via the dashboard, not the employee directory
     if (staff_can('view', 'hr_employees')) {
         $CI->app_menu->add_sidebar_children_item('human-resource', [
             'slug'     => 'hr-employees',
@@ -151,7 +147,7 @@ function hr_module_init_menu_items()
     }
 
     // Leave Management
-    if (staff_can('view', 'hr_leave')) {
+    if (staff_can('view', 'hr_leave') || staff_can('view_own', 'hr_leave')) {
         $CI->app_menu->add_sidebar_children_item('human-resource', [
             'slug'     => 'hr-leave',
             'name'     => _l('hr_menu_leave'),
@@ -161,7 +157,7 @@ function hr_module_init_menu_items()
     }
 
     // Attendance
-    if (staff_can('view', 'hr_attendance')) {
+    if (staff_can('view', 'hr_attendance') || staff_can('view_own', 'hr_attendance')) {
         $CI->app_menu->add_sidebar_children_item('human-resource', [
             'slug'     => 'hr-attendance',
             'name'     => _l('hr_menu_attendance'),
@@ -171,7 +167,7 @@ function hr_module_init_menu_items()
     }
 
     // Payroll
-    if (staff_can('view', 'hr_payroll')) {
+    if (staff_can('view', 'hr_payroll') || staff_can('view_own', 'hr_payroll')) {
         $CI->app_menu->add_sidebar_children_item('human-resource', [
             'slug'     => 'hr-payroll',
             'name'     => _l('hr_menu_payroll'),
@@ -181,7 +177,7 @@ function hr_module_init_menu_items()
     }
 
     // Loans
-    if (staff_can('view', 'hr_loans')) {
+    if (staff_can('view', 'hr_loans') || staff_can('view_own', 'hr_loans')) {
         $CI->app_menu->add_sidebar_children_item('human-resource', [
             'slug'     => 'hr-loans',
             'name'     => _l('hr_menu_loans'),
@@ -191,7 +187,7 @@ function hr_module_init_menu_items()
     }
 
     // Overtime
-    if (staff_can('view', 'hr_overtime')) {
+    if (staff_can('view', 'hr_overtime') || staff_can('view_own', 'hr_overtime')) {
         $CI->app_menu->add_sidebar_children_item('human-resource', [
             'slug'     => 'hr-overtime',
             'name'     => _l('hr_menu_overtime'),
@@ -201,7 +197,7 @@ function hr_module_init_menu_items()
     }
 
     // Performance
-    if (staff_can('view', 'hr_performance')) {
+    if (staff_can('view', 'hr_performance') || staff_can('view_own', 'hr_performance')) {
         $CI->app_menu->add_sidebar_children_item('human-resource', [
             'slug'     => 'hr-performance',
             'name'     => _l('hr_menu_performance'),
@@ -211,7 +207,7 @@ function hr_module_init_menu_items()
     }
 
     // Training
-    if (staff_can('view', 'hr_training')) {
+    if (staff_can('view', 'hr_training') || staff_can('view_own', 'hr_training')) {
         $CI->app_menu->add_sidebar_children_item('human-resource', [
             'slug'     => 'hr-training',
             'name'     => _l('hr_menu_training'),
@@ -221,7 +217,7 @@ function hr_module_init_menu_items()
     }
 
     // Helpdesk
-    if (staff_can('view', 'hr_helpdesk')) {
+    if (staff_can('view', 'hr_helpdesk') || staff_can('view_own', 'hr_helpdesk')) {
         $CI->app_menu->add_sidebar_children_item('human-resource', [
             'slug'     => 'hr-helpdesk',
             'name'     => _l('hr_menu_helpdesk'),
@@ -231,7 +227,7 @@ function hr_module_init_menu_items()
     }
 
     // HR Contracts
-    if (staff_can('view', 'hr_contracts')) {
+    if (staff_can('view', 'hr_contracts') || staff_can('view_own', 'hr_contracts')) {
         $CI->app_menu->add_sidebar_children_item('human-resource', [
             'slug'     => 'hr-contracts',
             'name'     => _l('hr_menu_contracts'),
@@ -247,6 +243,16 @@ function hr_module_init_menu_items()
             'name'     => _l('hr_menu_zkteco'),
             'href'     => admin_url('hr_module/zkteco'),
             'position' => 13,
+        ]);
+    }
+
+    // Holiday Calendar
+    if (is_admin() || staff_can('view', 'hr_settings')) {
+        $CI->app_menu->add_sidebar_children_item('human-resource', [
+            'slug'     => 'hr-holidays',
+            'name'     => 'Holiday Calendar',
+            'href'     => admin_url('hr_module/holidays'),
+            'position' => 12,
         ]);
     }
 

@@ -12,7 +12,7 @@ class Training extends AdminController
 
     public function index()
     {
-        if (staff_cant('view', 'hr_training')) access_denied('hr_training');
+        if (staff_cant('view', 'hr_training') && staff_cant('view_own', 'hr_training')) access_denied('hr_training');
         if ($this->input->is_ajax_request() && !$this->input->post()) {
             $this->app->get_table_data(module_views_path('hr_module', 'training/table'));
             return;
@@ -59,7 +59,7 @@ class Training extends AdminController
 
     public function view($id)
     {
-        if (staff_cant('view', 'hr_training')) access_denied('hr_training');
+        if (staff_cant('view', 'hr_training') && staff_cant('view_own', 'hr_training')) access_denied('hr_training');
         $training = $this->Training_model->get($id);
         if (!$training) show_404();
         $data['title']        = _l('hr_training_view');

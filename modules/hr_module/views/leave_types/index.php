@@ -57,30 +57,30 @@
         </div>
         <div class="row">
           <div class="col-md-4">
-            <div class="form-group"><div class="checkbox"><label>
+            <div class="form-group"><div class="checkbox checkbox-primary">
               <input type="checkbox" name="carry_forward" id="ltype_carry" value="1">
-              <?php echo _l('hr_leave_carry_forward'); ?>
-            </label></div></div>
+              <label for="ltype_carry"><?php echo _l('hr_leave_carry_forward'); ?></label>
+            </div></div>
           </div>
           <div class="col-md-4">
-            <div class="form-group"><div class="checkbox"><label>
+            <div class="form-group"><div class="checkbox checkbox-primary">
               <input type="checkbox" name="requires_attachment" id="ltype_attach" value="1">
-              <?php echo _l('hr_leave_requires_attachment'); ?>
-            </label></div></div>
+              <label for="ltype_attach"><?php echo _l('hr_leave_requires_attachment'); ?></label>
+            </div></div>
           </div>
           <div class="col-md-4">
-            <div class="form-group"><div class="checkbox"><label>
-              <input type="checkbox" name="allow_half_day" id="ltype_half" value="1" checked>
-              <?php echo _l('hr_leave_half_day'); ?>
-            </label></div></div>
+            <div class="form-group"><div class="checkbox checkbox-primary">
+              <input type="checkbox" name="allow_half_day" id="ltype_half" value="1">
+              <label for="ltype_half"><?php echo _l('hr_leave_half_day'); ?></label>
+            </div></div>
           </div>
         </div>
         <div class="form-group"><label><?php echo _l('hr_description'); ?></label>
           <textarea name="description" id="ltype_desc" class="form-control" rows="2"></textarea></div>
-        <div class="form-group"><div class="checkbox"><label>
-          <input type="checkbox" name="status" id="ltype_status" value="1" checked>
-          <?php echo _l('hr_active'); ?>
-        </label></div></div>
+        <div class="form-group"><div class="checkbox checkbox-primary">
+          <input type="checkbox" name="status" id="ltype_status" value="1">
+          <label for="ltype_status"><?php echo _l('hr_active'); ?></label>
+        </div></div>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-default" data-dismiss="modal"><?php echo _l('hr_cancel'); ?></button>
@@ -107,10 +107,10 @@ $(function(){
         $.getJSON('<?php echo admin_url('hr_module/leave_types/edit/'); ?>'+$(this).data('id'), function(d){
             $('#ltype_id').val(d.id); $('#ltype_name').val(d.name); $('#ltype_days').val(d.days_per_year);
             $('#ltype_carry_days').val(d.max_carry_forward_days);
-            $('#ltype_carry').prop('checked', d.carry_forward==1);
-            $('#ltype_attach').prop('checked', d.requires_attachment==1);
-            $('#ltype_half').prop('checked', d.allow_half_day==1);
-            $('#ltype_desc').val(d.description); $('#ltype_status').prop('checked', d.status==1);
+            $('#ltype_carry').prop('checked', parseInt(d.carry_forward)===1);
+            $('#ltype_attach').prop('checked', parseInt(d.requires_attachment)===1);
+            $('#ltype_half').prop('checked', parseInt(d.allow_half_day)===1);
+            $('#ltype_desc').val(d.description); $('#ltype_status').prop('checked', parseInt(d.status)===1);
             $('#ltype-modal-title').text('<?php echo _l('hr_leave_type_edit'); ?>');
             $('#ltypeModal').modal('show');
         });

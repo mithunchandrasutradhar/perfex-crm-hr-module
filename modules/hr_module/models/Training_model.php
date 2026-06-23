@@ -26,9 +26,12 @@ class Training_model extends App_Model
         $this->db->select('t.*, (SELECT COUNT(*) FROM '.db_prefix().$this->parts_table.' p WHERE p.training_id=t.id) as enrolled_count')
             ->from(db_prefix() . $this->table . ' t');
 
-        if (!empty($filters['status']))     $this->db->where('t.status', $filters['status']);
-        if (!empty($filters['from_date']))  $this->db->where('t.start_date >=', $filters['from_date']);
-        if (!empty($filters['to_date']))    $this->db->where('t.end_date <=', $filters['to_date']);
+        if (!empty($filters['status']))               $this->db->where('t.status', $filters['status']);
+        if (!empty($filters['from_date']))            $this->db->where('t.start_date >=', $filters['from_date']);
+        if (!empty($filters['to_date']))              $this->db->where('t.end_date <=', $filters['to_date']);
+        if (!empty($filters['participant_employee_id'])) {
+            $this->db->where('EXISTS (SELECT 1 FROM ' . db_prefix() . $this->parts_table . ' p2 WHERE p2.training_id = t.id AND p2.employee_id = ' . (int) $filters['participant_employee_id'] . ')');
+        }
 
         return $this->db->order_by('t.start_date DESC')->get()->result();
     }

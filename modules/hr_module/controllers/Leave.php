@@ -13,7 +13,7 @@ class Leave extends AdminController
 
     public function index()
     {
-        if (staff_cant('view', 'hr_leave')) {
+        if (staff_cant('view', 'hr_leave') && staff_cant('view_own', 'hr_leave')) {
             access_denied('hr_leave');
         }
         if ($this->input->is_ajax_request()) {
@@ -31,14 +31,23 @@ class Leave extends AdminController
         if (staff_cant('create', 'hr_leave')) {
             access_denied('hr_leave');
         }
+        // Any non-admin, non-global-viewer applies only for themselves
+        $own_only   = !is_admin() && !staff_can('view', 'hr_leave');
+        $own_emp_id = $own_only ? hr_get_own_employee_id() : 0;
+
         if ($this->input->post()) {
-            $from     = $this->input->post('from_date');
-            $to       = $this->input->post('to_date');
+            // Convert datepicker format (DD-MM-YYYY or any locale) to SQL YYYY-MM-DD
+            $from = date('Y-m-d', strtotime($this->input->post('from_date')));
+            $to   = date('Y-m-d', strtotime($this->input->post('to_date')));
             $half_day = (int) $this->input->post('is_half_day');
             $days     = $this->Leave_model->calculate_days($from, $to, $half_day);
 
+            // view_own users can only apply for themselves — ignore any spoofed employee_id
+            $posted_emp_id = (int) $this->input->post('employee_id');
+            $resolved_emp_id = $own_only ? $own_emp_id : $posted_emp_id;
+
             $data = [
-                'employee_id'   => (int) $this->input->post('employee_id'),
+                'employee_id'   => $resolved_emp_id,
                 'leave_type_id' => (int) $this->input->post('leave_type_id'),
                 'from_date'     => $from,
                 'to_date'       => $to,
@@ -71,19 +80,39 @@ class Leave extends AdminController
             redirect(admin_url('hr_module/leave/apply'));
         }
 
-        $data['title']       = _l('hr_leave_add');
-        $data['employees']   = $this->Hr_module_model->get_active_employees_dropdown();
-        $data['leave_types'] = $this->Leave_model->get_active_types();
+        $this->load->model('hr_module/Holidays_model');
+        $year = (int) date('Y');
+
+        $data['title']          = _l('hr_leave_add');
+        $data['leave_types']    = $this->Leave_model->get_active_types();
+        $data['own_only']       = $own_only;
+        $data['own_emp_id']     = $own_emp_id;
+        $data['holidays_json']  = json_encode($this->Holidays_model->get_as_json($year));
+        $data['weekly_off_json']= json_encode($this->Holidays_model->get_weekly_off_days());
+
+        if ($own_only) {
+            $emp = $this->Employees_model->get($own_emp_id);
+            $data['employees'] = $own_emp_id && $emp
+                ? [$own_emp_id => $emp->first_name . ' ' . $emp->last_name]
+                : [];
+        } else {
+            $data['employees'] = $this->Hr_module_model->get_active_employees_dropdown();
+        }
         $this->load->view('hr_module/leave/apply', $data);
     }
 
     public function view($id)
     {
-        if (staff_cant('view', 'hr_leave')) {
+        if (staff_cant('view', 'hr_leave') && staff_cant('view_own', 'hr_leave')) {
             access_denied('hr_leave');
         }
         $request = $this->Leave_model->get_request($id);
         if (!$request) show_404();
+        if (!staff_can('view', 'hr_leave') && staff_can('view_own', 'hr_leave')) {
+            if ((int) $request->employee_id !== hr_get_own_employee_id()) {
+                access_denied('hr_leave');
+            }
+        }
 
         $data['title']   = _l('hr_leave_view') . ' #' . $id;
         $data['request'] = $request;

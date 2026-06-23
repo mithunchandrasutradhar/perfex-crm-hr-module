@@ -14,7 +14,7 @@ class Attendance extends AdminController
 
     public function index()
     {
-        if (staff_cant('view', 'hr_attendance')) {
+        if (staff_cant('view', 'hr_attendance') && staff_cant('view_own', 'hr_attendance')) {
             access_denied('hr_attendance');
         }
         if ($this->input->is_ajax_request() && !$this->input->post()) {
@@ -23,7 +23,15 @@ class Attendance extends AdminController
         }
         $data['title']       = _l('hr_attendance_list');
         $data['departments'] = $this->Departments_model->get_active();
-        $data['employees']   = $this->Hr_module_model->get_active_employees_dropdown();
+        $is_global = is_admin() || staff_can('view', 'hr_attendance');
+        if ($is_global) {
+            $data['employees'] = $this->Hr_module_model->get_active_employees_dropdown();
+        } else {
+            $emp_id = hr_get_own_employee_id();
+            $emp    = $emp_id ? $this->Employees_model->get($emp_id) : null;
+            $data['employees'] = $emp ? [$emp->id => $emp->employee_code . ' - ' . $emp->first_name . ' ' . $emp->last_name] : [];
+        }
+        $data['is_global'] = $is_global;
         $this->load->view('hr_module/attendance/index', $data);
     }
 

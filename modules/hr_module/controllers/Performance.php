@@ -13,7 +13,7 @@ class Performance extends AdminController
 
     public function index()
     {
-        if (staff_cant('view', 'hr_performance')) access_denied('hr_performance');
+        if (staff_cant('view', 'hr_performance') && staff_cant('view_own', 'hr_performance')) access_denied('hr_performance');
         if ($this->input->is_ajax_request() && !$this->input->post()) {
             $this->app->get_table_data(module_views_path('hr_module', 'performance/table'));
             return;
@@ -63,9 +63,12 @@ class Performance extends AdminController
 
     public function view($id)
     {
-        if (staff_cant('view', 'hr_performance')) access_denied('hr_performance');
+        if (staff_cant('view', 'hr_performance') && staff_cant('view_own', 'hr_performance')) access_denied('hr_performance');
         $review = $this->Performance_model->get($id);
         if (!$review) show_404();
+        if (!staff_can('view', 'hr_performance') && staff_can('view_own', 'hr_performance')) {
+            if ((int) $review->employee_id !== hr_get_own_employee_id()) access_denied('hr_performance');
+        }
         $data['title']  = _l('hr_performance_view');
         $data['review'] = $review;
         $this->load->view('hr_module/performance/view', $data);

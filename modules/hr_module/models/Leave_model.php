@@ -175,8 +175,12 @@ class Leave_model extends App_Model
     public function calculate_days($from, $to, $is_half_day = false)
     {
         if ($is_half_day) return 0.5;
-        $diff = (strtotime($to) - strtotime($from)) / 86400;
-        return max(1, $diff + 1);
+        $CI = &get_instance();
+        if (!isset($CI->Holidays_model)) {
+            $CI->load->model('hr_module/Holidays_model');
+        }
+        $days = $CI->Holidays_model->count_working_days($from, $to);
+        return max(0, (float) $days);
     }
 
     // ── Leave Balances ───────────────────────────────────────────────────

@@ -10,6 +10,10 @@ foreach (['status', 'leave_type_id', 'employee_id'] as $key) {
     if ($v !== null && $v !== '') $filters[$key] = $v;
 }
 
+if (!is_admin() && !staff_can('view', 'hr_leave')) {
+    $filters['employee_id'] = hr_get_own_employee_id();
+}
+
 $rows = $CI->Leave_model->get_request(null, $filters);
 
 $output = [

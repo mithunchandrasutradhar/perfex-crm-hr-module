@@ -10,6 +10,10 @@ foreach (['employee_id', 'department_id', 'status', 'priority'] as $key) {
     if ($v !== null && $v !== '') $filters[$key] = $v;
 }
 
+if (!is_admin() && !staff_can('view', 'hr_helpdesk')) {
+    $filters['employee_id'] = hr_get_own_employee_id();
+}
+
 $rows   = $CI->Helpdesk_model->get_for_table($filters);
 $sbadge = ['open' => 'danger', 'in_progress' => 'warning', 'resolved' => 'info', 'closed' => 'default'];
 $pbadge = ['low' => 'default', 'medium' => 'warning', 'high' => 'danger'];

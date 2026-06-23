@@ -43,9 +43,9 @@
                 </div>
                 <div style="max-height:300px;overflow-y:auto;border:1px solid #e2e8f0;border-radius:6px;padding:8px">
                   <?php foreach ($employees as $emp): ?>
-                  <div class="checkbox">
-                    <label>
-                      <input type="checkbox" name="employee_ids[]" value="<?php echo $emp->id; ?>" checked>
+                  <div class="checkbox checkbox-primary">
+                    <input type="checkbox" name="employee_ids[]" id="payroll_emp_<?php echo $emp->id; ?>" value="<?php echo $emp->id; ?>" checked>
+                    <label for="payroll_emp_<?php echo $emp->id; ?>">
                       <strong><?php echo htmlspecialchars($emp->first_name.' '.$emp->last_name); ?></strong>
                       <span class="text-muted">(<?php echo $emp->employee_code; ?>)</span>
                       — <?php echo htmlspecialchars($emp->department_name ?? ''); ?>

@@ -10,6 +10,10 @@ foreach (['status', 'from_date', 'to_date'] as $key) {
     if ($v !== null && $v !== '') $filters[$key] = $v;
 }
 
+if (!staff_can('view', 'hr_training') && staff_can('view_own', 'hr_training')) {
+    $filters['participant_employee_id'] = hr_get_own_employee_id();
+}
+
 $rows = $CI->Training_model->get_for_table($filters);
 
 $output = [

@@ -10,6 +10,10 @@ foreach (['department_id', 'employee_id', 'status', 'from_date', 'to_date'] as $
     if ($v !== null && $v !== '') $filters[$key] = $v;
 }
 
+if (!is_admin() && !staff_can('view', 'hr_attendance')) {
+    $filters['employee_id'] = hr_get_own_employee_id();
+}
+
 $rows = $CI->Attendance_model->get_for_table($filters);
 
 $output = [

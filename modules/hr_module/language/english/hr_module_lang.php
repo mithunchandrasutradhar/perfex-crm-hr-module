@@ -4,13 +4,13 @@ defined('BASEPATH') or exit('No direct script access allowed');
 // Module
 $lang['hr_module']                         = 'HR Management';
 $lang['hr_module_dashboard']               = 'HR Dashboard';
-$lang['hr_module_settings']                = 'HR Settings';
+$lang['hr_module_settings']                = 'Settings';
 
 // Menu items
 $lang['hr_menu_employees']                 = 'Employees';
 $lang['hr_menu_departments']               = 'Departments';
 $lang['hr_menu_designations']              = 'Designations';
-$lang['hr_menu_leave']                     = 'Leave Management';
+$lang['hr_menu_leave']                     = 'Leave';
 $lang['hr_menu_leave_requests']            = 'Leave Requests';
 $lang['hr_menu_leave_types']               = 'Leave Types';
 $lang['hr_menu_leave_balances']            = 'Leave Balances';
@@ -23,9 +23,9 @@ $lang['hr_menu_loans']                     = 'Loans';
 $lang['hr_menu_overtime']                  = 'Overtime';
 $lang['hr_menu_performance']               = 'Performance';
 $lang['hr_menu_training']                  = 'Training';
-$lang['hr_menu_helpdesk']                  = 'HR Helpdesk';
-$lang['hr_menu_contracts']                 = 'HR Contracts';
-$lang['hr_menu_reports']                   = 'HR Reports';
+$lang['hr_menu_helpdesk']                  = 'Helpdesk';
+$lang['hr_menu_contracts']                 = 'Contracts';
+$lang['hr_menu_reports']                   = 'Reports';
 
 // Permissions
 $lang['hr_perm_employees']                 = 'Employees';
@@ -102,7 +102,7 @@ $lang['hr_close']                          = 'Close';
 $lang['hr_loading']                        = 'Loading...';
 
 // Dashboard
-$lang['hr_dashboard_title']                = 'HR Dashboard';
+$lang['hr_dashboard_title']                = 'Dashboard';
 $lang['hr_dashboard_total_employees']      = 'Total Employees';
 $lang['hr_dashboard_active_employees']     = 'Active Employees';
 $lang['hr_dashboard_on_leave_today']       = 'On Leave Today';

@@ -1,4 +1,8 @@
 <?php defined('BASEPATH') or exit('No direct script access allowed');
+/** @var object      $request */
+/** @var object|null $balance */
+if (!isset($request)) $request = (object)['id'=>0,'status'=>'pending','leave_type_name'=>'','employee_name'=>'','employee_code'=>'','from_date'=>null,'to_date'=>null,'total_days'=>0,'is_half_day'=>0,'reason'=>'','rejection_reason'=>null,'attachment'=>null,'created_at'=>null,'approved_by'=>null,'approved_by_name'=>'','approved_at'=>null];
+if (!isset($balance)) $balance = null;
 $r = $request;
 $badge_map = ['pending'=>'label-warning','approved'=>'label-success','rejected'=>'label-danger','cancelled'=>'label-default'];
 $badge = '<span class="label ' . ($badge_map[$r->status] ?? 'label-default') . ' label-tag">' . ucfirst($r->status) . '</span>';
@@ -28,8 +32,10 @@ $badge = '<span class="label ' . ($badge_map[$r->status] ?? 'label-default') . '
             </div>
 
             <table class="table table-condensed">
-              <tr><th style="width:35%"><?php echo _l('hr_from_date'); ?></th><td><?php echo _d($r->from_date); ?></td></tr>
-              <tr><th><?php echo _l('hr_to_date'); ?></th><td><?php echo _d($r->to_date); ?></td></tr>
+              <tr><th style="width:35%"><?php echo _l('hr_from_date'); ?></th>
+                <td><?php echo ($r->from_date && $r->from_date !== '0000-00-00') ? _d($r->from_date) : '<span class="text-muted">—</span>'; ?></td></tr>
+              <tr><th><?php echo _l('hr_to_date'); ?></th>
+                <td><?php echo ($r->to_date && $r->to_date !== '0000-00-00') ? _d($r->to_date) : '<span class="text-muted">—</span>'; ?></td></tr>
               <tr><th><?php echo _l('hr_leave_days'); ?></th>
                 <td><?php echo $r->total_days; ?> <?php if($r->is_half_day) echo '<span class="label label-info">Half Day</span>'; ?></td></tr>
               <tr><th><?php echo _l('hr_leave_reason'); ?></th><td><?php echo nl2br(htmlspecialchars($r->reason ?? '-')); ?></td></tr>

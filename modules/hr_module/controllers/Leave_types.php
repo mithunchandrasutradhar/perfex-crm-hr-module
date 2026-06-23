@@ -23,6 +23,9 @@ class Leave_types extends AdminController
 
     public function add()
     {
+        if (staff_cant('create', 'hr_leave')) {
+            echo json_encode(['success' => false, 'message' => _l('access_denied')]); return;
+        }
         if (!$this->input->post()) show_404();
         $data = [
             'name'                => $this->input->post('name', true),
@@ -43,8 +46,12 @@ class Leave_types extends AdminController
     public function edit($id)
     {
         if ($this->input->is_ajax_request() && !$this->input->post()) {
+            if (staff_cant('view', 'hr_leave')) { echo json_encode(null); return; }
             echo json_encode($this->Leave_model->get_type($id));
             return;
+        }
+        if (staff_cant('edit', 'hr_leave')) {
+            echo json_encode(['success' => false, 'message' => _l('access_denied')]); return;
         }
         if (!$this->input->post()) show_404();
         $data = [
@@ -63,6 +70,9 @@ class Leave_types extends AdminController
 
     public function delete($id)
     {
+        if (staff_cant('delete', 'hr_leave')) {
+            echo json_encode(['success' => false, 'message' => _l('access_denied')]); return;
+        }
         $result = $this->Leave_model->delete_type($id);
         echo json_encode($result);
     }

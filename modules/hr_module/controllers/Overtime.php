@@ -13,7 +13,7 @@ class Overtime extends AdminController
 
     public function index()
     {
-        if (staff_cant('view', 'hr_overtime')) access_denied('hr_overtime');
+        if (staff_cant('view', 'hr_overtime') && staff_cant('view_own', 'hr_overtime')) access_denied('hr_overtime');
         if ($this->input->is_ajax_request() && !$this->input->post()) {
             $this->app->get_table_data(module_views_path('hr_module', 'overtime/table'));
             return;
@@ -64,9 +64,12 @@ class Overtime extends AdminController
 
     public function view($id)
     {
-        if (staff_cant('view', 'hr_overtime')) access_denied('hr_overtime');
+        if (staff_cant('view', 'hr_overtime') && staff_cant('view_own', 'hr_overtime')) access_denied('hr_overtime');
         $overtime = $this->Overtime_model->get($id);
         if (!$overtime) show_404();
+        if (!staff_can('view', 'hr_overtime') && staff_can('view_own', 'hr_overtime')) {
+            if ((int) $overtime->employee_id !== hr_get_own_employee_id()) access_denied('hr_overtime');
+        }
         $data['title']    = _l('hr_overtime_view');
         $data['overtime'] = $overtime;
         $this->load->view('hr_module/overtime/view', $data);

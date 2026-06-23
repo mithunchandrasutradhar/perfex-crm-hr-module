@@ -156,11 +156,9 @@ function ev($obj, $key, $default = '') {
               <textarea name="notes" class="form-control" rows="2"><?php echo $is_edit ? ev($e,'notes') : ''; ?></textarea>
             </div>
             <div class="form-group">
-              <div class="checkbox">
-                <label>
-                  <input type="checkbox" name="status" value="1" <?php if(!$is_edit || $e->status == 1) echo 'checked'; ?>>
-                  <?php echo _l('hr_active'); ?>
-                </label>
+              <div class="checkbox checkbox-primary">
+                <input type="checkbox" name="status" id="emp_status" value="1" <?php if(!$is_edit || $e->status == 1) echo 'checked'; ?>>
+                <label for="emp_status"><?php echo _l('hr_active'); ?></label>
               </div>
             </div>
           </div>

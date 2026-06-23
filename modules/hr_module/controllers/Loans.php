@@ -13,7 +13,7 @@ class Loans extends AdminController
 
     public function index()
     {
-        if (staff_cant('view', 'hr_loans')) access_denied('hr_loans');
+        if (staff_cant('view', 'hr_loans') && staff_cant('view_own', 'hr_loans')) access_denied('hr_loans');
         if ($this->input->is_ajax_request() && !$this->input->post()) {
             $this->app->get_table_data(module_views_path('hr_module', 'loans/table'));
             return;
@@ -70,9 +70,12 @@ class Loans extends AdminController
 
     public function view($id)
     {
-        if (staff_cant('view', 'hr_loans')) access_denied('hr_loans');
+        if (staff_cant('view', 'hr_loans') && staff_cant('view_own', 'hr_loans')) access_denied('hr_loans');
         $loan = $this->Loans_model->get($id);
         if (!$loan) show_404();
+        if (!staff_can('view', 'hr_loans') && staff_can('view_own', 'hr_loans')) {
+            if ((int) $loan->employee_id !== hr_get_own_employee_id()) access_denied('hr_loans');
+        }
         $data['title']               = _l('hr_loan_view');
         $data['loan']                = $loan;
         $data['repayments']          = $this->Loans_model->get_repayments($id);

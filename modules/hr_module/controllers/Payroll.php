@@ -14,7 +14,7 @@ class Payroll extends AdminController
 
     public function index()
     {
-        if (staff_cant('view', 'hr_payroll')) access_denied('hr_payroll');
+        if (staff_cant('view', 'hr_payroll') && staff_cant('view_own', 'hr_payroll')) access_denied('hr_payroll');
         if ($this->input->is_ajax_request() && !$this->input->post()) {
             $this->app->get_table_data(module_views_path('hr_module', 'payroll/table'));
             return;
@@ -56,9 +56,12 @@ class Payroll extends AdminController
 
     public function view($id)
     {
-        if (staff_cant('view', 'hr_payroll')) access_denied('hr_payroll');
+        if (staff_cant('view', 'hr_payroll') && staff_cant('view_own', 'hr_payroll')) access_denied('hr_payroll');
         $payroll = $this->Payroll_model->get($id);
         if (!$payroll) show_404();
+        if (!staff_can('view', 'hr_payroll') && staff_can('view_own', 'hr_payroll')) {
+            if ((int) $payroll->employee_id !== hr_get_own_employee_id()) access_denied('hr_payroll');
+        }
         $data['title']   = _l('hr_payroll_view');
         $data['payroll'] = $payroll;
         $data['details'] = $this->Payroll_model->get_details($id);

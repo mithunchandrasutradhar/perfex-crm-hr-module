@@ -120,16 +120,18 @@
         <div class="row">
           <div class="col-md-6">
             <div class="form-group">
-              <div class="checkbox"><label>
-                <input type="checkbox" name="taxable" id="item_taxable" value="1"> Taxable
-              </label></div>
+              <div class="checkbox checkbox-primary">
+                <input type="checkbox" name="taxable" id="item_taxable" value="1">
+                <label for="item_taxable">Taxable</label>
+              </div>
             </div>
           </div>
           <div class="col-md-6">
             <div class="form-group">
-              <div class="checkbox"><label>
-                <input type="checkbox" name="status" id="item_status" value="1" checked> Active
-              </label></div>
+              <div class="checkbox checkbox-primary">
+                <input type="checkbox" name="status" id="item_status" value="1">
+                <label for="item_status">Active</label>
+              </div>
             </div>
           </div>
         </div>
@@ -165,7 +167,7 @@ $(function(){
         $.getJSON('<?php echo admin_url('hr_module/payroll_items/edit/'); ?>'+$(this).data('id'), function(d){
             $('#item_id').val(d.id); $('#item_name').val(d.name); $('#item_type').val(d.type);
             $('#item_calc').val(d.calculation_type).trigger('change'); $('#item_value').val(d.value);
-            $('#item_taxable').prop('checked', d.taxable == 1); $('#item_status').prop('checked', d.status == 1);
+            $('#item_taxable').prop('checked', parseInt(d.taxable)===1); $('#item_status').prop('checked', parseInt(d.status)===1);
             $('#item_desc').val(d.description);
             $('#item-modal-title').text('<?php echo _l('hr_payroll_item_edit'); ?>');
             $('#itemModal').modal('show');

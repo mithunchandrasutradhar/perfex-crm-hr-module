@@ -14,7 +14,9 @@ class Employees extends AdminController
 
     public function index()
     {
-        if (staff_cant('view', 'hr_employees')) access_denied('hr_employees');
+        if (staff_cant('view', 'hr_employees') && staff_cant('view_own', 'hr_employees')) {
+            access_denied('hr_employees');
+        }
         if ($this->input->is_ajax_request()) {
             $this->app->get_table_data(module_views_path('hr_module', 'employees/table'));
         }
@@ -131,9 +133,16 @@ class Employees extends AdminController
 
     public function view($id)
     {
-        if (staff_cant('view', 'hr_employees')) access_denied('hr_employees');
+        if (staff_cant('view', 'hr_employees') && staff_cant('view_own', 'hr_employees')) {
+            access_denied('hr_employees');
+        }
         $employee = $this->Employees_model->get($id);
         if (!$employee) show_404();
+        if (!staff_can('view', 'hr_employees') && staff_can('view_own', 'hr_employees')) {
+            if ((int) $employee->staff_id !== (int) get_staff_user_id()) {
+                access_denied('hr_employees');
+            }
+        }
         $data['title']    = $employee->first_name . ' ' . $employee->last_name;
         $data['employee'] = $employee;
         $this->load->view('hr_module/employees/view', $data);

@@ -158,12 +158,10 @@ $can_edit = staff_can('edit', 'hr_settings') || is_admin();
                                 ?>
                                 <div class="col-md-3 col-sm-6">
                                     <div class="form-group">
-                                        <div class="checkbox">
-                                            <label>
-                                                <input type="checkbox" name="<?php echo $key; ?>" value="1" <?php echo $checked; ?>
-                                                    <?php echo !$can_edit ? 'disabled' : ''; ?>>
-                                                <?php echo $label; ?>
-                                            </label>
+                                        <div class="checkbox checkbox-primary">
+                                            <input type="checkbox" name="<?php echo $key; ?>" id="setting_<?php echo $key; ?>" value="1" <?php echo $checked; ?>
+                                                <?php echo !$can_edit ? 'disabled' : ''; ?>>
+                                            <label for="setting_<?php echo $key; ?>"><?php echo $label; ?></label>
                                         </div>
                                     </div>
                                 </div>
@@ -185,13 +183,11 @@ $can_edit = staff_can('edit', 'hr_settings') || is_admin();
                             <div class="row">
                                 <div class="col-md-3 col-sm-6">
                                     <div class="form-group">
-                                        <div class="checkbox">
-                                            <label>
-                                                <input type="checkbox" name="zkteco_enabled" value="1"
-                                                    <?php echo isset($settings['zkteco_enabled']) && $settings['zkteco_enabled'] == '1' ? 'checked' : ''; ?>
-                                                    <?php echo !$can_edit ? 'disabled' : ''; ?>>
-                                                <?php echo _l('hr_settings_zkteco_enabled'); ?>
-                                            </label>
+                                        <div class="checkbox checkbox-primary">
+                                            <input type="checkbox" name="zkteco_enabled" id="setting_zkteco_enabled" value="1"
+                                                <?php echo isset($settings['zkteco_enabled']) && $settings['zkteco_enabled'] == '1' ? 'checked' : ''; ?>
+                                                <?php echo !$can_edit ? 'disabled' : ''; ?>>
+                                            <label for="setting_zkteco_enabled"><?php echo _l('hr_settings_zkteco_enabled'); ?></label>
                                         </div>
                                     </div>
                                 </div>

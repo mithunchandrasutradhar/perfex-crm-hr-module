@@ -10,6 +10,10 @@ foreach (['employee_id', 'department_id', 'pay_month', 'pay_year', 'status'] as 
     if ($v !== null && $v !== '') $filters[$key] = $v;
 }
 
+if (!is_admin() && !staff_can('view', 'hr_payroll')) {
+    $filters['employee_id'] = hr_get_own_employee_id();
+}
+
 $rows = $CI->Payroll_model->get_for_table($filters);
 
 $output = [

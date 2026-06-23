@@ -34,6 +34,9 @@ if (!empty($dept_filter)) {
 if ($status_filter !== null && $status_filter !== '') {
     $where[] = 'AND e.status = ' . (int) $status_filter;
 }
+if (!staff_can('view', 'hr_employees') && staff_can('view_own', 'hr_employees')) {
+    $where[] = 'AND e.staff_id = ' . (int) get_staff_user_id();
+}
 
 $result  = data_tables_init($aColumns, $sIndexColumn, $sTable, $join, $where, ['e.photo', 'e.staff_id']);
 $output  = $result['output'];

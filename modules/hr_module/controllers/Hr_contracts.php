@@ -13,7 +13,7 @@ class Hr_contracts extends AdminController
 
     public function index()
     {
-        if (staff_cant('view', 'hr_contracts')) access_denied('hr_contracts');
+        if (staff_cant('view', 'hr_contracts') && staff_cant('view_own', 'hr_contracts')) access_denied('hr_contracts');
         if ($this->input->is_ajax_request() && !$this->input->post()) {
             $this->app->get_table_data(module_views_path('hr_module', 'contracts/table'));
             return;
@@ -65,9 +65,12 @@ class Hr_contracts extends AdminController
 
     public function view($id)
     {
-        if (staff_cant('view', 'hr_contracts')) access_denied('hr_contracts');
+        if (staff_cant('view', 'hr_contracts') && staff_cant('view_own', 'hr_contracts')) access_denied('hr_contracts');
         $contract = $this->Hr_contracts_model->get($id);
         if (!$contract) show_404();
+        if (!staff_can('view', 'hr_contracts') && staff_can('view_own', 'hr_contracts')) {
+            if ((int) $contract->employee_id !== hr_get_own_employee_id()) access_denied('hr_contracts');
+        }
         $data['title']    = _l('hr_contract_view');
         $data['contract'] = $contract;
         $this->load->view('hr_module/contracts/view', $data);

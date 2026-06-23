@@ -58,11 +58,9 @@
             <textarea name="description" id="desig_description" class="form-control" rows="3"></textarea>
           </div>
           <div class="form-group">
-            <div class="checkbox">
-              <label>
-                <input type="checkbox" name="status" id="desig_status" value="1" checked>
-                <?php echo _l('hr_active'); ?>
-              </label>
+            <div class="checkbox checkbox-primary">
+              <input type="checkbox" name="status" id="desig_status" value="1">
+              <label for="desig_status"><?php echo _l('hr_active'); ?></label>
             </div>
           </div>
         </div>

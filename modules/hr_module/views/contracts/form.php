@@ -110,13 +110,11 @@ $v = function($field) use ($contract) {
                 <div class="col-md-4">
                   <div class="form-group">
                     <label><?php echo _l('hr_contract_signed'); ?></label>
-                    <div class="checkbox">
-                      <label>
-                        <input type="hidden" name="signed" value="0">
-                        <input type="checkbox" name="signed" value="1"
-                               <?php if($editing && $contract->signed) echo 'checked'; ?>>
-                        Contract has been signed
-                      </label>
+                    <div class="checkbox checkbox-primary">
+                      <input type="hidden" name="signed" value="0">
+                      <input type="checkbox" name="signed" id="contract_signed" value="1"
+                             <?php if($editing && $contract->signed) echo 'checked'; ?>>
+                      <label for="contract_signed">Contract has been signed</label>
                     </div>
                   </div>
                 </div>

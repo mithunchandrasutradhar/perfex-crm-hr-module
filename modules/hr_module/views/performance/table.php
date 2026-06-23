@@ -10,6 +10,10 @@ foreach (['employee_id', 'department_id', 'status', 'year'] as $key) {
     if ($v !== null && $v !== '') $filters[$key] = $v;
 }
 
+if (!is_admin() && !staff_can('view', 'hr_performance')) {
+    $filters['employee_id'] = hr_get_own_employee_id();
+}
+
 $rows = $CI->Performance_model->get_for_table($filters);
 
 $output = [

@@ -1,4 +1,12 @@
 <?php defined('BASEPATH') or exit('No direct script access allowed'); ?>
+<?php
+/** @var array $departments */
+/** @var array $employees   */
+/** @var bool  $is_global   */
+if (!isset($departments)) $departments = [];
+if (!isset($employees))   $employees   = [];
+if (!isset($is_global))   $is_global   = is_admin() || staff_can('view', 'hr_attendance');
+?>
 <?php init_head(); ?>
 <div id="wrapper">
   <div class="content">
@@ -8,12 +16,14 @@
           <h4 class="tw-font-semibold tw-text-lg tw-text-neutral-700"><?php echo _l('hr_attendance_list'); ?></h4>
           <div class="tw-flex tw-flex-wrap tw-gap-2">
             <!-- Filters -->
+            <?php if ($is_global): ?>
             <select id="f-dept" class="form-control input-sm" style="width:150px">
               <option value=""><?php echo _l('hr_all') . ' Dept'; ?></option>
               <?php foreach ($departments as $d): ?>
               <option value="<?php echo $d->id; ?>"><?php echo htmlspecialchars($d->name); ?></option>
               <?php endforeach; ?>
             </select>
+            <?php endif; ?>
             <input type="date" id="f-from" class="form-control input-sm" style="width:135px" placeholder="From date">
             <input type="date" id="f-to"   class="form-control input-sm" style="width:135px" placeholder="To date">
             <select id="f-status" class="form-control input-sm" style="width:120px">
@@ -31,9 +41,11 @@
             <a href="<?php echo admin_url('hr_module/attendance/monthly'); ?>" class="btn btn-default btn-sm">
               <i class="fa fa-calendar tw-mr-1"></i><?php echo _l('hr_attendance_monthly'); ?>
             </a>
+            <?php if ($is_global): ?>
             <a href="<?php echo admin_url('hr_module/attendance/import'); ?>" class="btn btn-default btn-sm">
               <i class="fa fa-upload tw-mr-1"></i><?php echo _l('hr_attendance_import'); ?>
             </a>
+            <?php endif; ?>
           </div>
         </div>
         <div class="panel_s">
@@ -50,7 +62,8 @@
   </div>
 </div>
 
-<!-- Add/Edit Attendance Modal -->
+<!-- Add/Edit Attendance Modal — only rendered for users who can create attendance records -->
+<?php if (staff_can('create', 'hr_attendance')): ?>
 <div class="modal fade" id="attModal" tabindex="-1">
   <div class="modal-dialog"><div class="modal-content">
     <div class="modal-header">
@@ -118,6 +131,7 @@
     </form>
   </div></div>
 </div>
+<?php endif; // staff_can('create', 'hr_attendance') ?>
 
 <?php init_tail(); ?>
 <script>

@@ -10,6 +10,10 @@ foreach (['employee_id', 'department_id', 'status'] as $key) {
     if ($v !== null && $v !== '') $filters[$key] = $v;
 }
 
+if (!is_admin() && !staff_can('view', 'hr_loans')) {
+    $filters['employee_id'] = hr_get_own_employee_id();
+}
+
 $rows = $CI->Loans_model->get_for_table($filters);
 
 $output = [

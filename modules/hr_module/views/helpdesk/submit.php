@@ -14,12 +14,18 @@
             <?php echo form_open_multipart(admin_url('hr_module/helpdesk/submit')); ?>
               <div class="form-group">
                 <label><?php echo _l('hr_employee'); ?> <span class="text-danger">*</span></label>
-                <select name="employee_id" class="form-control" required>
+                <select name="employee_id" class="form-control" required
+                  <?php if (!empty($own_only)) echo 'disabled'; ?>>
                   <option value=""><?php echo _l('hr_select'); ?></option>
                   <?php foreach ($employees as $id => $name): ?>
-                  <option value="<?php echo $id; ?>"><?php echo htmlspecialchars($name); ?></option>
+                  <option value="<?php echo $id; ?>" <?php if (!empty($own_only)) echo 'selected'; ?>>
+                    <?php echo htmlspecialchars($name); ?>
+                  </option>
                   <?php endforeach; ?>
                 </select>
+                <?php if (!empty($own_only)): ?>
+                <input type="hidden" name="employee_id" value="<?php echo (int) $own_emp_id; ?>">
+                <?php endif; ?>
               </div>
               <div class="form-group">
                 <label><?php echo _l('hr_helpdesk_subject'); ?> <span class="text-danger">*</span></label>
