@@ -1,7 +1,7 @@
 <?php defined('BASEPATH') or exit('No direct script access allowed');
 $allowances = array_filter((array) $details, fn($d) => $d->item_type === 'allowance');
 $deductions  = array_filter((array) $details, fn($d) => $d->item_type === 'deduction');
-$status_badge = ['draft'=>'default','approved'=>'warning','paid'=>'success'];
+$status_badge = ['draft'=>'default','paid'=>'success'];
 ?>
 <?php init_head(); ?>
 <div id="wrapper">
@@ -30,7 +30,7 @@ $status_badge = ['draft'=>'default','approved'=>'warning','paid'=>'success'];
                   <?php if($payroll->designation_name): ?> &middot; <?php echo htmlspecialchars($payroll->designation_name); ?><?php endif; ?>
                 </p>
               </div>
-              <span class="label label-<?php echo $status_badge[$payroll->status]; ?> tw-text-base tw-px-3 tw-py-1">
+              <span class="label label-<?php echo $status_badge[$payroll->status] ?? 'default'; ?> tw-text-base tw-px-3 tw-py-1">
                 <?php echo ucfirst($payroll->status); ?>
               </span>
             </div>
@@ -113,13 +113,6 @@ $status_badge = ['draft'=>'default','approved'=>'warning','paid'=>'success'];
               <i class="fa fa-print tw-mr-1"></i>Print Pay Slip
             </a>
             <?php if ($payroll->status === 'draft' && staff_can('edit','hr_payroll')): ?>
-            <a href="<?php echo admin_url('hr_module/payroll/approve/'.$payroll->id); ?>"
-               class="btn btn-warning btn-block tw-mb-2"
-               onclick="return confirm('Approve this payroll?')">
-              <i class="fa fa-check tw-mr-1"></i><?php echo _l('hr_payroll_approve'); ?>
-            </a>
-            <?php endif; ?>
-            <?php if ($payroll->status === 'approved' && staff_can('edit','hr_payroll')): ?>
             <button class="btn btn-success btn-block tw-mb-2" data-toggle="modal" data-target="#markPaidModal">
               <i class="fa fa-money-bill-wave tw-mr-1"></i><?php echo _l('hr_payroll_mark_paid'); ?>
             </button>
@@ -139,11 +132,6 @@ $status_badge = ['draft'=>'default','approved'=>'warning','paid'=>'success'];
             <h5 class="tw-font-semibold">Details</h5>
             <table class="table table-condensed">
               <tr><td>Generated</td><td><?php echo date('d M Y', strtotime($payroll->created_at)); ?></td></tr>
-              <?php if ($payroll->approved_at): ?>
-              <tr><td>Approved</td><td><?php echo date('d M Y', strtotime($payroll->approved_at)); ?>
-                <?php if ($payroll->approved_by_name): ?><br><small><?php echo htmlspecialchars($payroll->approved_by_name); ?></small><?php endif; ?>
-              </td></tr>
-              <?php endif; ?>
               <?php if ($payroll->payment_date): ?>
               <tr><td>Paid On</td><td><?php echo date('d M Y', strtotime($payroll->payment_date)); ?></td></tr>
               <tr><td>Method</td><td><?php echo ucfirst(str_replace('_',' ',$payroll->payment_method)); ?></td></tr>

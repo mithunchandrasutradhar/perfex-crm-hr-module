@@ -13,6 +13,7 @@ foreach ($deduction_requests as $dr) {
     }
 }
 $req_badge = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'danger'];
+if (!isset($can_manage_deductions)) $can_manage_deductions = staff_can('edit', 'hr_loans');
 ?>
 <?php init_head(); ?>
 <div id="wrapper">
@@ -71,8 +72,10 @@ $req_badge = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'da
 
             <!-- Repayment progress -->
             <h5 class="tw-font-semibold">Repayment Progress</h5>
-            <div class="progress" style="height:10px">
-              <div class="progress-bar progress-bar-success" style="width:<?php echo $pct; ?>%"></div>
+            <div class="progress tw-my-0 progress-bar-mini">
+              <div class="progress-bar progress-bar-success no-percent-text not-dynamic" role="progressbar"
+                   aria-valuenow="<?php echo $pct; ?>" aria-valuemin="0" aria-valuemax="100"
+                   style="width: <?php echo $pct; ?>%" data-percent="<?php echo $pct; ?>"></div>
             </div>
             <p class="text-muted tw-text-sm"><?php echo $pct; ?>% repaid (<?php echo $loan->repayment_months; ?> months total)</p>
 
@@ -112,15 +115,38 @@ $req_badge = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'da
             <h5 class="tw-font-semibold tw-mt-4">Monthly Deduction Request History</h5>
             <div class="table-responsive">
               <table class="table table-condensed table-hover">
-                <thead><tr><th>Month</th><th>Requested Amount</th><th>Status</th><th>Reviewed By</th><th>Notes</th></tr></thead>
+                <thead><tr><th>Month</th><th>Requested Amount</th><th>Status</th><th>Reviewed By</th><th>Notes</th><th>Actions</th></tr></thead>
                 <tbody>
                   <?php foreach ($deduction_requests as $dr): ?>
                   <tr>
                     <td><?php echo date('F Y', mktime(0,0,0,$dr->pay_month,1,$dr->pay_year)); ?></td>
-                    <td><?php echo number_format($dr->amount, 2); ?></td>
+                    <td><?php echo $dr->is_skip ? 'Skip' : number_format($dr->amount, 2); ?></td>
                     <td><span class="label label-<?php echo $req_badge[$dr->status] ?? 'default'; ?>"><?php echo ucfirst($dr->status); ?></span></td>
                     <td><?php echo $dr->reviewed_by_name ? htmlspecialchars($dr->reviewed_by_name) : '-'; ?></td>
                     <td><?php echo $dr->notes ? htmlspecialchars($dr->notes) : '-'; ?></td>
+                    <td>
+                      <?php if ($dr->status === 'pending'): ?>
+                        <?php if (staff_can('edit','hr_loans')): ?>
+                        <a href="#" class="text-success" onclick="document.getElementById('histApp<?php echo $dr->id; ?>').submit();return false;" title="Approve"><i class="fa fa-check"></i></a>
+                        <form id="histApp<?php echo $dr->id; ?>" method="post" action="<?php echo admin_url('hr_module/loans/approve_deduction/'.$dr->id); ?>" style="display:none">
+                          <?php echo form_hidden($this->security->get_csrf_token_name(), $this->security->get_csrf_hash()); ?>
+                        </form>
+                        <a href="#" class="text-danger" onclick="document.getElementById('histRej<?php echo $dr->id; ?>').submit();return false;" title="Reject"><i class="fa fa-times"></i></a>
+                        <form id="histRej<?php echo $dr->id; ?>" method="post" action="<?php echo admin_url('hr_module/loans/reject_deduction/'.$dr->id); ?>" style="display:none">
+                          <?php echo form_hidden($this->security->get_csrf_token_name(), $this->security->get_csrf_hash()); ?>
+                        </form>
+                        <?php endif; ?>
+                        <?php if ($can_manage_deductions): ?>
+                        <a href="#" class="hr-edit-hist-request" title="Edit"
+                           data-month="<?php echo $dr->pay_month; ?>" data-year="<?php echo $dr->pay_year; ?>"
+                           data-is-skip="<?php echo $dr->is_skip; ?>" data-carry-option="<?php echo $dr->carry_option; ?>"
+                           data-notes="<?php echo htmlspecialchars($dr->notes ?? '', ENT_QUOTES); ?>"><i class="fa fa-edit"></i></a>
+                        <a href="<?php echo admin_url('hr_module/loans/delete_deduction_request/'.$dr->id); ?>" class="_delete text-danger" title="Delete"><i class="fa fa-trash"></i></a>
+                        <?php endif; ?>
+                      <?php else: ?>
+                        <span class="text-muted">—</span>
+                      <?php endif; ?>
+                    </td>
                   </tr>
                   <?php endforeach; ?>
                 </tbody>
@@ -160,46 +186,95 @@ $req_badge = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'da
               Deduction for <?php echo date('F Y'); ?>
             </h5>
 
-            <?php if ($cur_req && $cur_req->status === 'approved'): ?>
+            <?php $carry_label = ['next_month' => 'added to next month\'s deduction', 'extend_term' => 'handled by extending the repayment term by 1 month']; ?>
+
+            <?php if ($loan->carry_forward_amount > 0): ?>
+            <div class="alert alert-warning tw-py-2 tw-mb-2">
+              <i class="fa fa-exclamation-circle tw-mr-1"></i>
+              <strong><?php echo number_format($loan->carry_forward_amount, 2); ?></strong> carried over from a
+              previously skipped month — will be added on top of the next deduction request.
+            </div>
+            <?php endif; ?>
+
+            <?php if ($cur_req && $cur_req->status === 'approved' && $cur_req->payroll_id): ?>
+              <?php if ($cur_req->is_skip): ?>
+              <div class="alert alert-info tw-py-2 tw-mb-2">
+                <i class="fa fa-check-double tw-mr-1"></i>
+                This month was skipped — <?php echo $carry_label[$cur_req->carry_option] ?? 'recorded'; ?>.
+              </div>
+              <?php else: ?>
+              <div class="alert alert-info tw-py-2 tw-mb-2">
+                <i class="fa fa-check-double tw-mr-1"></i>
+                <strong><?php echo number_format($cur_req->amount, 2); ?></strong> already deducted on this month's payroll.
+                <?php if ($cur_req->carry_option): ?> The remainder was <?php echo $carry_label[$cur_req->carry_option] ?? 'recorded'; ?>.<?php endif; ?>
+              </div>
+              <?php endif; ?>
+
+            <?php elseif ($cur_req && $cur_req->status === 'approved'): ?>
+              <?php if ($cur_req->is_skip): ?>
+              <div class="alert alert-success tw-py-2 tw-mb-2">
+                <i class="fa fa-check-circle tw-mr-1"></i>
+                Skip approved — will be <?php echo $carry_label[$cur_req->carry_option] ?? 'recorded'; ?>.
+              </div>
+              <?php else: ?>
               <div class="alert alert-success tw-py-2 tw-mb-2">
                 <i class="fa fa-check-circle tw-mr-1"></i>
                 <strong><?php echo number_format($cur_req->amount, 2); ?></strong> approved — will deduct on payroll.
+                <?php if ($cur_req->carry_option): ?> The remainder will be <?php echo $carry_label[$cur_req->carry_option] ?? 'recorded'; ?>.<?php endif; ?>
               </div>
-              <?php if (staff_can('edit','hr_loans')): ?>
+              <?php endif; ?>
+              <?php if ($can_manage_deductions): ?>
               <button class="btn btn-xs btn-default tw-mt-1" disabled title="Already approved">
                 <i class="fa fa-lock tw-mr-1"></i>Locked
               </button>
               <?php endif; ?>
 
             <?php elseif ($cur_req && $cur_req->status === 'pending'): ?>
+              <?php if ($cur_req->is_skip): ?>
+              <div class="alert alert-warning tw-py-2 tw-mb-2">
+                <i class="fa fa-clock-o tw-mr-1"></i>
+                Requested to skip this month (<?php echo $carry_label[$cur_req->carry_option] ?? ''; ?>) — pending HR approval.
+              </div>
+              <?php else: ?>
               <div class="alert alert-warning tw-py-2 tw-mb-2">
                 <i class="fa fa-clock-o tw-mr-1"></i>
                 <strong><?php echo number_format($cur_req->amount, 2); ?></strong> — pending HR approval.
+                <?php if ($cur_req->carry_option): ?> The remainder would be <?php echo $carry_label[$cur_req->carry_option] ?? 'recorded'; ?>.<?php endif; ?>
               </div>
+              <?php endif; ?>
               <?php if (staff_can('edit','hr_loans')): ?>
               <button class="btn btn-xs btn-success tw-mr-1"
                       onclick="document.getElementById('appForm<?php echo $cur_req->id;?>').submit()">
                 <i class="fa fa-check tw-mr-1"></i>Approve
               </button>
               <form id="appForm<?php echo $cur_req->id;?>" method="post"
-                    action="<?php echo admin_url('hr_module/loans/approve_deduction/'.$cur_req->id); ?>" style="display:none"></form>
+                    action="<?php echo admin_url('hr_module/loans/approve_deduction/'.$cur_req->id); ?>" style="display:none">
+                <?php echo form_hidden($this->security->get_csrf_token_name(), $this->security->get_csrf_hash()); ?>
+              </form>
               <button class="btn btn-xs btn-danger tw-mr-1"
                       onclick="document.getElementById('rejForm<?php echo $cur_req->id;?>').submit()">
                 <i class="fa fa-times tw-mr-1"></i>Reject
               </button>
               <form id="rejForm<?php echo $cur_req->id;?>" method="post"
-                    action="<?php echo admin_url('hr_module/loans/reject_deduction/'.$cur_req->id); ?>" style="display:none"></form>
+                    action="<?php echo admin_url('hr_module/loans/reject_deduction/'.$cur_req->id); ?>" style="display:none">
+                <?php echo form_hidden($this->security->get_csrf_token_name(), $this->security->get_csrf_hash()); ?>
+              </form>
+              <?php endif; ?>
+              <?php if ($can_manage_deductions): ?>
               <button class="btn btn-xs btn-default tw-mt-1" data-toggle="modal" data-target="#deductModal">
                 <i class="fa fa-edit tw-mr-1"></i>Edit Request
               </button>
+              <a href="<?php echo admin_url('hr_module/loans/delete_deduction_request/'.$cur_req->id); ?>" class="btn btn-xs btn-default _delete tw-mt-1">
+                <i class="fa fa-trash tw-mr-1"></i>Delete
+              </a>
               <?php endif; ?>
 
             <?php elseif ($cur_req && $cur_req->status === 'rejected'): ?>
               <div class="alert alert-danger tw-py-2 tw-mb-2">
                 <i class="fa fa-times-circle tw-mr-1"></i>
-                Request for <strong><?php echo number_format($cur_req->amount, 2); ?></strong> was rejected.
+                <?php echo $cur_req->is_skip ? 'Skip request' : 'Request for <strong>' . number_format($cur_req->amount, 2) . '</strong>'; ?> was rejected.
               </div>
-              <?php if (staff_can('edit','hr_loans')): ?>
+              <?php if ($can_manage_deductions): ?>
               <button class="btn btn-sm btn-primary btn-block" data-toggle="modal" data-target="#deductModal">
                 <i class="fa fa-redo tw-mr-1"></i>Re-request Deduction
               </button>
@@ -207,9 +282,11 @@ $req_badge = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'da
 
             <?php else: ?>
               <p class="text-muted tw-text-sm tw-mb-2">No deduction request for this month.<br>
-                <small>Payroll will <strong>not</strong> deduct unless a request is submitted and approved.</small>
+                <small>Payroll will automatically deduct the standard installment of
+                <strong><?php echo number_format($loan->monthly_installment + $loan->carry_forward_amount, 2); ?></strong>
+                unless you submit a request to change the amount or skip this month.</small>
               </p>
-              <?php if (staff_can('edit','hr_loans')): ?>
+              <?php if ($can_manage_deductions): ?>
               <button class="btn btn-sm btn-primary btn-block" data-toggle="modal" data-target="#deductModal">
                 <i class="fa fa-plus tw-mr-1"></i>Request Deduction
               </button>
@@ -239,9 +316,11 @@ $req_badge = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'da
             </button>
             <?php endif; ?>
 
+            <?php if (staff_can('view','hr_loans')): ?>
             <a href="<?php echo admin_url('hr_module/loans/deduction_requests'); ?>" class="btn btn-default btn-block tw-mb-2">
               <i class="fa fa-list tw-mr-1"></i>All Deduction Requests
             </a>
+            <?php endif; ?>
 
             <?php if (!in_array($loan->status, ['active','closed']) && staff_can('delete','hr_loans')): ?>
             <a href="<?php echo admin_url('hr_module/loans/delete/'.$loan->id); ?>" class="btn btn-default btn-block _delete">
@@ -256,7 +335,7 @@ $req_badge = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'da
 </div>
 
 <!-- Request Deduction Modal -->
-<?php if (in_array($loan->status, ['approved','active']) && staff_can('edit','hr_loans')): ?>
+<?php if (in_array($loan->status, ['approved','active']) && $can_manage_deductions): ?>
 <div class="modal fade" id="deductModal" tabindex="-1">
   <div class="modal-dialog"><div class="modal-content">
     <div class="modal-header">
@@ -290,17 +369,61 @@ $req_badge = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'da
         </div>
       </div>
       <div class="form-group">
+        <div class="checkbox checkbox-primary">
+          <input type="checkbox" name="is_skip" id="skipCheck" value="1" <?php echo ($cur_req && $cur_req->is_skip) ? 'checked' : ''; ?>>
+          <label for="skipCheck">Skip this month — don't deduct anything</label>
+        </div>
+      </div>
+      <?php
+        // Deduction amount is chosen in steps of 500, same as the loan application's
+        // installment - the last step is always the exact outstanding balance so the
+        // loan can still be paid off in full even when that isn't a clean multiple of 500.
+        $deduct_default = $cur_req && !$cur_req->is_skip
+            ? (float) $cur_req->amount
+            : ((float) $loan->monthly_installment + (float) $loan->carry_forward_amount);
+        $deduct_outstanding = (float) $loan->outstanding;
+        $deduct_step  = 500;
+        $deduct_steps = [];
+        for ($v = $deduct_step; $v < $deduct_outstanding; $v += $deduct_step) { $deduct_steps[] = round($v, 2); }
+        $deduct_steps[] = round($deduct_outstanding, 2);
+        if ($deduct_default > 0) {
+            $has_default = false;
+            foreach ($deduct_steps as $s) { if (abs($s - $deduct_default) < 0.01) { $has_default = true; break; } }
+            if (!$has_default) { $deduct_steps[] = round($deduct_default, 2); sort($deduct_steps); }
+        }
+      ?>
+      <div class="form-group" id="amountGroup">
         <label>Deduction Amount <span class="text-danger">*</span></label>
         <div class="input-group">
           <span class="input-group-addon"><?php echo get_option('currency_symbol') ?: 'BDT'; ?></span>
-          <input type="number" step="0.01" min="0.01" max="<?php echo $loan->outstanding; ?>"
-                 name="amount" id="deductAmount" class="form-control"
-                 value="<?php echo $cur_req ? $cur_req->amount : $loan->monthly_installment; ?>" required>
+          <select name="amount" id="deductAmount" class="form-control">
+            <?php foreach ($deduct_steps as $s): ?>
+            <option value="<?php echo $s; ?>" <?php echo (abs($s - $deduct_default) < 0.01) ? 'selected' : ''; ?>>
+              <?php echo number_format($s, 2); ?><?php echo (abs($s - $deduct_outstanding) < 0.01) ? ' (full payoff)' : ''; ?>
+            </option>
+            <?php endforeach; ?>
+          </select>
         </div>
         <p class="help-block tw-text-xs">
           Default installment: <strong><?php echo number_format($loan->monthly_installment, 2); ?></strong>
+          <?php if ($loan->carry_forward_amount > 0): ?>
+          + <strong><?php echo number_format($loan->carry_forward_amount, 2); ?></strong> carried over from a skipped month
+          <?php endif; ?>
           &nbsp;&middot;&nbsp; Outstanding: <strong><?php echo number_format($loan->outstanding, 2); ?></strong>
         </p>
+      </div>
+      <div class="form-group" id="carryOptionGroup" style="display:none">
+        <label>What should happen to the remaining <span id="carryShortfallAmount">-</span>?</label>
+        <div class="radio radio-primary">
+          <input type="radio" name="carry_option" id="carryNext" value="next_month"
+                 <?php echo (!$cur_req || $cur_req->carry_option !== 'extend_term') ? 'checked' : ''; ?>>
+          <label for="carryNext">Add it to next month's deduction</label>
+        </div>
+        <div class="radio radio-primary">
+          <input type="radio" name="carry_option" id="carryExtend" value="extend_term"
+                 <?php echo ($cur_req && $cur_req->carry_option === 'extend_term') ? 'checked' : ''; ?>>
+          <label for="carryExtend">Extend repayment period by 1 month instead</label>
+        </div>
       </div>
       <div class="form-group">
         <label>Notes <small class="text-muted">(optional — reason for custom amount or skip)</small></label>
@@ -387,3 +510,39 @@ $req_badge = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'da
   </div></div>
 </div>
 <?php init_tail(); ?>
+<script>
+$(function () {
+    var totalDue = <?php echo (float) $loan->monthly_installment + (float) $loan->carry_forward_amount; ?>;
+
+    function toggleSkip() {
+        var skip   = $('#skipCheck').is(':checked');
+        var amount = parseFloat($('#deductAmount').val()) || 0;
+        var shortfall = skip ? totalDue : Math.max(0, totalDue - amount);
+        var showCarry = shortfall > 0;
+
+        $('#amountGroup').toggle(!skip);
+        $('#carryOptionGroup').toggle(showCarry);
+        $('#deductAmount').prop('required', !skip);
+        if (showCarry) $('#carryShortfallAmount').text(shortfall.toFixed(2));
+    }
+    $('#skipCheck').on('change', toggleSkip);
+    $('#deductAmount').on('change', toggleSkip);
+    toggleSkip();
+
+    // Editing a pending request from the history table (any month, not just the current
+    // one) - point the shared modal at that month/year and restore its skip/carry choice.
+    // The amount dropdown keeps the loan's current steps; pick again if it needs changing.
+    $(document).on('click', '.hr-edit-hist-request', function (e) {
+        e.preventDefault();
+        var $el = $(this);
+        $('select[name="pay_month"]').val($el.data('month'));
+        $('select[name="pay_year"]').val($el.data('year'));
+        $('#skipCheck').prop('checked', $el.data('is-skip') == 1);
+        if ($el.data('carry-option') === 'extend_term') $('#carryExtend').prop('checked', true);
+        else $('#carryNext').prop('checked', true);
+        $('textarea[name="notes"]').val($el.data('notes') || '');
+        toggleSkip();
+        $('#deductModal').modal('show');
+    });
+});
+</script>

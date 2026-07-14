@@ -32,16 +32,29 @@ function ev($obj, $key, $default = '') {
         <div class="row">
           <div class="col-md-5">
             <div class="form-group tw-mb-0">
-              <select name="staff_id" id="staff_id_select" class="form-control" required
-                      <?php echo $is_edit ? '' : ''; ?>>
+              <select name="staff_id" id="staff_id_select" class="form-control selectpicker" required
+                      data-live-search="true"
+                      data-none-selected-text="— Choose a staff member —"
+                      data-width="100%">
                 <option value="">— Choose a staff member —</option>
                 <?php foreach ($staff_members as $s): ?>
+                <?php
+                // Only emit a photo URL when the resized thumbnail actually exists on
+                // disk - otherwise the <img> 404s and shows a broken-image icon.
+                $s_photo_url = '';
+                if (!empty($s->profile_image)) {
+                    $s_photo_path = 'uploads/staff_profile_images/' . $s->staffid . '/small_' . $s->profile_image;
+                    if (file_exists($s_photo_path)) {
+                        $s_photo_url = base_url($s_photo_path);
+                    }
+                }
+                ?>
                 <option value="<?php echo $s->staffid; ?>"
                         data-firstname="<?php echo htmlspecialchars($s->firstname); ?>"
                         data-lastname="<?php echo htmlspecialchars($s->lastname); ?>"
                         data-email="<?php echo htmlspecialchars($s->email); ?>"
                         data-phone="<?php echo htmlspecialchars($s->phonenumber ?? ''); ?>"
-                        data-photo="<?php echo htmlspecialchars($s->profile_image ?? ''); ?>"
+                        data-photo="<?php echo htmlspecialchars($s_photo_url); ?>"
                         <?php echo ($is_edit && $e->staff_id == $s->staffid) ? 'selected' : ''; ?>>
                   <?php echo htmlspecialchars($s->firstname . ' ' . $s->lastname); ?>
                   (<?php echo htmlspecialchars($s->email); ?>)
@@ -156,10 +169,17 @@ function ev($obj, $key, $default = '') {
               <textarea name="notes" class="form-control" rows="2"><?php echo $is_edit ? ev($e,'notes') : ''; ?></textarea>
             </div>
             <div class="form-group">
-              <div class="checkbox checkbox-primary">
-                <input type="checkbox" name="status" id="emp_status" value="1" <?php if(!$is_edit || $e->status == 1) echo 'checked'; ?>>
-                <label for="emp_status"><?php echo _l('hr_active'); ?></label>
-              </div>
+              <label class="tw-block tw-mb-1"><?php echo _l('hr_status'); ?></label>
+              <?php if ($is_edit): ?>
+                <?php if ($e->staff_active == 1): ?>
+                <span class="label label-success"><?php echo _l('hr_active'); ?></span>
+                <?php else: ?>
+                <span class="label label-danger"><?php echo _l('hr_inactive'); ?></span>
+                <?php endif; ?>
+              <?php endif; ?>
+              <p class="help-block tw-text-xs tw-mt-1 tw-mb-0">
+                <?php echo _l('hr_employee_status_follows_staff'); ?>
+              </p>
             </div>
           </div>
         </div>
@@ -348,9 +368,8 @@ $(function(){
         $('#preview-name').text(fullname);
         $('#preview-email').text(email || '');
         $('#preview-phone').text(phone || '');
-        if (photo && staffId) {
-            var imgUrl = '<?php echo base_url('uploads/staff_profile_images/'); ?>' + staffId + '/small_' + photo;
-            $('#staff-photo-img').attr('src', imgUrl).show();
+        if (photo) {
+            $('#staff-photo-img').attr('src', photo).show();
             $('#staff-photo-initials').hide();
         } else {
             $('#staff-photo-img').hide();
@@ -386,16 +405,6 @@ $(function(){
             $('#photo-preview').html('<img src="' + e.target.result + '" class="img-circle" width="80" height="80" style="object-fit:cover" id="preview-img">');
         };
         reader.readAsDataURL(file);
-    });
-
-    // Filter designations by department
-    $('#emp_dept').on('change', function(){
-        var dept_id = $(this).val();
-        $.getJSON('<?php echo admin_url('hr_module/employees/get_designations_by_dept'); ?>',
-            { dept_id: dept_id }, function(data){
-            var $sel = $('#emp_designation').empty().append('<option value=""><?php echo _l('hr_select'); ?></option>');
-            $.each(data, function(i, d){ $sel.append('<option value="' + d.id + '">' + d.name + '</option>'); });
-        });
     });
 });
 </script>

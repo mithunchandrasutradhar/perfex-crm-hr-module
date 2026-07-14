@@ -28,7 +28,6 @@
         <div class="panel_s">
           <div class="panel-body panel-table-full">
             <?php render_datatable([
-              '',
               _l('hr_employee_code'),
               _l('hr_employee_full_name'),
               _l('hr_department'),
@@ -36,7 +35,6 @@
               _l('hr_email'),
               _l('hr_employee_joining_date'),
               _l('hr_status'),
-              _l('hr_actions'),
             ], 'hr-employees'); ?>
           </div>
         </div>
@@ -47,7 +45,7 @@
 <?php init_tail(); ?>
 <script>
 $(function(){
-    var table = initDataTable('.table-hr-employees', window.location.href, [0, 8], [0, 8]);
+    var table = initDataTable('.table-hr-employees', window.location.href, [], []);
 
     function reloadWithFilters() {
         var url = window.location.href.split('?')[0]

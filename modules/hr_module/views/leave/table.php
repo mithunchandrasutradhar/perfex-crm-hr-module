@@ -16,6 +16,14 @@ if (!is_admin() && !staff_can('view', 'hr_leave')) {
 
 $rows = $CI->Leave_model->get_request(null, $filters);
 
+// Fetch each request's day-type composition in one batched query (not per-row) so the
+// list can show "Half Day (Before Lunch)" etc. instead of a bare total.
+$day_types_by_request = [];
+$ids = array_column($rows, 'id');
+if ($ids) {
+    $day_types_by_request = $CI->Leave_model->get_day_types_for_requests($ids);
+}
+
 $output = [
     'draw'                 => intval($CI->input->post('draw')),
     'iTotalRecords'        => count($rows),
@@ -36,13 +44,28 @@ foreach ($rows as $r) {
     if (staff_can('delete', 'hr_leave') && in_array($r->status, ['rejected', 'cancelled'])) {
         $actions .= ' <a href="' . admin_url('hr_module/leave/delete/' . $r->id) . '" class="btn btn-danger btn-xs _delete"><i class="fa fa-times"></i></a>';
     }
+    $types = $day_types_by_request[$r->id] ?? [];
+    // For a single-day request, show exactly which half/type it is. For multi-day
+    // requests, only call out the non-obvious types (half/hourly) - "Full" alone
+    // on every day isn't worth repeating.
+    $days_cell = $r->total_days;
+    if (count($types) === 1) {
+        $days_cell .= '<br><small class="text-muted">' . htmlspecialchars(hr_leave_day_type_label($types[0])) . '</small>';
+    } else {
+        $notable = array_diff(array_unique($types), ['full', 'bridge']);
+        if ($notable) {
+            $labels = array_map('hr_leave_day_type_label', $notable);
+            $days_cell .= '<br><small class="text-muted">' . htmlspecialchars(implode(', ', $labels)) . '</small>';
+        }
+    }
+
     $output['aaData'][] = [
         $r->id,
         '<a href="' . admin_url('hr_module/employees/view/' . $r->employee_id) . '">' . htmlspecialchars($r->employee_name) . '</a><br><small class="text-muted">' . $r->employee_code . '</small>',
         htmlspecialchars($r->leave_type_name),
         _d($r->from_date),
         _d($r->to_date),
-        $r->total_days . ($r->is_half_day ? ' <span class="label label-info">Half</span>' : ''),
+        $days_cell,
         $badge,
         _d($r->created_at),
         $actions,

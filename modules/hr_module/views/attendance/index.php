@@ -53,7 +53,7 @@ if (!isset($is_global))   $is_global   = is_admin() || staff_can('view', 'hr_att
             <?php render_datatable([
               _l('hr_employee'), _l('hr_department'),
               _l('hr_attendance_date'), _l('hr_attendance_in_time'), _l('hr_attendance_out_time'),
-              _l('hr_attendance_working_hours'), _l('hr_status'), 'Source', _l('hr_actions'),
+              _l('hr_attendance_working_hours'), _l('hr_status'), 'Source',
             ], 'hr-attendance'); ?>
           </div>
         </div>

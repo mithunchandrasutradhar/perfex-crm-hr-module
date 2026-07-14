@@ -45,14 +45,24 @@ class Holidays_model extends App_Model
 
     public function get_dates_in_range($from_date, $to_date)
     {
+        return array_keys($this->get_holiday_names_in_range($from_date, $to_date));
+    }
+
+    public function get_holiday_names_in_range($from_date, $to_date)
+    {
         $rows = $this->db->where('holiday_date >=', $from_date)
             ->where('holiday_date <=', $to_date)
             ->get($this->tbl)->result();
-        $dates = [];
+        $map = [];
         foreach ($rows as $row) {
-            $dates[] = $row->holiday_date;
+            $map[$row->holiday_date] = $row->name;
         }
-        return $dates;
+        return $map;
+    }
+
+    public function get_holiday_on_date($date)
+    {
+        return $this->db->where('holiday_date', $date)->get($this->tbl)->row();
     }
 
     public function get_weekly_off_days()

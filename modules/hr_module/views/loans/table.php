@@ -30,14 +30,23 @@ foreach ($rows as $r) {
     $progress = '';
     if ($r->amount > 0) {
         $pct      = min(100, round(($r->total_repaid / $r->amount) * 100));
-        $progress = '<div class="progress tw-mb-0" style="height:6px;min-width:80px"><div class="progress-bar progress-bar-success" style="width:' . $pct . '%"></div></div><small class="text-muted">' . $pct . '%</small>';
+        $progress = '<small class="text-muted">' . $pct . '%</small>'
+            . '<div class="progress tw-my-0 progress-bar-mini" style="min-width:80px">'
+            . '<div class="progress-bar progress-bar-success no-percent-text not-dynamic" role="progressbar" '
+            . 'aria-valuenow="' . $pct . '" aria-valuemin="0" aria-valuemax="100" '
+            . 'style="width: ' . $pct . '%" data-percent="' . $pct . '"></div></div>';
     }
-    $actions = '<a href="' . admin_url('hr_module/loans/view/' . $r->id) . '" class="btn btn-default btn-xs"><i class="fa fa-eye"></i></a> ';
+    $view_url = admin_url('hr_module/loans/view/' . $r->id);
+    $employee_cell = '<a href="' . $view_url . '">' . htmlspecialchars($r->first_name . ' ' . $r->last_name) . '</a><br><small class="text-muted">' . $r->employee_code . '</small>';
+    $options = [];
+    $options[] = '<a href="' . $view_url . '">' . _l('hr_view') . '</a>';
     if (staff_can('delete', 'hr_loans') && !in_array($r->status, ['active', 'closed'])) {
-        $actions .= '<a href="' . admin_url('hr_module/loans/delete/' . $r->id) . '" class="btn btn-danger btn-xs _delete"><i class="fa fa-times"></i></a>';
+        $options[] = '<a href="' . admin_url('hr_module/loans/delete/' . $r->id) . '" class="_delete text-danger">' . _l('hr_delete') . '</a>';
     }
-    $output['aaData'][] = [
-        '<a href="' . admin_url('hr_module/loans/view/' . $r->id) . '">' . htmlspecialchars($r->first_name . ' ' . $r->last_name) . '</a><br><small class="text-muted">' . $r->employee_code . '</small>',
+    $employee_cell .= '<div class="row-options">' . implode(' | ', $options) . '</div>';
+
+    $row = [
+        $employee_cell,
         $r->department_name ? htmlspecialchars($r->department_name) : '-',
         number_format($r->amount, 2),
         number_format($r->monthly_installment, 2),
@@ -45,6 +54,7 @@ foreach ($rows as $r) {
         $progress,
         $status,
         $r->disbursement_date ? date('d M Y', strtotime($r->disbursement_date)) : '-',
-        $actions,
     ];
+    $row['DT_RowClass'] = 'has-row-options';
+    $output['aaData'][] = $row;
 }

@@ -1,5 +1,13 @@
 <?php defined('BASEPATH') or exit('No direct script access allowed');
 $badge = ['pending'=>'default','approved'=>'success','rejected'=>'danger'];
+$day_type_labels = [
+    'weekend'            => _l('hr_overtime_weekend'),
+    'government_holiday' => _l('hr_overtime_government_holiday'),
+    'company_holiday'    => _l('hr_overtime_company_holiday'),
+];
+// The request's owner may edit/delete their own pending request even without the
+// module-wide edit/delete capability - mirrors the list page's row-options.
+$can_self_edit = (int) $overtime->employee_id === hr_get_own_employee_id() && staff_can('create', 'hr_overtime');
 ?>
 <?php init_head(); ?>
 <div id="wrapper">
@@ -36,23 +44,38 @@ $badge = ['pending'=>'default','approved'=>'success','rejected'=>'danger'];
             </div>
 
             <div class="row">
-              <div class="col-md-3 col-sm-6"><div class="panel_s" style="background:#eff6ff"><div class="panel-body tw-text-center tw-py-2">
-                <div class="tw-font-bold tw-text-lg text-primary"><?php echo date('d M Y', strtotime($overtime->overtime_date)); ?></div>
-                <div class="tw-text-xs text-muted">Date</div>
+              <div class="col-md-4 col-sm-6"><div class="panel_s" style="background:#eff6ff"><div class="panel-body tw-text-center tw-py-2">
+                <div class="tw-font-bold tw-text-lg text-primary">
+                  <?php echo $overtime->first_date === $overtime->last_date
+                      ? date('d M Y', strtotime($overtime->first_date))
+                      : date('d M', strtotime($overtime->first_date)) . ' - ' . date('d M Y', strtotime($overtime->last_date)); ?>
+                </div>
+                <div class="tw-text-xs text-muted">Period</div>
               </div></div></div>
-              <div class="col-md-3 col-sm-6"><div class="panel_s" style="background:#f0fdf4"><div class="panel-body tw-text-center tw-py-2">
-                <div class="tw-font-bold tw-text-lg text-success"><?php echo $overtime->hours; ?> hrs</div>
-                <div class="tw-text-xs text-muted">Hours</div>
+              <div class="col-md-4 col-sm-6"><div class="panel_s" style="background:#f0fdf4"><div class="panel-body tw-text-center tw-py-2">
+                <div class="tw-font-bold tw-text-lg text-success"><?php echo $overtime->day_count; ?> <?php echo $overtime->day_count == 1 ? 'day' : 'days'; ?></div>
+                <div class="tw-text-xs text-muted"><?php echo implode(', ', array_map(function($t) use ($day_type_labels){ return $day_type_labels[$t] ?? $t; }, explode(',', $overtime->day_types))); ?></div>
               </div></div></div>
-              <div class="col-md-3 col-sm-6"><div class="panel_s" style="background:#fff7ed"><div class="panel-body tw-text-center tw-py-2">
-                <div class="tw-font-bold tw-text-lg text-warning"><?php echo $overtime->rate_multiplier; ?>x</div>
-                <div class="tw-text-xs text-muted">Rate</div>
-              </div></div></div>
-              <div class="col-md-3 col-sm-6"><div class="panel_s" style="background:#f8fafc"><div class="panel-body tw-text-center tw-py-2">
+              <div class="col-md-4 col-sm-6"><div class="panel_s" style="background:#f8fafc"><div class="panel-body tw-text-center tw-py-2">
                 <div class="tw-font-bold tw-text-lg"><?php echo number_format($overtime->total_amount, 2); ?></div>
-                <div class="tw-text-xs text-muted">Amount</div>
+                <div class="tw-text-xs text-muted">Total Amount</div>
               </div></div></div>
             </div>
+
+            <h5 class="tw-font-semibold tw-mt-3">Overtime Dates</h5>
+            <table class="table table-condensed tw-mb-0">
+              <thead><tr><th>Date</th><th>Day Type</th><th>Rate</th><th class="text-right">Amount</th></tr></thead>
+              <tbody>
+              <?php foreach ($dates as $d): ?>
+              <tr>
+                <td><?php echo date('D, d M Y', strtotime($d->overtime_date)); ?></td>
+                <td><?php echo $day_type_labels[$d->day_type] ?? '-'; ?><?php if ($d->holiday_name): ?> <small class="text-muted">(<?php echo htmlspecialchars($d->holiday_name); ?>)</small><?php endif; ?></td>
+                <td><?php echo $d->rate_multiplier; ?>x</td>
+                <td class="text-right"><?php echo number_format($d->total_amount, 2); ?></td>
+              </tr>
+              <?php endforeach; ?>
+              </tbody>
+            </table>
 
             <?php if ($overtime->reason): ?>
             <h5 class="tw-font-semibold tw-mt-2">Reason</h5>
@@ -94,11 +117,13 @@ $badge = ['pending'=>'default','approved'=>'success','rejected'=>'danger'];
               <button class="btn btn-danger btn-block tw-mb-2" data-toggle="modal" data-target="#rejectModal">
                 <i class="fa fa-times tw-mr-1"></i><?php echo _l('hr_overtime_reject'); ?>
               </button>
+              <?php endif; ?>
+              <?php if (staff_can('edit','hr_overtime') || $can_self_edit): ?>
               <a href="<?php echo admin_url('hr_module/overtime/edit/'.$overtime->id); ?>" class="btn btn-default btn-block tw-mb-2">
                 <i class="fa fa-pencil-alt tw-mr-1"></i><?php echo _l('hr_overtime_edit'); ?>
               </a>
               <?php endif; ?>
-              <?php if (staff_can('delete','hr_overtime')): ?>
+              <?php if (staff_can('delete','hr_overtime') || $can_self_edit): ?>
               <a href="<?php echo admin_url('hr_module/overtime/delete/'.$overtime->id); ?>" class="btn btn-default btn-block _delete">
                 <i class="fa fa-trash tw-mr-1"></i>Delete
               </a>

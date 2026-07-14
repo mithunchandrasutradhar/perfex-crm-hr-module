@@ -36,23 +36,23 @@ class Leave extends AdminController
         $own_emp_id = $own_only ? hr_get_own_employee_id() : 0;
 
         if ($this->input->post()) {
-            // Convert datepicker format (DD-MM-YYYY or any locale) to SQL YYYY-MM-DD
-            $from = date('Y-m-d', strtotime($this->input->post('from_date')));
-            $to   = date('Y-m-d', strtotime($this->input->post('to_date')));
-            $half_day = (int) $this->input->post('is_half_day');
-            $days     = $this->Leave_model->calculate_days($from, $to, $half_day);
-
             // view_own users can only apply for themselves — ignore any spoofed employee_id
             $posted_emp_id = (int) $this->input->post('employee_id');
             $resolved_emp_id = $own_only ? $own_emp_id : $posted_emp_id;
 
+            $leave_type = $this->Leave_model->get_type((int) $this->input->post('leave_type_id'));
+
+            $days = ($leave_type && $leave_type->is_date_range)
+                ? $this->_build_range_days()
+                : $this->_parse_posted_days();
+            if ($days === null) {
+                set_alert('danger', _l('hr_val_no_leave_days'));
+                redirect(admin_url('hr_module/leave/apply'));
+            }
+
             $data = [
                 'employee_id'   => $resolved_emp_id,
                 'leave_type_id' => (int) $this->input->post('leave_type_id'),
-                'from_date'     => $from,
-                'to_date'       => $to,
-                'total_days'    => $days,
-                'is_half_day'   => $half_day,
                 'reason'        => $this->input->post('reason', true),
             ];
 
@@ -71,7 +71,7 @@ class Leave extends AdminController
                 }
             }
 
-            $result = $this->Leave_model->apply($data);
+            $result = $this->Leave_model->apply($data, $days);
             if ($result['success']) {
                 set_alert('success', _l('hr_leave_applied_msg'));
                 redirect(admin_url('hr_module/leave/view/' . $result['id']));
@@ -116,6 +116,7 @@ class Leave extends AdminController
 
         $data['title']   = _l('hr_leave_view') . ' #' . $id;
         $data['request'] = $request;
+        $data['days']    = $this->Leave_model->get_request_days($id);
         $data['balance'] = $this->Leave_model->get_balance(
             $request->employee_id, $request->leave_type_id, date('Y', strtotime($request->from_date))
         );
@@ -184,5 +185,58 @@ class Leave extends AdminController
             $remaining = $balance->allocated_days + $balance->carry_forward_days - $balance->used_days;
         }
         echo json_encode(['balance' => $balance, 'remaining' => $remaining]);
+    }
+
+    // Parses the day-by-day rows posted from the apply form (days[i][date/type/half_period/hour_start/hour_end])
+    // into the ['date', 'type', 'hour_start', 'hour_end'] shape Leave_model::apply() expects.
+    // Returns null if no valid day rows were submitted.
+    private function _parse_posted_days()
+    {
+        $posted = $this->input->post('days');
+        if (empty($posted) || !is_array($posted)) return null;
+
+        $days = [];
+        foreach ($posted as $row) {
+            if (empty($row['date']) || empty($row['type'])) continue;
+
+            $type = $row['type'];
+            if ($type === 'half') {
+                $period   = ($row['half_period'] ?? '') === 'after_lunch' ? 'after_lunch' : 'before_lunch';
+                $day_type = 'half_' . $period;
+            } else {
+                $day_type = $type;
+            }
+
+            $days[] = [
+                'date'       => to_sql_date($row['date']),
+                'type'       => $day_type,
+                'hour_start' => $row['hour_start'] ?? null,
+                'hour_end'   => $row['hour_end'] ?? null,
+            ];
+        }
+
+        return $days ?: null;
+    }
+
+    // For date-range leave types (e.g. Maternity Leave): builds one 'full' day entry
+    // per calendar day between range_from_date and range_to_date, inclusive, in the
+    // same shape Leave_model::apply() expects. Returns null if the range is missing
+    // or invalid.
+    private function _build_range_days()
+    {
+        $from = to_sql_date($this->input->post('range_from_date'));
+        $to   = to_sql_date($this->input->post('range_to_date'));
+        if (!$from || !$to || $to < $from) return null;
+
+        $days = [];
+        for ($ts = strtotime($from); $ts <= strtotime($to); $ts += 86400) {
+            $days[] = [
+                'date'       => date('Y-m-d', $ts),
+                'type'       => 'full',
+                'hour_start' => null,
+                'hour_end'   => null,
+            ];
+        }
+        return $days ?: null;
     }
 }

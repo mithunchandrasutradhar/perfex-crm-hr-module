@@ -3,7 +3,6 @@ defined('BASEPATH') or exit('No direct script access allowed');
 
 $CI = &get_instance();
 $CI->load->model('hr_module/Designations_model');
-$CI->load->model('hr_module/Departments_model');
 
 $rows = $CI->Designations_model->get();
 
@@ -15,29 +14,25 @@ $output = [
 ];
 
 foreach ($rows as $row) {
-    $dept = '-';
-    if ($row->department_id) {
-        $d = $CI->Departments_model->get($row->department_id);
-        if ($d) $dept = htmlspecialchars($d->name);
-    }
     $total = $CI->Designations_model->total_employees($row->id);
     $badge = $row->status == 1
         ? '<span class="label label-success">' . _l('hr_active') . '</span>'
         : '<span class="label label-default">' . _l('hr_inactive') . '</span>';
 
-    $actions = '';
+    // Standard Perfex row-options: plain text links under the name, not icon buttons
+    $name  = htmlspecialchars($row->name);
+    $name .= '<div class="row-options">';
+    $first = true;
     if (staff_can('edit', 'hr_departments')) {
-        $actions .= '<a href="#" class="btn btn-default btn-xs hr-edit-desig" data-id="' . $row->id . '" title="' . _l('hr_edit') . '"><i class="fa fa-pencil-alt"></i></a> ';
+        $name .= '<a href="' . admin_url('hr_module/designations/edit/' . $row->id) . '">' . _l('hr_edit') . '</a>';
+        $first = false;
     }
     if (staff_can('delete', 'hr_departments')) {
-        $actions .= '<a href="#" class="btn btn-danger btn-xs hr-delete-desig" data-id="' . $row->id . '" data-name="' . htmlspecialchars($row->name) . '" title="' . _l('hr_delete') . '"><i class="fa fa-times"></i></a>';
+        $name .= ($first ? '' : ' | ') . '<a href="' . admin_url('hr_module/designations/delete/' . $row->id) . '" class="_delete text-danger">' . _l('hr_delete') . '</a>';
     }
+    $name .= '</div>';
 
-    $output['aaData'][] = [
-        htmlspecialchars($row->name),
-        $dept,
-        $total,
-        $badge,
-        $actions,
-    ];
+    $aRow = [$name, $total, $badge];
+    $aRow['DT_RowClass'] = 'has-row-options';
+    $output['aaData'][] = $aRow;
 }

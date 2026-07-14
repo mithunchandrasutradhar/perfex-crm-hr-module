@@ -14,7 +14,7 @@ class Performance extends AdminController
     public function index()
     {
         if (staff_cant('view', 'hr_performance') && staff_cant('view_own', 'hr_performance')) access_denied('hr_performance');
-        if ($this->input->is_ajax_request() && !$this->input->post()) {
+        if ($this->input->is_ajax_request()) {
             $this->app->get_table_data(module_views_path('hr_module', 'performance/table'));
             return;
         }

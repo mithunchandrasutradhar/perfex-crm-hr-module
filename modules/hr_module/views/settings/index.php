@@ -15,7 +15,7 @@ $can_edit = staff_can('edit', 'hr_settings') || is_admin();
             </div>
         </div>
 
-        <form id="hr-settings-form">
+        <form id="hr-settings-form" method="post">
             <?php echo form_hidden($this->security->get_csrf_token_name(), $this->security->get_csrf_hash()); ?>
 
             <!-- General Settings -->
@@ -74,6 +74,30 @@ $can_edit = staff_can('edit', 'hr_settings') || is_admin();
                 </div>
             </div>
 
+            <?php if (staff_can('view', 'hr_departments')): ?>
+            <!-- Company Structure -->
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="panel_s">
+                        <div class="panel-body">
+                            <h5 class="tw-font-semibold tw-border-b tw-pb-2 tw-mb-4">
+                                <i class="fa fa-sitemap tw-mr-2"></i><?php echo _l('hr_settings_company_structure'); ?>
+                            </h5>
+                            <div class="row">
+                                <div class="col-md-3 col-sm-6">
+                                    <div class="form-group">
+                                        <a href="<?php echo admin_url('hr_module/designations'); ?>" class="btn btn-default btn-sm">
+                                            <i class="fa fa-id-badge"></i> <?php echo _l('hr_menu_designations'); ?>
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <?php endif; ?>
+
             <!-- Attendance Settings -->
             <div class="row">
                 <div class="col-md-12">
@@ -128,6 +152,14 @@ $can_edit = staff_can('edit', 'hr_settings') || is_admin();
                                         <label><?php echo _l('hr_settings_overtime_rate'); ?></label>
                                         <input type="number" name="default_overtime_rate" class="form-control" step="0.1" min="1" max="5"
                                             value="<?php echo isset($settings['default_overtime_rate']) ? $settings['default_overtime_rate'] : '1.5'; ?>"
+                                            <?php echo !$can_edit ? 'readonly' : ''; ?>>
+                                    </div>
+                                </div>
+                                <div class="col-md-3 col-sm-6">
+                                    <div class="form-group">
+                                        <label><?php echo _l('hr_settings_overtime_holiday_rate'); ?></label>
+                                        <input type="number" name="overtime_holiday_rate" class="form-control" step="0.1" min="1" max="5"
+                                            value="<?php echo isset($settings['overtime_holiday_rate']) ? $settings['overtime_holiday_rate'] : '2.0'; ?>"
                                             <?php echo !$can_edit ? 'readonly' : ''; ?>>
                                     </div>
                                 </div>
@@ -211,6 +243,27 @@ $can_edit = staff_can('edit', 'hr_settings') || is_admin();
                     </div>
                 </div>
             </div>
+
+            <?php if (is_admin()): ?>
+            <!-- Danger Zone -->
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="panel_s tw-border tw-border-red-300">
+                        <div class="panel-body">
+                            <h5 class="tw-font-semibold tw-border-b tw-pb-2 tw-mb-4 tw-text-red-600">
+                                <i class="fa fa-exclamation-triangle tw-mr-2"></i><?php echo _l('hr_settings_danger_zone'); ?>
+                            </h5>
+                            <div class="checkbox checkbox-danger">
+                                <input type="checkbox" name="allow_data_removal_on_uninstall" id="setting_allow_data_removal_on_uninstall" value="1"
+                                    <?php echo isset($settings['allow_data_removal_on_uninstall']) && $settings['allow_data_removal_on_uninstall'] == '1' ? 'checked' : ''; ?>>
+                                <label for="setting_allow_data_removal_on_uninstall"><?php echo _l('hr_settings_allow_data_removal'); ?></label>
+                            </div>
+                            <p class="text-muted tw-mt-2 tw-mb-0"><?php echo _l('hr_settings_allow_data_removal_hint'); ?></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <?php endif; ?>
 
             <?php if ($can_edit): ?>
             <div class="row">

@@ -3,7 +3,27 @@ defined('BASEPATH') or exit('No direct script access allowed');
 
 $CI = &get_instance();
 
+// Data removal is opt-in: by default, uninstalling the module only removes it
+// from the modules registry and leaves all HR data intact. An admin must
+// explicitly enable "Allow HR data removal on uninstall" in module settings
+// before the tables below are dropped.
+$data_removal_allowed = false;
+if ($CI->db->table_exists(db_prefix() . 'hr_settings')) {
+    $CI->db->where('setting_key', 'allow_data_removal_on_uninstall');
+    $setting = $CI->db->get(db_prefix() . 'hr_settings')->row();
+    $data_removal_allowed = $setting && $setting->setting_value == '1';
+}
+
+if (!$data_removal_allowed) {
+    log_activity('HR Module uninstalled - data preserved (allow_data_removal_on_uninstall was not enabled)');
+    return;
+}
+
+log_activity('HR Module uninstalled - data removal was explicitly enabled, dropping all HR tables');
+
 $tables = [
+    'hr_loan_deduction_requests',
+    'hr_holidays',
     'hr_settings',
     'hr_audit_trail',
     'hr_helpdesk_replies',
@@ -23,6 +43,7 @@ $tables = [
     'hr_zkteco_devices',
     'hr_attendance',
     'hr_leave_balances',
+    'hr_leave_request_days',
     'hr_leave_requests',
     'hr_leave_types',
     'hr_employees',

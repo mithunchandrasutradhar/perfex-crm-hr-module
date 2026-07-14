@@ -27,7 +27,6 @@ if (!$CI->db->table_exists(db_prefix() . 'hr_designations')) {
     $CI->db->query('CREATE TABLE `' . db_prefix() . 'hr_designations` (
       `id` int(11) NOT NULL,
       `name` varchar(191) NOT NULL,
-      `department_id` int(11) DEFAULT NULL,
       `description` text DEFAULT NULL,
       `status` tinyint(1) NOT NULL DEFAULT 1,
       `created_at` datetime NOT NULL,
@@ -43,6 +42,13 @@ if ($CI->db->table_exists(db_prefix() . 'hr_designations')) {
     $col = $CI->db->query("SHOW COLUMNS FROM `" . db_prefix() . "hr_designations` LIKE 'status'")->num_rows();
     if ($col === 0) {
         $CI->db->query("ALTER TABLE `" . db_prefix() . "hr_designations` ADD COLUMN `status` tinyint(1) NOT NULL DEFAULT 1");
+    }
+}
+// Upgrade: designations are independent of department - drop the old column if present
+if ($CI->db->table_exists(db_prefix() . 'hr_designations')) {
+    $col = $CI->db->query("SHOW COLUMNS FROM `" . db_prefix() . "hr_designations` LIKE 'department_id'")->num_rows();
+    if ($col > 0) {
+        $CI->db->query("ALTER TABLE `" . db_prefix() . "hr_designations` DROP COLUMN `department_id`");
     }
 }
 
@@ -97,10 +103,12 @@ if (!$CI->db->table_exists(db_prefix() . 'hr_leave_types')) {
       `id` int(11) NOT NULL,
       `name` varchar(191) NOT NULL,
       `days_per_year` int(11) NOT NULL DEFAULT 0,
+      `hours_per_day` decimal(4,1) NOT NULL DEFAULT 8.0,
       `carry_forward` tinyint(1) NOT NULL DEFAULT 0,
       `max_carry_forward_days` int(11) NOT NULL DEFAULT 0,
       `requires_attachment` tinyint(1) NOT NULL DEFAULT 0,
       `allow_half_day` tinyint(1) NOT NULL DEFAULT 1,
+      `is_date_range` tinyint(1) NOT NULL DEFAULT 0,
       `description` text DEFAULT NULL,
       `status` tinyint(1) NOT NULL DEFAULT 1,
       `created_at` datetime NOT NULL,
@@ -113,13 +121,30 @@ if (!$CI->db->table_exists(db_prefix() . 'hr_leave_types')) {
 
     // Default leave types
     $now = date('Y-m-d H:i:s');
-    $CI->db->query("INSERT INTO `" . db_prefix() . "hr_leave_types` (`name`, `days_per_year`, `carry_forward`, `requires_attachment`, `allow_half_day`, `description`, `status`, `created_at`) VALUES
-      ('Annual Leave', 15, 1, 0, 1, 'Regular annual leave entitlement', 1, '$now'),
-      ('Sick Leave', 14, 0, 1, 1, 'Sick leave with medical certificate', 1, '$now'),
-      ('Casual Leave', 10, 0, 0, 1, 'Casual leave for personal reasons', 1, '$now'),
-      ('Maternity Leave', 120, 0, 1, 0, 'Maternity leave for female employees', 1, '$now'),
-      ('Paternity Leave', 5, 0, 0, 0, 'Paternity leave for male employees', 1, '$now'),
-      ('Unpaid Leave', 0, 0, 0, 1, 'Leave without pay', 1, '$now')");
+    $CI->db->query("INSERT INTO `" . db_prefix() . "hr_leave_types` (`name`, `days_per_year`, `hours_per_day`, `carry_forward`, `requires_attachment`, `allow_half_day`, `is_date_range`, `description`, `status`, `created_at`) VALUES
+      ('Annual Leave', 15, 8.0, 1, 0, 1, 0, 'Regular annual leave entitlement', 1, '$now'),
+      ('Sick Leave', 14, 8.0, 0, 1, 1, 0, 'Sick leave with medical certificate', 1, '$now'),
+      ('Casual Leave', 10, 8.0, 0, 0, 1, 0, 'Casual leave for personal reasons', 1, '$now'),
+      ('Maternity Leave', 120, 8.0, 0, 1, 0, 1, 'Maternity leave for female employees', 1, '$now'),
+      ('Paternity Leave', 5, 8.0, 0, 0, 0, 0, 'Paternity leave for male employees', 1, '$now'),
+      ('Unpaid Leave', 0, 8.0, 0, 0, 1, 0, 'Leave without pay', 1, '$now')");
+}
+// Upgrade: add hours_per_day column if the table existed before it was added to the schema
+if ($CI->db->table_exists(db_prefix() . 'hr_leave_types')) {
+    $col = $CI->db->query("SHOW COLUMNS FROM `" . db_prefix() . "hr_leave_types` LIKE 'hours_per_day'")->num_rows();
+    if ($col === 0) {
+        $CI->db->query("ALTER TABLE `" . db_prefix() . "hr_leave_types` ADD COLUMN `hours_per_day` decimal(4,1) NOT NULL DEFAULT 8.0 AFTER `days_per_year`");
+    }
+}
+// Upgrade: add is_date_range column (e.g. Maternity Leave applied as a From/To range
+// instead of day-by-day) if the table existed before it was added to the schema
+if ($CI->db->table_exists(db_prefix() . 'hr_leave_types')) {
+    $col = $CI->db->query("SHOW COLUMNS FROM `" . db_prefix() . "hr_leave_types` LIKE 'is_date_range'")->num_rows();
+    if ($col === 0) {
+        $CI->db->query("ALTER TABLE `" . db_prefix() . "hr_leave_types` ADD COLUMN `is_date_range` tinyint(1) NOT NULL DEFAULT 0 AFTER `allow_half_day`");
+        // Best-effort: flag any existing "Maternity"/"Paternity"-named type as range-based by default
+        $CI->db->query("UPDATE `" . db_prefix() . "hr_leave_types` SET `is_date_range` = 1 WHERE `name` LIKE '%maternity%' OR `name` LIKE '%paternity%'");
+    }
 }
 
 // 5. Leave Requests
@@ -130,7 +155,7 @@ if (!$CI->db->table_exists(db_prefix() . 'hr_leave_requests')) {
       `leave_type_id` int(11) NOT NULL,
       `from_date` date NOT NULL,
       `to_date` date NOT NULL,
-      `total_days` decimal(5,1) NOT NULL DEFAULT 0.0,
+      `total_days` decimal(5,2) NOT NULL DEFAULT 0.00,
       `is_half_day` tinyint(1) NOT NULL DEFAULT 0,
       `reason` text DEFAULT NULL,
       `status` varchar(20) NOT NULL DEFAULT \'pending\',
@@ -151,6 +176,35 @@ if (!$CI->db->table_exists(db_prefix() . 'hr_leave_requests')) {
       MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1;');
 }
 
+// 5b. Leave Request Days - per-day breakdown (full / half before-lunch / half after-lunch / hourly)
+if (!$CI->db->table_exists(db_prefix() . 'hr_leave_request_days')) {
+    $CI->db->query('CREATE TABLE `' . db_prefix() . 'hr_leave_request_days` (
+      `id` int(11) NOT NULL,
+      `leave_request_id` int(11) NOT NULL,
+      `employee_id` int(11) NOT NULL,
+      `leave_date` date NOT NULL,
+      `day_type` varchar(20) NOT NULL DEFAULT \'full\',
+      `hour_start` time DEFAULT NULL,
+      `hour_end` time DEFAULT NULL,
+      `day_value` decimal(4,2) NOT NULL DEFAULT 1.00,
+      `note` varchar(191) DEFAULT NULL,
+      `created_at` datetime NOT NULL
+    ) ENGINE=InnoDB DEFAULT CHARSET=' . $CI->db->char_set . ';');
+    $CI->db->query('ALTER TABLE `' . db_prefix() . 'hr_leave_request_days`
+      ADD PRIMARY KEY (`id`),
+      ADD KEY `leave_request_id` (`leave_request_id`),
+      ADD KEY `employee_date` (`employee_id`, `leave_date`);');
+    $CI->db->query('ALTER TABLE `' . db_prefix() . 'hr_leave_request_days`
+      MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1;');
+}
+// Upgrade: add note column (used for bridge-day context, e.g. which holiday it was) if missing
+if ($CI->db->table_exists(db_prefix() . 'hr_leave_request_days')) {
+    $col = $CI->db->query("SHOW COLUMNS FROM `" . db_prefix() . "hr_leave_request_days` LIKE 'note'")->num_rows();
+    if ($col === 0) {
+        $CI->db->query("ALTER TABLE `" . db_prefix() . "hr_leave_request_days` ADD COLUMN `note` varchar(191) DEFAULT NULL");
+    }
+}
+
 // 6. Leave Balances
 if (!$CI->db->table_exists(db_prefix() . 'hr_leave_balances')) {
     $CI->db->query('CREATE TABLE `' . db_prefix() . 'hr_leave_balances` (
@@ -158,9 +212,9 @@ if (!$CI->db->table_exists(db_prefix() . 'hr_leave_balances')) {
       `employee_id` int(11) NOT NULL,
       `leave_type_id` int(11) NOT NULL,
       `year` int(4) NOT NULL,
-      `allocated_days` decimal(5,1) NOT NULL DEFAULT 0.0,
-      `used_days` decimal(5,1) NOT NULL DEFAULT 0.0,
-      `carry_forward_days` decimal(5,1) NOT NULL DEFAULT 0.0,
+      `allocated_days` decimal(5,2) NOT NULL DEFAULT 0.00,
+      `used_days` decimal(5,2) NOT NULL DEFAULT 0.00,
+      `carry_forward_days` decimal(5,2) NOT NULL DEFAULT 0.00,
       `created_at` datetime NOT NULL,
       `updated_at` datetime DEFAULT NULL
     ) ENGINE=InnoDB DEFAULT CHARSET=' . $CI->db->char_set . ';');
@@ -169,6 +223,16 @@ if (!$CI->db->table_exists(db_prefix() . 'hr_leave_balances')) {
       ADD UNIQUE KEY `emp_leave_year` (`employee_id`, `leave_type_id`, `year`);');
     $CI->db->query('ALTER TABLE `' . db_prefix() . 'hr_leave_balances`
       MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1;');
+}
+// Upgrade: widen day-count columns to 2 decimal places for hourly-leave fractions
+// (e.g. 3 hours of an 8-hour day = 0.38, which decimal(5,1) would round to 0.4)
+if ($CI->db->table_exists(db_prefix() . 'hr_leave_requests')) {
+    $CI->db->query("ALTER TABLE `" . db_prefix() . "hr_leave_requests` MODIFY `total_days` decimal(5,2) NOT NULL DEFAULT 0.00");
+}
+if ($CI->db->table_exists(db_prefix() . 'hr_leave_balances')) {
+    $CI->db->query("ALTER TABLE `" . db_prefix() . "hr_leave_balances` MODIFY `allocated_days` decimal(5,2) NOT NULL DEFAULT 0.00");
+    $CI->db->query("ALTER TABLE `" . db_prefix() . "hr_leave_balances` MODIFY `used_days` decimal(5,2) NOT NULL DEFAULT 0.00");
+    $CI->db->query("ALTER TABLE `" . db_prefix() . "hr_leave_balances` MODIFY `carry_forward_days` decimal(5,2) NOT NULL DEFAULT 0.00");
 }
 
 // 7. Attendance Logs
@@ -283,6 +347,7 @@ if (!$CI->db->table_exists(db_prefix() . 'hr_payroll')) {
       `total_allowances` decimal(15,2) NOT NULL DEFAULT 0.00,
       `total_deductions` decimal(15,2) NOT NULL DEFAULT 0.00,
       `overtime_amount` decimal(15,2) NOT NULL DEFAULT 0.00,
+      `overtime_days` int(3) NOT NULL DEFAULT 0,
       `bonus` decimal(15,2) NOT NULL DEFAULT 0.00,
       `tax` decimal(15,2) NOT NULL DEFAULT 0.00,
       `loan_deduction` decimal(15,2) NOT NULL DEFAULT 0.00,
@@ -308,6 +373,36 @@ if (!$CI->db->table_exists(db_prefix() . 'hr_payroll')) {
       ADD KEY `status` (`status`);');
     $CI->db->query('ALTER TABLE `' . db_prefix() . 'hr_payroll`
       MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1;');
+}
+// Upgrade: track how many approved overtime days went into each payroll's overtime_amount,
+// so the payroll list can show a day count alongside the pay - not just the money.
+if ($CI->db->table_exists(db_prefix() . 'hr_payroll')) {
+    $col = $CI->db->query("SHOW COLUMNS FROM `" . db_prefix() . "hr_payroll` LIKE 'overtime_days'")->num_rows();
+    if ($col === 0) {
+        $CI->db->query("ALTER TABLE `" . db_prefix() . "hr_payroll`
+          ADD COLUMN `overtime_days` int(3) NOT NULL DEFAULT 0 AFTER `overtime_amount`");
+        if ($CI->db->table_exists(db_prefix() . 'hr_overtime')) {
+            $CI->db->query("UPDATE `" . db_prefix() . "hr_payroll` p
+              SET p.overtime_days = (
+                SELECT COUNT(*) FROM `" . db_prefix() . "hr_overtime` o
+                WHERE o.employee_id = p.employee_id
+                  AND o.status = 'approved'
+                  AND MONTH(o.overtime_date) = p.pay_month
+                  AND YEAR(o.overtime_date) = p.pay_year
+              )");
+        }
+    }
+}
+// Upgrade: lets HR request/approve/reject a change to an already-generated (draft)
+// payroll's loan deduction, recalculating the net (payable) amount once approved.
+if ($CI->db->table_exists(db_prefix() . 'hr_payroll')) {
+    $col = $CI->db->query("SHOW COLUMNS FROM `" . db_prefix() . "hr_payroll` LIKE 'deduction_request_amount'")->num_rows();
+    if ($col === 0) {
+        $CI->db->query("ALTER TABLE `" . db_prefix() . "hr_payroll`
+          ADD COLUMN `deduction_request_amount` decimal(15,2) DEFAULT NULL AFTER `loan_deduction`,
+          ADD COLUMN `deduction_request_reason` text DEFAULT NULL AFTER `deduction_request_amount`,
+          ADD COLUMN `deduction_request_status` varchar(20) DEFAULT NULL AFTER `deduction_request_reason`");
+    }
 }
 
 // 13. Payroll Item Details (per-payroll line items)
@@ -357,6 +452,14 @@ if (!$CI->db->table_exists(db_prefix() . 'hr_loans')) {
     $CI->db->query('ALTER TABLE `' . db_prefix() . 'hr_loans`
       MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1;');
 }
+// Upgrade: tracks a skipped month's installment that the employee chose to carry
+// into the next month's deduction (rather than extending the repayment term).
+if ($CI->db->table_exists(db_prefix() . 'hr_loans')) {
+    $col = $CI->db->query("SHOW COLUMNS FROM `" . db_prefix() . "hr_loans` LIKE 'carry_forward_amount'")->num_rows();
+    if ($col === 0) {
+        $CI->db->query("ALTER TABLE `" . db_prefix() . "hr_loans` ADD COLUMN `carry_forward_amount` decimal(15,2) NOT NULL DEFAULT 0.00 AFTER `monthly_installment`");
+    }
+}
 
 // 15. Loan Repayments
 if (!$CI->db->table_exists(db_prefix() . 'hr_loan_repayments')) {
@@ -381,8 +484,11 @@ if (!$CI->db->table_exists(db_prefix() . 'hr_overtime')) {
     $CI->db->query('CREATE TABLE `' . db_prefix() . 'hr_overtime` (
       `id` int(11) NOT NULL,
       `employee_id` int(11) NOT NULL,
+      `batch_id` varchar(36) DEFAULT NULL,
       `overtime_date` date NOT NULL,
-      `hours` decimal(5,2) NOT NULL,
+      `day_type` enum(\'weekend\',\'government_holiday\',\'company_holiday\') DEFAULT NULL,
+      `holiday_name` varchar(191) DEFAULT NULL,
+      `hours` decimal(5,2) NOT NULL DEFAULT 0.00,
       `rate_multiplier` decimal(3,1) NOT NULL DEFAULT 1.5,
       `total_amount` decimal(15,2) NOT NULL DEFAULT 0.00,
       `reason` text DEFAULT NULL,
@@ -397,9 +503,35 @@ if (!$CI->db->table_exists(db_prefix() . 'hr_overtime')) {
     $CI->db->query('ALTER TABLE `' . db_prefix() . 'hr_overtime`
       ADD PRIMARY KEY (`id`),
       ADD KEY `employee_id` (`employee_id`),
-      ADD KEY `status` (`status`);');
+      ADD KEY `status` (`status`),
+      ADD KEY `batch_id` (`batch_id`);');
     $CI->db->query('ALTER TABLE `' . db_prefix() . 'hr_overtime`
       MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1;');
+}
+// Upgrade: overtime is day-based (weekend/govt/company holiday), not hourly - add the
+// columns needed to record which kind of day was worked and relax `hours`, which is
+// no longer collected from the user, so inserts don't need to supply it.
+if ($CI->db->table_exists(db_prefix() . 'hr_overtime')) {
+    $col = $CI->db->query("SHOW COLUMNS FROM `" . db_prefix() . "hr_overtime` LIKE 'day_type'")->num_rows();
+    if ($col === 0) {
+        $CI->db->query("ALTER TABLE `" . db_prefix() . "hr_overtime`
+          ADD COLUMN `day_type` enum('weekend','government_holiday','company_holiday') DEFAULT NULL AFTER `overtime_date`,
+          ADD COLUMN `holiday_name` varchar(191) DEFAULT NULL AFTER `day_type`,
+          MODIFY `hours` decimal(5,2) NOT NULL DEFAULT 0.00");
+    }
+}
+// Upgrade: an employee can log several overtime days in a month in a single request -
+// group the rows a batch submission creates under one shared batch_id so the list can
+// show/act on them as one request instead of N separate ones. Existing rows each become
+// a batch of their own (batch_id = their own id) so nothing already submitted changes.
+if ($CI->db->table_exists(db_prefix() . 'hr_overtime')) {
+    $col = $CI->db->query("SHOW COLUMNS FROM `" . db_prefix() . "hr_overtime` LIKE 'batch_id'")->num_rows();
+    if ($col === 0) {
+        $CI->db->query("ALTER TABLE `" . db_prefix() . "hr_overtime`
+          ADD COLUMN `batch_id` varchar(36) DEFAULT NULL AFTER `employee_id`,
+          ADD KEY `batch_id` (`batch_id`)");
+        $CI->db->query("UPDATE `" . db_prefix() . "hr_overtime` SET `batch_id` = `id` WHERE `batch_id` IS NULL");
+    }
 }
 
 // 17. Performance Reviews
@@ -594,5 +726,47 @@ if (!$CI->db->table_exists(db_prefix() . 'hr_settings')) {
       ('notify_loan_apply', '1', '$now'),
       ('notify_payroll', '1', '$now'),
       ('zkteco_enabled', '0', '$now'),
-      ('zkteco_sync_interval', '30', '$now')");
+      ('zkteco_sync_interval', '30', '$now'),
+      ('allow_data_removal_on_uninstall', '0', '$now')");
+}
+
+// 25. Holidays
+if (!$CI->db->table_exists(db_prefix() . 'hr_holidays')) {
+    $CI->db->query('CREATE TABLE `' . db_prefix() . 'hr_holidays` (
+      `id` int(11) NOT NULL,
+      `name` varchar(191) NOT NULL,
+      `holiday_date` date NOT NULL,
+      `type` enum(\'government\',\'company\') NOT NULL DEFAULT \'government\',
+      `year` int(4) NOT NULL,
+      `created_by` int(11) DEFAULT NULL,
+      `created_at` datetime NOT NULL
+    ) ENGINE=InnoDB DEFAULT CHARSET=' . $CI->db->char_set . ';');
+    $CI->db->query('ALTER TABLE `' . db_prefix() . 'hr_holidays`
+      ADD PRIMARY KEY (`id`),
+      ADD KEY `idx_year` (`year`),
+      ADD KEY `idx_date` (`holiday_date`);');
+    $CI->db->query('ALTER TABLE `' . db_prefix() . 'hr_holidays`
+      MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1;');
+}
+
+// 26. Loan Deduction Requests
+if (!$CI->db->table_exists(db_prefix() . 'hr_loan_deduction_requests')) {
+    $CI->db->query('CREATE TABLE `' . db_prefix() . 'hr_loan_deduction_requests` (
+      `id` int(10) unsigned NOT NULL,
+      `loan_id` int(10) unsigned NOT NULL,
+      `employee_id` int(10) unsigned NOT NULL,
+      `pay_month` tinyint(3) unsigned NOT NULL,
+      `pay_year` smallint(5) unsigned NOT NULL,
+      `amount` decimal(15,2) NOT NULL,
+      `status` enum(\'pending\',\'approved\',\'rejected\') NOT NULL DEFAULT \'pending\',
+      `notes` text DEFAULT NULL,
+      `reviewed_by` int(10) unsigned DEFAULT NULL,
+      `reviewed_at` datetime DEFAULT NULL,
+      `created_at` datetime NOT NULL
+    ) ENGINE=InnoDB DEFAULT CHARSET=' . $CI->db->char_set . ';');
+    $CI->db->query('ALTER TABLE `' . db_prefix() . 'hr_loan_deduction_requests`
+      ADD PRIMARY KEY (`id`),
+      ADD UNIQUE KEY `uniq_loan_month_year` (`loan_id`,`pay_month`,`pay_year`);');
+    $CI->db->query('ALTER TABLE `' . db_prefix() . 'hr_loan_deduction_requests`
+      MODIFY `id` int(10) unsigned NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1;');
 }

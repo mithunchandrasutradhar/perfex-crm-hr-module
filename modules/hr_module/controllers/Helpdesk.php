@@ -14,7 +14,7 @@ class Helpdesk extends AdminController
     public function index()
     {
         if (staff_cant('view', 'hr_helpdesk') && staff_cant('view_own', 'hr_helpdesk')) access_denied('hr_helpdesk');
-        if ($this->input->is_ajax_request() && !$this->input->post()) {
+        if ($this->input->is_ajax_request()) {
             $this->app->get_table_data(module_views_path('hr_module', 'helpdesk/table'));
             return;
         }

@@ -24,24 +24,60 @@ $output = [
 ];
 
 $badge = ['pending' => 'default', 'approved' => 'success', 'rejected' => 'danger'];
+$day_type_labels = [
+    'weekend'            => _l('hr_overtime_weekend'),
+    'government_holiday' => _l('hr_overtime_government_holiday'),
+    'company_holiday'    => _l('hr_overtime_company_holiday'),
+];
+
+// Self-service users (no global/"view" permission) may act on their own pending requests.
+$own_emp_id = (!is_admin() && !staff_can('view', 'hr_overtime')) ? hr_get_own_employee_id() : 0;
 
 foreach ($rows as $r) {
     $status  = '<span class="label label-' . ($badge[$r->status] ?? 'default') . '">' . ucfirst($r->status) . '</span>';
-    $actions = '<a href="' . admin_url('hr_module/overtime/view/' . $r->id) . '" class="btn btn-default btn-xs"><i class="fa fa-eye"></i></a> ';
-    if (staff_can('edit',   'hr_overtime') && $r->status === 'pending') {
-        $actions .= '<a href="' . admin_url('hr_module/overtime/edit/' . $r->id) . '" class="btn btn-default btn-xs"><i class="fa fa-pencil-alt"></i></a> ';
+
+    $day_type_cell = implode(', ', array_map(function ($t) use ($day_type_labels) {
+        return $day_type_labels[$t] ?? $t;
+    }, explode(',', $r->day_types)));
+
+    $date_cell = $r->first_date === $r->last_date
+        ? date('D, d M Y', strtotime($r->first_date))
+        : date('d M', strtotime($r->first_date)) . ' - ' . date('d M Y', strtotime($r->last_date));
+    $date_cell .= '<br><small class="text-muted">' . $r->day_count . ' ' . ($r->day_count == 1 ? 'day' : 'days') . '</small>';
+
+    $is_own_pending = $own_emp_id && (int) $r->employee_id === $own_emp_id && $r->status === 'pending';
+
+    $view_url = admin_url('hr_module/overtime/view/' . $r->id);
+    $employee_cell = '<a href="' . $view_url . '">' . htmlspecialchars($r->first_name . ' ' . $r->last_name) . '</a><br><small class="text-muted">' . $r->employee_code . '</small>';
+    $options = [];
+    $options[] = '<a href="' . $view_url . '">' . _l('hr_view') . '</a>';
+    if (staff_can('edit', 'hr_overtime') && $r->status === 'pending') {
+        $options[] = '<a href="' . admin_url('hr_module/overtime/approve/' . $r->id) . '" class="text-success" onclick="return confirm(\'' . addslashes(_l('hr_overtime_approve_confirm')) . '\');">' . _l('hr_overtime_approve') . '</a>';
+        $reject_form_id = 'hr-ot-reject-' . $r->id;
+        $options[] = '<a href="#" class="text-danger hr-ot-reject" data-target="' . $reject_form_id . '">' . _l('hr_overtime_reject') . '</a>';
     }
-    if (staff_can('delete', 'hr_overtime') && $r->status !== 'approved') {
-        $actions .= '<a href="' . admin_url('hr_module/overtime/delete/' . $r->id) . '" class="btn btn-danger btn-xs _delete"><i class="fa fa-times"></i></a>';
+    if ((staff_can('edit', 'hr_overtime') || $is_own_pending) && $r->status === 'pending') {
+        $options[] = '<a href="' . admin_url('hr_module/overtime/edit/' . $r->id) . '">' . _l('hr_edit') . '</a>';
     }
-    $output['aaData'][] = [
-        '<a href="' . admin_url('hr_module/employees/view/' . $r->employee_id) . '">' . htmlspecialchars($r->first_name . ' ' . $r->last_name) . '</a><br><small class="text-muted">' . $r->employee_code . '</small>',
+    if ((staff_can('delete', 'hr_overtime') && $r->status !== 'approved') || $is_own_pending) {
+        $options[] = '<a href="' . admin_url('hr_module/overtime/delete/' . $r->id) . '" class="_delete text-danger">' . _l('hr_delete') . '</a>';
+    }
+    $employee_cell .= '<div class="row-options">' . implode(' | ', $options) . '</div>';
+
+    if (staff_can('edit', 'hr_overtime') && $r->status === 'pending') {
+        $employee_cell .= '<form id="' . $reject_form_id . '" method="post" action="' . admin_url('hr_module/overtime/reject/' . $r->id) . '" style="display:none">'
+            . form_hidden($CI->security->get_csrf_token_name(), $CI->security->get_csrf_hash())
+            . '<input type="hidden" name="rejection_reason" value="">'
+            . '</form>';
+    }
+
+    $row = [
+        $employee_cell,
         $r->department_name ? htmlspecialchars($r->department_name) : '-',
-        date('D, d M Y', strtotime($r->overtime_date)),
-        $r->hours . ' hrs',
-        $r->rate_multiplier . 'x',
-        number_format($r->total_amount, 2),
+        $date_cell,
+        $day_type_cell,
         $status,
-        $actions,
     ];
+    $row['DT_RowClass'] = 'has-row-options';
+    $output['aaData'][] = $row;
 }

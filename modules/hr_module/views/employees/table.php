@@ -4,14 +4,13 @@ defined('BASEPATH') or exit('No direct script access allowed');
 $CI = &get_instance();
 
 $aColumns = [
-    'e.id',                // [0] proxy for photo column (not sortable)
-    'e.employee_code',     // [1] employee code
-    "CONCAT(COALESCE(s.firstname, e.first_name), ' ', COALESCE(s.lastname, e.last_name)) as employee_name", // [2]
-    'd.name as department_name',    // [3]
-    'ds.name as designation_name',  // [4]
-    "COALESCE(s.email, e.email) as email_col", // [5]
-    'e.joining_date',      // [6]
-    'e.status',            // [7]
+    'e.employee_code',     // [0] employee code
+    "CONCAT(COALESCE(s.firstname, e.first_name), ' ', COALESCE(s.lastname, e.last_name)) as employee_name", // [1]
+    'd.name as department_name',    // [2]
+    'ds.name as designation_name',  // [3]
+    "COALESCE(s.email, e.email) as email_col", // [4]
+    'e.joining_date',      // [5]
+    's.active as staff_active', // [6] employee status mirrors the linked staff account's status
 ];
 
 $sIndexColumn = 'e.id';
@@ -32,63 +31,54 @@ if (!empty($dept_filter)) {
     $where[] = 'AND e.department_id = ' . (int) $dept_filter;
 }
 if ($status_filter !== null && $status_filter !== '') {
-    $where[] = 'AND e.status = ' . (int) $status_filter;
+    $where[] = 'AND s.active = ' . (int) $status_filter;
 }
 if (!staff_can('view', 'hr_employees') && staff_can('view_own', 'hr_employees')) {
     $where[] = 'AND e.staff_id = ' . (int) get_staff_user_id();
 }
 
-$result  = data_tables_init($aColumns, $sIndexColumn, $sTable, $join, $where, ['e.photo', 'e.staff_id']);
+$result  = data_tables_init($aColumns, $sIndexColumn, $sTable, $join, $where, ['e.photo', 'e.staff_id', 'e.id']);
 $output  = $result['output'];
 $rResult = $result['rResult'];
 
 foreach ($rResult as $aRow) {
     $row = [];
 
-    // [0] Photo — use Perfex's staff_profile_image() when linked to a staff member,
-    // fall back to HR-uploaded photo or initials avatar
-    if (!empty($aRow['staff_id'])) {
-        $row[] = staff_profile_image($aRow['staff_id'], ['img-circle'], 'small', ['width' => '32', 'height' => '32', 'style' => 'object-fit:cover']);
-    } elseif (!empty($aRow['photo'])) {
-        $row[] = '<img src="' . base_url('uploads/hr_module/employees/' . $aRow['photo']) . '" class="img-circle" width="32" height="32" style="object-fit:cover">';
-    } else {
-        $initial = strtoupper(substr($aRow['employee_name'] ?? '', 0, 1)) ?: '?';
-        $row[] = '<span style="width:32px;height:32px;border-radius:50%;background:#dbeafe;color:#1d4ed8;font-weight:700;display:inline-flex;align-items:center;justify-content:center">' . $initial . '</span>';
-    }
-
-    // [1] Employee Code
+    // [0] Employee Code
     $row[] = '<a href="' . admin_url('hr_module/employees/view/' . $aRow['id']) . '">' . htmlspecialchars($aRow['employee_code']) . '</a>';
 
-    // [2] Full Name
-    $row[] = '<a href="' . admin_url('hr_module/employees/view/' . $aRow['id']) . '">' . htmlspecialchars($aRow['employee_name'] ?? '') . '</a>';
+    // [1] Full Name, with the standard Perfex row-options action links underneath
+    $name  = '<a href="' . admin_url('hr_module/employees/view/' . $aRow['id']) . '">' . htmlspecialchars($aRow['employee_name'] ?? '') . '</a>';
+    $name .= '<div class="row-options">';
+    $name .= '<a href="' . admin_url('hr_module/employees/view/' . $aRow['id']) . '">' . _l('hr_view') . '</a>';
+    if (staff_can('edit', 'hr_employees')) {
+        $name .= ' | <a href="' . admin_url('hr_module/employees/edit/' . $aRow['id']) . '">' . _l('hr_edit') . '</a>';
+    }
+    if (staff_can('delete', 'hr_employees')) {
+        $name .= ' | <a href="' . admin_url('hr_module/employees/delete/' . $aRow['id']) . '" class="_delete text-danger">' . _l('hr_delete') . '</a>';
+    }
+    $name .= '</div>';
+    $row[] = $name;
 
-    // [3] Department
+    // [2] Department
     $row[] = !empty($aRow['department_name']) ? htmlspecialchars($aRow['department_name']) : '-';
 
-    // [4] Designation
+    // [3] Designation
     $row[] = !empty($aRow['designation_name']) ? htmlspecialchars($aRow['designation_name']) : '-';
 
-    // [5] Email
+    // [4] Email
     $email = $aRow['email_col'] ?? '';
     $row[] = $email ? '<a href="mailto:' . htmlspecialchars($email) . '">' . htmlspecialchars($email) . '</a>' : '-';
 
-    // [6] Joining Date
+    // [5] Joining Date
     $row[] = !empty($aRow['joining_date']) ? _d($aRow['joining_date']) : '-';
 
-    // [7] Status badge
-    $row[] = $aRow['status'] == 1
+    // [6] Status badge - mirrors the linked staff account's active status
+    $row[] = $aRow['staff_active'] == 1
         ? '<span class="label label-success">' . _l('hr_active') . '</span>'
         : '<span class="label label-danger">' . _l('hr_inactive') . '</span>';
 
-    // [8] Actions
-    $actions = '<a href="' . admin_url('hr_module/employees/view/' . $aRow['id']) . '" class="btn btn-default btn-xs" title="' . _l('hr_view') . '"><i class="fa fa-eye"></i></a> ';
-    if (staff_can('edit', 'hr_employees')) {
-        $actions .= '<a href="' . admin_url('hr_module/employees/edit/' . $aRow['id']) . '" class="btn btn-default btn-xs" title="' . _l('hr_edit') . '"><i class="fa fa-pencil-alt"></i></a> ';
-    }
-    if (staff_can('delete', 'hr_employees')) {
-        $actions .= '<a href="' . admin_url('hr_module/employees/delete/' . $aRow['id']) . '" class="btn btn-danger btn-xs _delete" title="' . _l('hr_delete') . '"><i class="fa fa-times"></i></a>';
-    }
-    $row[] = $actions;
+    $row['DT_RowClass'] = 'has-row-options';
 
     $output['aaData'][] = $row;
 }

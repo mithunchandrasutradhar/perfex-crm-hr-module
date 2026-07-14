@@ -32,9 +32,8 @@
           <div class="panel-body panel-table-full">
             <?php render_datatable([
               _l('hr_employee'), _l('hr_department'),
-              _l('hr_overtime_date'), _l('hr_overtime_hours'),
-              _l('hr_overtime_rate'), _l('hr_overtime_total_amount'),
-              _l('hr_status'), _l('hr_actions'),
+              _l('hr_overtime_date'), _l('hr_overtime_day_type'),
+              _l('hr_status'),
             ], 'hr-overtime'); ?>
           </div>
         </div>
@@ -55,5 +54,14 @@ $(function(){
         $('.table-hr-overtime').DataTable().ajax.url(url).load();
     }
     $('#f-dept,#f-status,#f-from,#f-to').on('change', reload);
+
+    $(document).on('click', '.hr-ot-reject', function(e){
+        e.preventDefault();
+        var reason = prompt('<?php echo _l('hr_overtime_reject_reason_prompt'); ?>', '');
+        if (reason === null) return;
+        var $form = $('#' + $(this).data('target'));
+        $form.find('[name="rejection_reason"]').val(reason);
+        $form.trigger('submit');
+    });
 });
 </script>

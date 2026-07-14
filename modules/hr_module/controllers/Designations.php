@@ -18,8 +18,6 @@ class Designations extends AdminController
             $this->app->get_table_data(module_views_path('hr_module', 'designations/table'));
         }
         $data['title'] = _l('hr_designation_list');
-        $this->load->model('hr_module/Departments_model');
-        $data['departments'] = $this->Departments_model->get_active();
         $this->load->view('hr_module/designations/index', $data);
     }
 
@@ -28,21 +26,19 @@ class Designations extends AdminController
         if (staff_cant('create', 'hr_departments')) {
             access_denied('hr_departments');
         }
-        if (!$this->input->post()) {
-            show_404();
+        if ($this->input->post()) {
+            $id = $this->Designations_model->add($this->_post_data());
+            if ($id) {
+                set_alert('success', _l('hr_designation_added'));
+                redirect(admin_url('hr_module/designations'));
+            }
+            set_alert('danger', _l('hr_error_save_failed'));
+            redirect(admin_url('hr_module/designations/add'));
         }
-        $data = [
-            'name'          => $this->input->post('name', true),
-            'department_id' => $this->input->post('department_id') ?: null,
-            'description'   => $this->input->post('description', true),
-            'status'        => $this->input->post('status') ? 1 : 0,
-        ];
-        $id = $this->Designations_model->add($data);
-        if ($id) {
-            echo json_encode(['success' => true, 'message' => _l('hr_designation_added'), 'id' => $id]);
-        } else {
-            echo json_encode(['success' => false, 'message' => _l('hr_error_save_failed')]);
-        }
+
+        $data['title']       = _l('hr_designation_add');
+        $data['designation'] = null;
+        $this->load->view('hr_module/designations/form', $data);
     }
 
     public function edit($id)
@@ -50,26 +46,22 @@ class Designations extends AdminController
         if (staff_cant('edit', 'hr_departments')) {
             access_denied('hr_departments');
         }
-        if ($this->input->is_ajax_request() && !$this->input->post()) {
-            $row = $this->Designations_model->get($id);
-            echo json_encode($row);
-            return;
+        $designation = $this->Designations_model->get($id);
+        if (!$designation) show_404();
+
+        if ($this->input->post()) {
+            $success = $this->Designations_model->update($this->_post_data(), $id);
+            if ($success) {
+                set_alert('success', _l('hr_designation_updated'));
+            } else {
+                set_alert('danger', _l('hr_error_save_failed'));
+            }
+            redirect(admin_url('hr_module/designations'));
         }
-        if (!$this->input->post()) {
-            show_404();
-        }
-        $data = [
-            'name'          => $this->input->post('name', true),
-            'department_id' => $this->input->post('department_id') ?: null,
-            'description'   => $this->input->post('description', true),
-            'status'        => $this->input->post('status') ? 1 : 0,
-        ];
-        $success = $this->Designations_model->update($data, $id);
-        if ($success) {
-            echo json_encode(['success' => true, 'message' => _l('hr_designation_updated')]);
-        } else {
-            echo json_encode(['success' => false, 'message' => _l('hr_error_save_failed')]);
-        }
+
+        $data['title']       = _l('hr_designation_edit');
+        $data['designation'] = $designation;
+        $this->load->view('hr_module/designations/form', $data);
     }
 
     public function delete($id)
@@ -79,9 +71,19 @@ class Designations extends AdminController
         }
         $result = $this->Designations_model->delete($id);
         if ($result['success']) {
-            echo json_encode(['success' => true, 'message' => _l('hr_designation_deleted')]);
+            set_alert('success', _l('hr_designation_deleted'));
         } else {
-            echo json_encode(['success' => false, 'message' => $result['message']]);
+            set_alert('danger', $result['message']);
         }
+        redirect(admin_url('hr_module/designations'));
+    }
+
+    private function _post_data()
+    {
+        return [
+            'name'        => $this->input->post('name', true),
+            'description' => $this->input->post('description', true),
+            'status'      => $this->input->post('status') ? 1 : 0,
+        ];
     }
 }

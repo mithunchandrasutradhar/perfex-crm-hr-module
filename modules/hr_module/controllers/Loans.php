@@ -14,7 +14,7 @@ class Loans extends AdminController
     public function index()
     {
         if (staff_cant('view', 'hr_loans') && staff_cant('view_own', 'hr_loans')) access_denied('hr_loans');
-        if ($this->input->is_ajax_request() && !$this->input->post()) {
+        if ($this->input->is_ajax_request()) {
             $this->app->get_table_data(module_views_path('hr_module', 'loans/table'));
             return;
         }
@@ -28,9 +28,15 @@ class Loans extends AdminController
     {
         if (staff_cant('create', 'hr_loans')) access_denied('hr_loans');
 
+        // Any non-admin, non-global-viewer applies only for themselves
+        $own_only   = !is_admin() && !staff_can('view', 'hr_loans');
+        $own_emp_id = $own_only ? hr_get_own_employee_id() : 0;
+
         if ($this->input->post()) {
+            // view_own users can only apply for themselves — ignore any spoofed employee_id
+            $posted_emp_id = (int) $this->input->post('employee_id');
             $data = [
-                'employee_id'         => (int) $this->input->post('employee_id'),
+                'employee_id'         => $own_only ? $own_emp_id : $posted_emp_id,
                 'amount'              => (float) $this->input->post('amount'),
                 'reason'              => $this->input->post('reason', true),
                 'repayment_months'    => (int) $this->input->post('repayment_months'),
@@ -63,8 +69,18 @@ class Loans extends AdminController
             }
         }
 
-        $data['title']     = _l('hr_loan_add');
-        $data['employees'] = $this->Hr_module_model->get_active_employees_dropdown();
+        $data['title']      = _l('hr_loan_add');
+        $data['own_only']   = $own_only;
+        $data['own_emp_id'] = $own_emp_id;
+        if ($own_only) {
+            $this->load->model('hr_module/Employees_model');
+            $emp = $this->Employees_model->get($own_emp_id);
+            $data['employees'] = $own_emp_id && $emp
+                ? [$own_emp_id => $emp->first_name . ' ' . $emp->last_name]
+                : [];
+        } else {
+            $data['employees'] = $this->Hr_module_model->get_active_employees_dropdown();
+        }
         $this->load->view('hr_module/loans/apply', $data);
     }
 
@@ -80,6 +96,9 @@ class Loans extends AdminController
         $data['loan']                = $loan;
         $data['repayments']          = $this->Loans_model->get_repayments($id);
         $data['deduction_requests']  = $this->Loans_model->get_deduction_requests(['loan_id' => $id]);
+        // Approving/rejecting a deduction request stays HR-only ('edit'); submitting one
+        // (including this loan's own view() ownership check above already guarantees it's theirs).
+        $data['can_manage_deductions'] = staff_can('edit', 'hr_loans') || staff_can('create', 'hr_loans');
         $this->load->view('hr_module/loans/view', $data);
     }
 
@@ -142,14 +161,26 @@ class Loans extends AdminController
 
     public function request_deduction($loan_id)
     {
-        if (staff_cant('edit', 'hr_loans')) access_denied('hr_loans');
+        if (staff_cant('edit', 'hr_loans') && staff_cant('create', 'hr_loans')) {
+            access_denied('hr_loans');
+        }
+        // Self-service employees (no global view/edit) may only request deductions on their own loan
+        if (!staff_can('edit', 'hr_loans') && !staff_can('view', 'hr_loans')) {
+            $loan = $this->Loans_model->get($loan_id);
+            if (!$loan || (int) $loan->employee_id !== hr_get_own_employee_id()) {
+                access_denied('hr_loans');
+            }
+        }
         if ($this->input->post()) {
+            $is_skip = (bool) $this->input->post('is_skip');
             $result = $this->Loans_model->submit_deduction_request(
                 $loan_id,
                 (int)   $this->input->post('pay_month'),
                 (int)   $this->input->post('pay_year'),
                 (float) $this->input->post('amount'),
-                $this->input->post('notes', true)
+                $this->input->post('notes', true),
+                $is_skip,
+                $this->input->post('carry_option')
             );
             if ($result['success']) set_alert('success', $result['message']);
             else                    set_alert('danger',  $result['message']);
@@ -162,9 +193,13 @@ class Loans extends AdminController
         if (staff_cant('edit', 'hr_loans')) access_denied('hr_loans');
         $req    = $this->Loans_model->get_deduction_request($id);
         $result = $this->Loans_model->approve_deduction($id);
+        if ($this->input->is_ajax_request()) {
+            echo json_encode($result);
+            return;
+        }
         if ($result['success']) set_alert('success', $result['message']);
         else                    set_alert('danger',  $result['message']);
-        $back = $req ? admin_url('hr_module/loans/view/' . $req->loan_id) : admin_url('hr_module/loans/deduction_requests');
+        $back = $this->input->post('back') ?: ($req ? admin_url('hr_module/loans/view/' . $req->loan_id) : admin_url('hr_module/loans/deduction_requests'));
         redirect($back);
     }
 
@@ -173,9 +208,35 @@ class Loans extends AdminController
         if (staff_cant('edit', 'hr_loans')) access_denied('hr_loans');
         $req    = $this->Loans_model->get_deduction_request($id);
         $result = $this->Loans_model->reject_deduction($id);
+        if ($this->input->is_ajax_request()) {
+            echo json_encode($result);
+            return;
+        }
         if ($result['success']) set_alert('success', $result['message']);
         else                    set_alert('danger',  $result['message']);
-        $back = $req ? admin_url('hr_module/loans/view/' . $req->loan_id) : admin_url('hr_module/loans/deduction_requests');
+        $back = $this->input->post('back') ?: ($req ? admin_url('hr_module/loans/view/' . $req->loan_id) : admin_url('hr_module/loans/deduction_requests'));
         redirect($back);
+    }
+
+    public function delete_deduction_request($id)
+    {
+        $req = $this->Loans_model->get_deduction_request($id);
+        if (!$req) show_404();
+
+        // Same access model as submitting one: HR (edit) can delete any; self-service
+        // employees (no global view/edit) may only delete their own loan's request.
+        if (staff_cant('edit', 'hr_loans') && staff_cant('create', 'hr_loans')) {
+            access_denied('hr_loans');
+        }
+        if (!staff_can('edit', 'hr_loans') && !staff_can('view', 'hr_loans')) {
+            if ((int) $req->employee_id !== hr_get_own_employee_id()) {
+                access_denied('hr_loans');
+            }
+        }
+
+        $result = $this->Loans_model->delete_deduction_request($id);
+        if ($result['success']) set_alert('success', $result['message']);
+        else                    set_alert('danger',  $result['message']);
+        redirect(admin_url('hr_module/loans/view/' . $req->loan_id));
     }
 }

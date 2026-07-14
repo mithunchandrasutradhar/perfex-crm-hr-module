@@ -40,7 +40,6 @@ $months = ['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov',
         <select name="status" class="form-control input-sm">
           <option value="">All Status</option>
           <option value="draft" <?php if(($filters['status']??'')=='draft') echo 'selected'; ?>>Draft</option>
-          <option value="approved" <?php if(($filters['status']??'')=='approved') echo 'selected'; ?>>Approved</option>
           <option value="paid" <?php if(($filters['status']??'')=='paid') echo 'selected'; ?>>Paid</option>
         </select>
       </div>

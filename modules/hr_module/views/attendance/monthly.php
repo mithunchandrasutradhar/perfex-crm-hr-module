@@ -104,16 +104,19 @@ $status_labels = ['present'=>'P','late'=>'L','absent'=>'A','half_day'=>'H'];
           for($i = 0; $i < $first_day; $i++) echo '<div></div>';
 
           for($day = 1; $day <= $days_in_month; $day++):
-            $date_str = sprintf('%04d-%02d-%02d', $year, $month, $day);
-            $rec      = $records[$date_str] ?? null;
-            $dow      = date('w', mktime(0,0,0,$month,$day,$year));
-            $is_weekend = ($dow == 0 || $dow == 6);
+            $date_str   = sprintf('%04d-%02d-%02d', $year, $month, $day);
+            $rec        = $records[$date_str] ?? null;
+            $dow        = (int) date('w', mktime(0,0,0,$month,$day,$year));
+            $is_weekend = in_array($dow, $weekly_off);
+            $holiday    = $holiday_map[$date_str] ?? null;
             $bg = '#f8fafc'; $color = '#94a3b8'; $label = '';
             if ($rec) {
                 $bg    = $status_colors[$rec->status] ?? '#94a3b8';
                 $color = '#fff';
                 $label = $status_labels[$rec->status] ?? '?';
                 if ($rec->in_time) $label .= '<br><span style="font-size:0.6rem">'.substr($rec->in_time,0,5).'</span>';
+            } elseif ($holiday) {
+                $bg = '#c7d2fe'; $color = '#3730a3'; $label = 'H';
             } elseif ($is_weekend) {
                 $bg = '#e2e8f0'; $color = '#94a3b8'; $label = 'WO';
             }
@@ -135,6 +138,9 @@ $status_labels = ['present'=>'P','late'=>'L','absent'=>'A','half_day'=>'H'];
           <?php endforeach; ?>
           <span style="display:inline-flex;align-items:center;gap:4px;font-size:0.75rem">
             <span style="width:12px;height:12px;background:#e2e8f0;border-radius:3px;display:inline-block"></span> Weekend
+          </span>
+          <span style="display:inline-flex;align-items:center;gap:4px;font-size:0.75rem">
+            <span style="width:12px;height:12px;background:#c7d2fe;border-radius:3px;display:inline-block"></span> Holiday
           </span>
         </div>
       </div>

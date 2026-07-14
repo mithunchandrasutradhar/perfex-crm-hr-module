@@ -118,15 +118,13 @@ class Reports extends AdminController
         $rows = $this->Reports_model->overtime($f);
 
         if ($this->input->get('export') === 'csv') {
-            $this->_export_csv($rows, ['employee_code','first_name','last_name','department_name','overtime_date','hours','rate_multiplier','total_amount','status'], 'overtime_report');
+            $this->_export_csv($rows, ['employee_code','first_name','last_name','department_name','overtime_date','day_type','holiday_name','rate_multiplier','total_amount','status'], 'overtime_report');
             return;
         }
-        $total_hours  = array_sum(array_column((array) $rows, 'hours'));
         $total_amount = array_sum(array_column((array) $rows, 'total_amount'));
         $data['title']        = 'Overtime Report';
         $data['rows']         = $rows;
         $data['filters']      = $f;
-        $data['total_hours']  = $total_hours;
         $data['total_amount'] = $total_amount;
         $data['departments']  = $this->Departments_model->get_active();
         $this->load->view('hr_module/reports/overtime', $data);

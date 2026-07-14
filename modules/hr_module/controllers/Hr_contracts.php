@@ -14,7 +14,7 @@ class Hr_contracts extends AdminController
     public function index()
     {
         if (staff_cant('view', 'hr_contracts') && staff_cant('view_own', 'hr_contracts')) access_denied('hr_contracts');
-        if ($this->input->is_ajax_request() && !$this->input->post()) {
+        if ($this->input->is_ajax_request()) {
             $this->app->get_table_data(module_views_path('hr_module', 'contracts/table'));
             return;
         }

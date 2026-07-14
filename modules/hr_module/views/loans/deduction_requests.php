@@ -98,13 +98,24 @@ $cur_year  = (int) date('Y');
                       </a>
                     </td>
                     <td><?php echo date('M Y', mktime(0,0,0,$r->pay_month,1,$r->pay_year)); ?></td>
-                    <td class="tw-font-semibold"><?php echo number_format($r->amount, 2); ?></td>
+                    <td class="tw-font-semibold">
+                      <?php if ($r->is_skip): ?>
+                      <span class="label label-default">Skip</span>
+                      <small class="text-muted"><?php echo $r->carry_option === 'extend_term' ? '(+1 month)' : '(→ next month)'; ?></small>
+                      <?php else: ?>
+                      <?php echo number_format($r->amount, 2); ?>
+                      <?php endif; ?>
+                    </td>
                     <td class="text-muted"><?php echo number_format($r->monthly_installment, 2); ?></td>
                     <td class="text-warning"><?php echo number_format($r->outstanding, 2); ?></td>
                     <td>
+                      <?php if ($r->status === 'approved' && $r->payroll_id): ?>
+                      <span class="label label-info">Deducted</span>
+                      <?php else: ?>
                       <span class="label label-<?php echo $req_badge[$r->status] ?? 'default'; ?>">
                         <?php echo ucfirst($r->status); ?>
                       </span>
+                      <?php endif; ?>
                     </td>
                     <td><?php echo $r->reviewed_by_name ? htmlspecialchars($r->reviewed_by_name) : '-'; ?></td>
                     <td><?php echo $r->notes ? '<span title="'.htmlspecialchars($r->notes).'"><i class="fa fa-comment-o"></i></span>' : '-'; ?></td>
@@ -112,12 +123,14 @@ $cur_year  = (int) date('Y');
                     <td>
                       <?php if ($r->status === 'pending'): ?>
                       <form method="post" action="<?php echo admin_url('hr_module/loans/approve_deduction/'.$r->id); ?>" style="display:inline">
+                        <?php echo form_hidden($this->security->get_csrf_token_name(), $this->security->get_csrf_hash()); ?>
                         <button type="submit" class="btn btn-xs btn-success tw-mr-1"
                                 onclick="return confirm('Approve deduction of <?php echo number_format($r->amount,2); ?> for <?php echo date("M Y", mktime(0,0,0,$r->pay_month,1,$r->pay_year)); ?>?')">
                           <i class="fa fa-check"></i> Approve
                         </button>
                       </form>
                       <form method="post" action="<?php echo admin_url('hr_module/loans/reject_deduction/'.$r->id); ?>" style="display:inline">
+                        <?php echo form_hidden($this->security->get_csrf_token_name(), $this->security->get_csrf_hash()); ?>
                         <button type="submit" class="btn btn-xs btn-danger"
                                 onclick="return confirm('Reject this deduction request?')">
                           <i class="fa fa-times"></i> Reject

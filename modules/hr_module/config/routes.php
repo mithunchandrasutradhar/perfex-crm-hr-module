@@ -14,7 +14,6 @@ $route['hr_module/employees/add']                          = 'hr_module/Employee
 $route['hr_module/employees/edit/(:num)']                  = 'hr_module/Employees/edit/$1';
 $route['hr_module/employees/view/(:num)']                  = 'hr_module/Employees/view/$1';
 $route['hr_module/employees/delete/(:num)']                = 'hr_module/Employees/delete/$1';
-$route['hr_module/employees/get_designations_by_dept']     = 'hr_module/Employees/get_designations_by_dept';
 
 // Departments
 $route['hr_module/departments']                   = 'hr_module/Departments/index';
@@ -75,7 +74,6 @@ $route['hr_module/zkteco/delete_mapping/(:num)']  = 'hr_module/Zkteco/delete_map
 $route['hr_module/payroll']                       = 'hr_module/Payroll/index';
 $route['hr_module/payroll/generate']              = 'hr_module/Payroll/generate';
 $route['hr_module/payroll/view/(:num)']           = 'hr_module/Payroll/view/$1';
-$route['hr_module/payroll/approve/(:num)']        = 'hr_module/Payroll/approve/$1';
 $route['hr_module/payroll/mark_paid/(:num)']      = 'hr_module/Payroll/mark_paid/$1';
 $route['hr_module/payroll/delete/(:num)']         = 'hr_module/Payroll/delete/$1';
 $route['hr_module/payroll/slip/(:num)']           = 'hr_module/Payroll/slip/$1';
@@ -98,6 +96,7 @@ $route['hr_module/loans/add_repayment/(:num)']    = 'hr_module/Loans/add_repayme
 // Overtime
 $route['hr_module/overtime']                      = 'hr_module/Overtime/index';
 $route['hr_module/overtime/request']              = 'hr_module/Overtime/request';
+$route['hr_module/overtime/preview']              = 'hr_module/Overtime/preview';
 $route['hr_module/overtime/edit/(:num)']          = 'hr_module/Overtime/edit/$1';
 $route['hr_module/overtime/view/(:num)']          = 'hr_module/Overtime/view/$1';
 $route['hr_module/overtime/approve/(:num)']       = 'hr_module/Overtime/approve/$1';

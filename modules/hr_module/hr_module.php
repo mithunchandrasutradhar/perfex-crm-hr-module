@@ -103,6 +103,26 @@ function hr_get_own_employee_id()
     return $emp ? (int) $emp->id : 0;
 }
 
+/**
+ * Human-readable label for a hr_leave_request_days.day_type value - shared by the
+ * leave list table and the leave view/detail page so "Before Lunch"/"After Lunch"
+ * are labelled identically everywhere.
+ */
+function hr_leave_day_type_label($type)
+{
+    static $labels = null;
+    if ($labels === null) {
+        $labels = [
+            'full'              => _l('hr_leave_day_type_full'),
+            'half_before_lunch' => _l('hr_leave_day_type_half') . ' (' . _l('hr_leave_before_lunch') . ')',
+            'half_after_lunch'  => _l('hr_leave_day_type_half') . ' (' . _l('hr_leave_after_lunch') . ')',
+            'hourly'            => _l('hr_leave_day_type_hourly'),
+            'bridge'            => _l('hr_leave_day_type_bridge'),
+        ];
+    }
+    return $labels[$type] ?? $type;
+}
+
 // ─── Menu ─────────────────────────────────────────────────────────────────
 
 function hr_module_init_menu_items()
@@ -136,15 +156,7 @@ function hr_module_init_menu_items()
         ]);
     }
 
-    // Designations
-    if (staff_can('view', 'hr_departments')) {
-        $CI->app_menu->add_sidebar_children_item('human-resource', [
-            'slug'     => 'hr-designations',
-            'name'     => _l('hr_menu_designations'),
-            'href'     => admin_url('hr_module/designations'),
-            'position' => 4,
-        ]);
-    }
+    // Designations — managed from Settings > Company Structure, not the sidebar
 
     // Leave Management
     if (staff_can('view', 'hr_leave') || staff_can('view_own', 'hr_leave')) {

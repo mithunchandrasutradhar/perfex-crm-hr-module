@@ -10,6 +10,7 @@ class Attendance extends AdminController
         $this->load->model('hr_module/Hr_module_model');
         $this->load->model('hr_module/Employees_model');
         $this->load->model('hr_module/Departments_model');
+        $this->load->model('hr_module/Holidays_model');
     }
 
     public function index()
@@ -17,7 +18,7 @@ class Attendance extends AdminController
         if (staff_cant('view', 'hr_attendance') && staff_cant('view_own', 'hr_attendance')) {
             access_denied('hr_attendance');
         }
-        if ($this->input->is_ajax_request() && !$this->input->post()) {
+        if ($this->input->is_ajax_request()) {
             $this->app->get_table_data(module_views_path('hr_module', 'attendance/table'));
             return;
         }
@@ -89,8 +90,13 @@ class Attendance extends AdminController
         $data['employee_id'] = $emp_id;
         $data['records']    = $emp_id ? $this->Attendance_model->get_monthly($emp_id, $month, $year) : [];
         $data['summary']    = $emp_id ? $this->Attendance_model->get_summary($emp_id, $month, $year) : [];
-        $data['days_in_month'] = cal_days_in_month(CAL_GREGORIAN, $month, $year);
+        $data['days_in_month'] = (int) date('t', mktime(0, 0, 0, $month, 1, $year));
         $data['settings']   = $this->Hr_module_model->get_all_settings();
+        $data['weekly_off']  = $this->Holidays_model->get_weekly_off_days();
+        $data['holiday_map'] = $this->Holidays_model->get_holiday_names_in_range(
+            sprintf('%04d-%02d-01', $year, $month),
+            date('Y-m-t', mktime(0, 0, 0, $month, 1, $year))
+        );
         $this->load->view('hr_module/attendance/monthly', $data);
     }
 

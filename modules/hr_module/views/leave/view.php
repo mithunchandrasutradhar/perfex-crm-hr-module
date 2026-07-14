@@ -1,7 +1,9 @@
 <?php defined('BASEPATH') or exit('No direct script access allowed');
 /** @var object      $request */
+/** @var array       $days    */
 /** @var object|null $balance */
 if (!isset($request)) $request = (object)['id'=>0,'status'=>'pending','leave_type_name'=>'','employee_name'=>'','employee_code'=>'','from_date'=>null,'to_date'=>null,'total_days'=>0,'is_half_day'=>0,'reason'=>'','rejection_reason'=>null,'attachment'=>null,'created_at'=>null,'approved_by'=>null,'approved_by_name'=>'','approved_at'=>null];
+if (!isset($days)) $days = [];
 if (!isset($balance)) $balance = null;
 $r = $request;
 $badge_map = ['pending'=>'label-warning','approved'=>'label-success','rejected'=>'label-danger','cancelled'=>'label-default'];
@@ -32,12 +34,21 @@ $badge = '<span class="label ' . ($badge_map[$r->status] ?? 'label-default') . '
             </div>
 
             <table class="table table-condensed">
-              <tr><th style="width:35%"><?php echo _l('hr_from_date'); ?></th>
-                <td><?php echo ($r->from_date && $r->from_date !== '0000-00-00') ? _d($r->from_date) : '<span class="text-muted">—</span>'; ?></td></tr>
-              <tr><th><?php echo _l('hr_to_date'); ?></th>
-                <td><?php echo ($r->to_date && $r->to_date !== '0000-00-00') ? _d($r->to_date) : '<span class="text-muted">—</span>'; ?></td></tr>
+              <tr><th style="width:35%"><?php echo _l('hr_from_date'); ?> — <?php echo _l('hr_to_date'); ?></th>
+                <td>
+                  <?php if ($r->from_date && $r->from_date !== '0000-00-00'): ?>
+                    <?php echo _d($r->from_date); ?><?php if ($r->to_date && $r->to_date !== $r->from_date): ?> — <?php echo _d($r->to_date); ?><?php endif; ?>
+                  <?php else: ?>
+                    <span class="text-muted">—</span>
+                  <?php endif; ?>
+                </td></tr>
               <tr><th><?php echo _l('hr_leave_days'); ?></th>
-                <td><?php echo $r->total_days; ?> <?php if($r->is_half_day) echo '<span class="label label-info">Half Day</span>'; ?></td></tr>
+                <td>
+                  <strong><?php echo $r->total_days; ?></strong>
+                  <?php if (count($days) === 1): ?>
+                  <span class="text-muted">(<?php echo htmlspecialchars(hr_leave_day_type_label($days[0]->day_type)); ?>)</span>
+                  <?php endif; ?>
+                </td></tr>
               <tr><th><?php echo _l('hr_leave_reason'); ?></th><td><?php echo nl2br(htmlspecialchars($r->reason ?? '-')); ?></td></tr>
               <?php if ($r->rejection_reason): ?>
               <tr><th><?php echo _l('hr_remarks'); ?></th><td><?php echo nl2br(htmlspecialchars($r->rejection_reason)); ?></td></tr>
@@ -52,6 +63,36 @@ $badge = '<span class="label ' . ($badge_map[$r->status] ?? 'label-default') . '
                 <td><?php echo htmlspecialchars($r->approved_by_name); ?> &mdash; <?php echo _dt($r->approved_at); ?></td></tr>
               <?php endif; ?>
             </table>
+
+            <?php if (!empty($days) && count($days) <= 31): ?>
+            <h6 class="tw-font-semibold tw-mb-2 tw-mt-4"><?php echo _l('hr_leave_days_breakdown'); ?></h6>
+            <table class="table table-condensed table-bordered">
+              <thead>
+                <tr>
+                  <th><?php echo _l('hr_date'); ?></th>
+                  <th><?php echo _l('hr_type'); ?></th>
+                  <th><?php echo _l('hr_leave_value_days'); ?></th>
+                </tr>
+              </thead>
+              <tbody>
+                <?php foreach ($days as $d): ?>
+                <tr <?php if ($d->day_type === 'bridge') echo 'class="tw-bg-neutral-50"'; ?>>
+                  <td><?php echo _d($d->leave_date); ?></td>
+                  <td>
+                    <?php echo htmlspecialchars(hr_leave_day_type_label($d->day_type)); ?>
+                    <?php if ($d->day_type === 'hourly' && $d->hour_start && $d->hour_end): ?>
+                    <span class="text-muted tw-text-sm">(<?php echo substr($d->hour_start, 0, 5); ?> — <?php echo substr($d->hour_end, 0, 5); ?>)</span>
+                    <?php endif; ?>
+                    <?php if (!empty($d->note)): ?>
+                    <br><span class="text-muted tw-text-sm"><i class="fa fa-info-circle tw-mr-1"></i><?php echo htmlspecialchars($d->note); ?><?php if ($d->day_type === 'bridge') echo ' — ' . _l('hr_leave_bridge_hint'); ?></span>
+                    <?php endif; ?>
+                  </td>
+                  <td><?php echo $d->day_value; ?></td>
+                </tr>
+                <?php endforeach; ?>
+              </tbody>
+            </table>
+            <?php endif; ?>
 
             <?php if ($balance): ?>
             <div class="alert alert-info tw-mt-2">

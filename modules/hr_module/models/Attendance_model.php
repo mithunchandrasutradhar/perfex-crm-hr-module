@@ -89,6 +89,7 @@ class Attendance_model extends App_Model
             return ['success' => false, 'message' => _l('hr_val_duplicate_attendance')];
         }
         $data['working_hours'] = $this->_calc_hours($data['in_time'] ?? null, $data['out_time'] ?? null);
+        $data['status']        = $this->_normalize_status($data);
         $data['created_by']    = get_staff_user_id();
         $data['created_at']    = date('Y-m-d H:i:s');
         $this->db->insert($this->table, $data);
@@ -105,9 +106,23 @@ class Attendance_model extends App_Model
             }
         }
         $data['working_hours'] = $this->_calc_hours($data['in_time'] ?? null, $data['out_time'] ?? null);
+        $data['status']        = $this->_normalize_status($data);
         $data['updated_at']    = date('Y-m-d H:i:s');
         $this->db->where('id', $id)->update($this->table, $data);
         return ['success' => true];
+    }
+
+    // 'present'/'late' must always reflect in_time against the office start time + late
+    // threshold, not whatever the status dropdown happened to have selected - otherwise a
+    // manually-entered 09:15 clock-in can get saved as "Present" if the field was left as-is.
+    // 'absent'/'half_day' are legitimate manual calls (e.g. an approved half day) and are kept as-is.
+    private function _normalize_status($data)
+    {
+        $status = $data['status'] ?? null;
+        if (in_array($status, ['absent', 'half_day'], true)) {
+            return $status;
+        }
+        return $this->_determine_status($data['in_time'] ?? null);
     }
 
     public function delete($id)
@@ -133,6 +148,7 @@ class Attendance_model extends App_Model
                 continue;
             }
             $rec['working_hours'] = $this->_calc_hours($rec['in_time'] ?? null, $rec['out_time'] ?? null);
+            $rec['status']        = $this->_normalize_status($rec);
             $rec['created_at']    = date('Y-m-d H:i:s');
             $this->db->insert($this->table, $rec);
             $saved++;

@@ -30,12 +30,17 @@ foreach ($rows as $r) {
     $source_icon  = $r->source === 'zkteco'
         ? '<i class="fa fa-fingerprint text-info" title="ZKTeco"></i>'
         : '<i class="fa fa-keyboard text-muted" title="Manual"></i>';
-    $actions = '';
-    if (staff_can('edit',   'hr_attendance')) $actions .= '<a href="#" class="btn btn-default btn-xs hr-edit-att" data-id="' . $r->id . '"><i class="fa fa-pencil-alt"></i></a> ';
-    if (staff_can('delete', 'hr_attendance')) $actions .= '<a href="' . admin_url('hr_module/attendance/delete/' . $r->id) . '" class="btn btn-danger btn-xs _delete"><i class="fa fa-times"></i></a>';
 
-    $output['aaData'][] = [
-        '<a href="' . admin_url('hr_module/employees/view/' . $r->employee_id) . '">' . htmlspecialchars($r->employee_name) . '</a><br><small class="text-muted">' . $r->employee_code . '</small>',
+    $employee_cell = '<a href="' . admin_url('hr_module/employees/view/' . $r->employee_id) . '">' . htmlspecialchars($r->employee_name) . '</a><br><small class="text-muted">' . $r->employee_code . '</small>';
+    $options = [];
+    if (staff_can('edit',   'hr_attendance')) $options[] = '<a href="#" class="hr-edit-att" data-id="' . $r->id . '">' . _l('hr_edit') . '</a>';
+    if (staff_can('delete', 'hr_attendance')) $options[] = '<a href="' . admin_url('hr_module/attendance/delete/' . $r->id) . '" class="_delete text-danger">' . _l('hr_delete') . '</a>';
+    if ($options) {
+        $employee_cell .= '<div class="row-options">' . implode(' | ', $options) . '</div>';
+    }
+
+    $row = [
+        $employee_cell,
         $r->department_name ? htmlspecialchars($r->department_name) : '-',
         date('D, d M Y', strtotime($r->attendance_date)),
         $r->in_time  ? substr($r->in_time, 0, 5)  : '-',
@@ -43,6 +48,7 @@ foreach ($rows as $r) {
         $r->working_hours ? $r->working_hours . ' h' : '-',
         $status_badge,
         $source_icon,
-        $actions,
     ];
+    $row['DT_RowClass'] = 'has-row-options';
+    $output['aaData'][] = $row;
 }

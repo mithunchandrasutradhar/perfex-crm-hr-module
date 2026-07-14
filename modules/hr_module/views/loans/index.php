@@ -34,7 +34,7 @@
               _l('hr_employee'), _l('hr_department'),
               _l('hr_loan_amount'), _l('hr_loan_monthly_installment'),
               _l('hr_loan_outstanding'), 'Repaid', _l('hr_status'),
-              _l('hr_loan_disbursement_date'), _l('hr_actions'),
+              _l('hr_loan_disbursement_date'),
             ], 'hr-loans'); ?>
           </div>
         </div>

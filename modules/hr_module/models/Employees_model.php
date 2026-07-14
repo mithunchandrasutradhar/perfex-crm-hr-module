@@ -19,6 +19,7 @@ class Employees_model extends App_Model
                 COALESCE(s.email, e.email)           as email,
                 COALESCE(s.phonenumber, e.phone)     as phone,
                 s.profile_image as staff_photo,
+                s.active as staff_active,
                 d.name as department_name, ds.name as designation_name,
                 CONCAT(s.firstname," ",s.lastname) as staff_name', false)
             ->from($this->table . ' e')

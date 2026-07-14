@@ -15,22 +15,44 @@ class Loans_model extends App_Model
 
     private function _ensure_deduction_table()
     {
-        if ($this->db->table_exists(db_prefix() . $this->deduct_table)) return;
-        $this->db->query("CREATE TABLE IF NOT EXISTS `" . db_prefix() . $this->deduct_table . "` (
-            `id`          INT UNSIGNED NOT NULL AUTO_INCREMENT,
-            `loan_id`     INT UNSIGNED NOT NULL,
-            `employee_id` INT UNSIGNED NOT NULL,
-            `pay_month`   TINYINT UNSIGNED NOT NULL,
-            `pay_year`    SMALLINT UNSIGNED NOT NULL,
-            `amount`      DECIMAL(15,2) NOT NULL,
-            `status`      ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending',
-            `notes`       TEXT,
-            `reviewed_by` INT UNSIGNED DEFAULT NULL,
-            `reviewed_at` DATETIME DEFAULT NULL,
-            `created_at`  DATETIME NOT NULL,
-            PRIMARY KEY (`id`),
-            UNIQUE KEY `uniq_loan_month_year` (`loan_id`, `pay_month`, `pay_year`)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8");
+        if (!$this->db->table_exists(db_prefix() . $this->deduct_table)) {
+            $this->db->query("CREATE TABLE IF NOT EXISTS `" . db_prefix() . $this->deduct_table . "` (
+                `id`          INT UNSIGNED NOT NULL AUTO_INCREMENT,
+                `loan_id`     INT UNSIGNED NOT NULL,
+                `employee_id` INT UNSIGNED NOT NULL,
+                `pay_month`   TINYINT UNSIGNED NOT NULL,
+                `pay_year`    SMALLINT UNSIGNED NOT NULL,
+                `amount`      DECIMAL(15,2) NOT NULL,
+                `status`      ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending',
+                `notes`       TEXT,
+                `reviewed_by` INT UNSIGNED DEFAULT NULL,
+                `reviewed_at` DATETIME DEFAULT NULL,
+                `created_at`  DATETIME NOT NULL,
+                PRIMARY KEY (`id`),
+                UNIQUE KEY `uniq_loan_month_year` (`loan_id`, `pay_month`, `pay_year`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8");
+        }
+        // Tracks which payroll run actually deducted this request, so an approved
+        // request can't silently sit "approved" forever after payroll has already paid it out.
+        $col = $this->db->query("SHOW COLUMNS FROM `" . db_prefix() . $this->deduct_table . "` LIKE 'payroll_id'")->num_rows();
+        if ($col === 0) {
+            $this->db->query("ALTER TABLE `" . db_prefix() . $this->deduct_table . "` ADD COLUMN `payroll_id` INT UNSIGNED DEFAULT NULL AFTER `amount`");
+        }
+        // Marks a request as "skip this month, don't deduct" and how the skipped
+        // installment should be handled once approved.
+        $col = $this->db->query("SHOW COLUMNS FROM `" . db_prefix() . $this->deduct_table . "` LIKE 'is_skip'")->num_rows();
+        if ($col === 0) {
+            $this->db->query("ALTER TABLE `" . db_prefix() . $this->deduct_table . "` ADD COLUMN `is_skip` TINYINT(1) NOT NULL DEFAULT 0 AFTER `payroll_id`");
+            $this->db->query("ALTER TABLE `" . db_prefix() . $this->deduct_table . "` ADD COLUMN `carry_option` VARCHAR(20) DEFAULT NULL AFTER `is_skip`");
+        }
+    }
+
+    // Marks a deduction request as fulfilled by a specific payroll run.
+    public function mark_deduction_paid($request_id, $payroll_id)
+    {
+        $this->db->where('id', $request_id)->update(db_prefix() . $this->deduct_table, [
+            'payroll_id' => $payroll_id,
+        ]);
     }
 
     public function get($id)
@@ -182,15 +204,50 @@ class Loans_model extends App_Model
 
     // ─── Deduction Requests ──────────────────────────────────────────────────
 
-    public function submit_deduction_request($loan_id, $pay_month, $pay_year, $amount, $notes = '')
+    // $is_skip requests "don't deduct this month" at all. Whether skipping entirely or just
+    // requesting less than the full amount due (installment + anything already carried over),
+    // whatever isn't collected this month ("the shortfall") must go somewhere: carry_option
+    // = 'next_month' adds it on top of next month's deduction, or 'extend_term' simply
+    // extends the repayment period by one month instead.
+    public function submit_deduction_request($loan_id, $pay_month, $pay_year, $amount, $notes = '', $is_skip = false, $carry_option = null)
     {
         $loan = $this->db->where('id', $loan_id)->get(db_prefix() . $this->table)->row();
         if (!$loan || !in_array($loan->status, ['approved', 'active'])) {
             return ['success' => false, 'message' => 'Loan is not active.'];
         }
-        $amount = round(min((float) $amount, (float) $loan->outstanding), 2);
-        if ($amount <= 0) {
-            return ['success' => false, 'message' => 'Amount must be greater than zero.'];
+
+        // Payroll for this period is already paid out - the deduction (or lack of one) is
+        // final, so no new request can be made against it anymore.
+        $already_paid = $this->db
+            ->where('employee_id', $loan->employee_id)
+            ->where('pay_month',   $pay_month)
+            ->where('pay_year',    $pay_year)
+            ->where('status',      'paid')
+            ->count_all_results(db_prefix() . 'hr_payroll') > 0;
+        if ($already_paid) {
+            return ['success' => false, 'message' => 'Payroll for this period has already been paid - a deduction request can no longer be made.'];
+        }
+
+        $total_due = (float) $loan->monthly_installment + (float) $loan->carry_forward_amount;
+
+        if ($is_skip) {
+            if (!in_array($carry_option, ['next_month', 'extend_term'], true)) {
+                return ['success' => false, 'message' => 'Choose how the skipped installment should be handled.'];
+            }
+            $amount = round(min((float) $loan->monthly_installment, (float) $loan->outstanding), 2);
+        } else {
+            $amount = round(min((float) $amount, (float) $loan->outstanding), 2);
+            if ($amount <= 0) {
+                return ['success' => false, 'message' => 'Amount must be greater than zero.'];
+            }
+            $shortfall = max(0, $total_due - $amount);
+            if ($shortfall > 0) {
+                if (!in_array($carry_option, ['next_month', 'extend_term'], true)) {
+                    return ['success' => false, 'message' => 'This is less than the full amount due (' . number_format($total_due, 2) . ') - choose how the remaining ' . number_format($shortfall, 2) . ' should be handled.'];
+                }
+            } else {
+                $carry_option = null;
+            }
         }
 
         $existing = $this->db->where([
@@ -199,33 +256,47 @@ class Loans_model extends App_Model
             'pay_year'  => (int) $pay_year,
         ])->get(db_prefix() . $this->deduct_table)->row();
 
+        $record = [
+            'amount'       => $amount,
+            'is_skip'      => $is_skip ? 1 : 0,
+            'carry_option' => $carry_option,
+            'notes'        => $notes ?: null,
+        ];
+
         if ($existing) {
             if ($existing->status === 'approved') {
                 return ['success' => false, 'message' => 'A deduction for this month is already approved.'];
             }
-            $this->db->where('id', $existing->id)->update(db_prefix() . $this->deduct_table, [
-                'amount'      => $amount,
-                'notes'       => $notes ?: null,
-                'status'      => 'pending',
-                'reviewed_by' => null,
-                'reviewed_at' => null,
-            ]);
+            $record['status']      = 'pending';
+            $record['reviewed_by'] = null;
+            $record['reviewed_at'] = null;
+            $this->db->where('id', $existing->id)->update(db_prefix() . $this->deduct_table, $record);
             return ['success' => true, 'message' => 'Deduction request updated.'];
         }
 
-        $this->db->insert(db_prefix() . $this->deduct_table, [
-            'loan_id'     => (int) $loan_id,
-            'employee_id' => (int) $loan->employee_id,
-            'pay_month'   => (int) $pay_month,
-            'pay_year'    => (int) $pay_year,
-            'amount'      => $amount,
-            'status'      => 'pending',
-            'notes'       => $notes ?: null,
-            'created_at'  => date('Y-m-d H:i:s'),
-        ]);
+        $record['loan_id']     = (int) $loan_id;
+        $record['employee_id'] = (int) $loan->employee_id;
+        $record['pay_month']   = (int) $pay_month;
+        $record['pay_year']    = (int) $pay_year;
+        $record['status']      = 'pending';
+        $record['created_at']  = date('Y-m-d H:i:s');
+
+        $this->db->insert(db_prefix() . $this->deduct_table, $record);
         return $this->db->insert_id()
             ? ['success' => true, 'message' => 'Deduction request submitted.']
             : ['success' => false, 'message' => _l('hr_error_saving')];
+    }
+
+    // Pending loan-level requests (submitted by the employee, before/around payroll time)
+    // for a given employee/month/year - used to surface them on the Payroll list too.
+    public function get_pending_requests_for_period($employee_id, $month, $year)
+    {
+        return $this->db
+            ->where('employee_id', $employee_id)
+            ->where('pay_month',   $month)
+            ->where('pay_year',    $year)
+            ->where('status',      'pending')
+            ->get(db_prefix() . $this->deduct_table)->result();
     }
 
     public function get_deduction_requests($filters = [])
@@ -256,6 +327,41 @@ class Loans_model extends App_Model
             'reviewed_by' => get_staff_user_id(),
             'reviewed_at' => date('Y-m-d H:i:s'),
         ]);
+
+        $loan = $this->db->where('id', $req->loan_id)->get(db_prefix() . $this->table)->row();
+        if ($loan) {
+            // What's owed this month is the standard installment plus anything already
+            // carried over; whatever this request doesn't cover is the shortfall.
+            $total_due = (float) $loan->monthly_installment + (float) $loan->carry_forward_amount;
+            $deducted  = $req->is_skip ? 0.0 : (float) $req->amount;
+            $shortfall = max(0, $total_due - $deducted);
+
+            if ($shortfall > 0 && $req->carry_option === 'next_month') {
+                // Replaces (not adds to) carry_forward_amount, since $total_due already
+                // included whatever was carried in from before.
+                $this->db->where('id', $loan->id)->update(db_prefix() . $this->table, [
+                    'carry_forward_amount' => round($shortfall, 2),
+                ]);
+            } elseif ($shortfall > 0 && $req->carry_option === 'extend_term') {
+                // The extra month absorbs the shortfall - no explicit carry-over needed.
+                $this->db->where('id', $loan->id)->update(db_prefix() . $this->table, [
+                    'repayment_months'     => (int) $loan->repayment_months + 1,
+                    'carry_forward_amount' => 0,
+                ]);
+            } else {
+                // Paid the full amount due (or more) - nothing left carrying over.
+                $this->db->where('id', $loan->id)->update(db_prefix() . $this->table, [
+                    'carry_forward_amount' => 0,
+                ]);
+            }
+        }
+
+        // If payroll for this employee/month was already generated (draft), reflect the
+        // just-approved request in it immediately rather than leaving it stale until
+        // someone notices and regenerates.
+        $this->load->model('hr_module/Payroll_model');
+        $this->Payroll_model->sync_loan_deduction_for_period($req->employee_id, $req->pay_month, $req->pay_year);
+
         return ['success' => true, 'message' => 'Deduction request approved.'];
     }
 
@@ -276,5 +382,17 @@ class Loans_model extends App_Model
     public function get_deduction_request($id)
     {
         return $this->db->where('id', $id)->get(db_prefix() . $this->deduct_table)->row();
+    }
+
+    // A request can only be withdrawn while still pending - once approved/rejected it's
+    // either already been acted on or already reflected in a loan/payroll adjustment.
+    public function delete_deduction_request($id)
+    {
+        $req = $this->db->where('id', $id)->get(db_prefix() . $this->deduct_table)->row();
+        if (!$req || $req->status !== 'pending') {
+            return ['success' => false, 'message' => 'Only a pending request can be deleted.'];
+        }
+        $this->db->where('id', $id)->delete(db_prefix() . $this->deduct_table);
+        return ['success' => true, 'message' => 'Deduction request deleted.'];
     }
 }

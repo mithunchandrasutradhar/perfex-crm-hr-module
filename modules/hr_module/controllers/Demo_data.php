@@ -88,25 +88,18 @@ class Demo_data extends AdminController
         }
         $dept_ids = array_column($dept_rows, 'id');
 
-        // ---- Designations ---------------------------------------------------
-        $desig_map = [
-            'HR Manager'       => 0,
-            'Software Engineer'=> 0,
-            'Senior Accountant'=> 1,
-            'UI/UX Designer'   => 2,
-            'Sales Executive'  => 3,
-        ];
+        // ---- Designations (independent of department) ------------------------
+        $desig_names = ['HR Manager', 'Software Engineer', 'Senior Accountant', 'UI/UX Designer', 'Sales Executive'];
         $desig_ids = [];
-        foreach ($desig_map as $dn => $d_idx) {
+        foreach ($desig_names as $dn) {
             $row = $this->db->where('name', $dn)->get(db_prefix() . 'hr_designations')->row();
             if ($row) {
                 $desig_ids[$dn] = $row->id;
             } else {
                 $this->db->insert(db_prefix() . 'hr_designations', [
-                    'name'          => $dn,
-                    'department_id' => !empty($dept_ids[$d_idx]) ? $dept_ids[$d_idx] : null,
-                    'status'        => 1,
-                    'created_at'    => $now,
+                    'name'       => $dn,
+                    'status'     => 1,
+                    'created_at' => $now,
                 ]);
                 $err = $this->db->error();
                 if (!empty($err['code'])) {
@@ -588,37 +581,39 @@ class Demo_data extends AdminController
         $log[] = '[OK] Created ' . $loan_count . ' loans with repayment records';
 
         // ====================================================================
-        // OVERTIME  (last 2 months, multiple entries per employee)
+        // OVERTIME  (day-based: weekend entries over the last ~6 weeks per employee)
         // ====================================================================
-        $ot_reasons  = ['Project deadline delivery', 'Client presentation preparation', 'Emergency server maintenance', 'Month-end report preparation', 'Product launch support'];
-        $ot_count    = 0;
+        $ot_reasons    = ['Project deadline delivery', 'Client presentation preparation', 'Emergency server maintenance', 'Month-end report preparation', 'Product launch support'];
+        $ot_multiplier = 1.5;
+        $ot_count      = 0;
         foreach ($all_emp as $ei => $eid) {
-            $hourly = $all_people[$ei]['salary'] / 176;
+            $daily_rate = $all_people[$ei]['salary'] / 26;
             $ot_entries = [
-                ['days_ago' => 2,  'hours' => 2.5, 'status' => 'approved'],
-                ['days_ago' => 7,  'hours' => 3.0, 'status' => 'approved'],
-                ['days_ago' => 14, 'hours' => 2.0, 'status' => 'approved'],
-                ['days_ago' => 21, 'hours' => 4.0, 'status' => 'approved'],
-                ['days_ago' => 28, 'hours' => 1.5, 'status' => 'pending'],
-                ['days_ago' => 35, 'hours' => 3.5, 'status' => 'rejected'],
+                ['weeks_ago' => 1, 'status' => 'approved'],
+                ['weeks_ago' => 2, 'status' => 'approved'],
+                ['weeks_ago' => 3, 'status' => 'approved'],
+                ['weeks_ago' => 4, 'status' => 'approved'],
+                ['weeks_ago' => 5, 'status' => 'pending'],
+                ['weeks_ago' => 6, 'status' => 'rejected'],
             ];
             foreach ($ot_entries as $oi => $ot) {
-                // Skip weekends
-                $ot_date = date('Y-m-d', strtotime('-' . ($ot['days_ago'] + $ei) . ' days'));
-                $dow = (int) date('N', strtotime($ot_date));
-                if ($dow >= 6) {
-                    $ot_date = date('Y-m-d', strtotime($ot_date . ' -1 day'));
-                }
+                // Land on the nearest weekly-off day (Friday, dow=5) in that week, matching
+                // the module's default "weekly_off_days" setting, so it's a valid overtime date.
+                $anchor_ts = strtotime('-' . (($ot['weeks_ago'] * 7) + $ei) . ' days');
+                $dow       = (int) date('w', $anchor_ts);
+                $back_days = ($dow - 5 + 7) % 7;
+                $ot_date   = date('Y-m-d', strtotime('-' . $back_days . ' days', $anchor_ts));
+
                 $this->db->insert(db_prefix() . 'hr_overtime', [
                     'employee_id'     => $eid,
                     'overtime_date'   => $ot_date,
-                    'hours'           => $ot['hours'],
-                    'rate_multiplier' => 1.5,
-                    'total_amount'    => round($hourly * 1.5 * $ot['hours'], 2),
+                    'day_type'        => 'weekend',
+                    'rate_multiplier' => $ot_multiplier,
+                    'total_amount'    => round($daily_rate * $ot_multiplier, 2),
                     'reason'          => $ot_reasons[($ei + $oi) % count($ot_reasons)],
                     'status'          => $ot['status'],
                     'approved_by'     => ($ot['status'] === 'approved') ? get_staff_user_id() : null,
-                    'approved_at'     => ($ot['status'] === 'approved') ? date('Y-m-d H:i:s', strtotime('-' . $ot['days_ago'] . ' days')) : null,
+                    'approved_at'     => ($ot['status'] === 'approved') ? date('Y-m-d H:i:s', strtotime($ot_date)) : null,
                     'rejection_reason'=> ($ot['status'] === 'rejected') ? 'Overtime not pre-approved by department head.' : null,
                     'created_at'      => $now,
                 ]);

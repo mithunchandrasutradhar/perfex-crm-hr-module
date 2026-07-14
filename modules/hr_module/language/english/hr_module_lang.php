@@ -3,7 +3,7 @@ defined('BASEPATH') or exit('No direct script access allowed');
 
 // Module
 $lang['hr_module']                         = 'HR Management';
-$lang['hr_module_dashboard']               = 'HR Dashboard';
+$lang['hr_module_dashboard']                = 'HR Dashboard';
 $lang['hr_module_settings']                = 'Settings';
 
 // Menu items
@@ -148,6 +148,7 @@ $lang['hr_employee_education']             = 'Education';
 $lang['hr_employee_experience']            = 'Experience';
 $lang['hr_employee_skills']                = 'Skills';
 $lang['hr_employee_photo']                 = 'Photo';
+$lang['hr_employee_status_follows_staff']  = 'This mirrors the linked staff member\'s active/inactive status in Perfex - it is not set independently here.';
 $lang['hr_employee_added']                 = 'Employee added successfully';
 $lang['hr_employee_updated']               = 'Employee updated successfully';
 $lang['hr_employee_deleted']               = 'Employee deleted successfully';
@@ -197,6 +198,20 @@ $lang['hr_leave_used']                     = 'Used';
 $lang['hr_leave_remaining']                = 'Remaining';
 $lang['hr_leave_year']                     = 'Year';
 $lang['hr_leave_half_day']                 = 'Half Day';
+$lang['hr_leave_day_type_full']            = 'Full Day';
+$lang['hr_leave_day_type_half']            = 'Half Day';
+$lang['hr_leave_day_type_hourly']          = 'Hourly';
+$lang['hr_leave_before_lunch']             = 'Before Lunch';
+$lang['hr_leave_after_lunch']              = 'After Lunch';
+$lang['hr_leave_hour_start']               = 'From';
+$lang['hr_leave_hour_end']                 = 'To';
+$lang['hr_leave_add_day']                  = 'Add Day';
+$lang['hr_leave_days_breakdown']           = 'Days';
+$lang['hr_leave_value_days']               = 'Value (days)';
+$lang['hr_leave_no_days_added']            = 'No days added yet. Click "Add Day" to start.';
+$lang['hr_leave_weekly_off']               = 'Weekly Off';
+$lang['hr_leave_day_type_bridge']          = 'Auto-included';
+$lang['hr_leave_bridge_hint']              = 'Automatically included because it falls between two of your requested leave days.';
 $lang['hr_leave_status_pending']           = 'Pending';
 $lang['hr_leave_status_approved']          = 'Approved';
 $lang['hr_leave_status_rejected']          = 'Rejected';
@@ -205,6 +220,13 @@ $lang['hr_leave_approved_msg']             = 'Leave request approved';
 $lang['hr_leave_rejected_msg']             = 'Leave request rejected';
 $lang['hr_leave_applied_msg']              = 'Leave request submitted';
 $lang['hr_leave_max_days']                 = 'Maximum Days Per Year';
+$lang['hr_leave_hours_per_day']            = 'Hours Per Day';
+$lang['hr_leave_hours_per_day_hint']       = 'Hours that count as one full day of leave for this type, e.g. 8 hours = 1 day.';
+$lang['hr_leave_is_date_range']            = 'Applied as a date range (e.g. Maternity Leave)';
+$lang['hr_leave_is_date_range_hint']       = 'For long continuous leave, staff pick a From/To date range instead of adding individual days. Half-day and hourly entry are not available for this type.';
+$lang['hr_leave_duration_type']            = 'Duration';
+$lang['hr_leave_half_day_not_allowed']     = 'This leave type does not allow half-day leave.';
+$lang['hr_leave_range_days']               = 'Total Days';
 $lang['hr_leave_carry_forward']            = 'Carry Forward';
 $lang['hr_leave_requires_attachment']      = 'Requires Attachment';
 $lang['hr_leave_type_added']               = 'Leave type added successfully';
@@ -275,6 +297,7 @@ $lang['hr_payroll_tax']                    = 'Tax';
 $lang['hr_payroll_bonus']                  = 'Bonus';
 $lang['hr_payroll_overtime_pay']           = 'Overtime Pay';
 $lang['hr_payroll_loan_deduction']         = 'Loan Deduction';
+$lang['hr_payroll_overtime']               = 'Overtime';
 $lang['hr_payroll_status_draft']           = 'Draft';
 $lang['hr_payroll_status_approved']        = 'Approved';
 $lang['hr_payroll_status_paid']            = 'Paid';
@@ -343,6 +366,21 @@ $lang['hr_overtime_reject']                = 'Reject';
 $lang['hr_overtime_approved_msg']          = 'Overtime approved';
 $lang['hr_overtime_rejected_msg']          = 'Overtime rejected';
 $lang['hr_overtime_applied_msg']           = 'Overtime request submitted';
+$lang['hr_overtime_day_type']              = 'Day Type';
+$lang['hr_overtime_weekend']               = 'Weekend';
+$lang['hr_overtime_government_holiday']    = 'Government Holiday';
+$lang['hr_overtime_company_holiday']       = 'Company Holiday';
+$lang['hr_overtime_not_eligible_date']     = 'This date is not a weekend or a registered holiday. Overtime can only be requested for those days.';
+$lang['hr_overtime_duplicate_date']        = 'An overtime request already exists for this employee on this date.';
+$lang['hr_overtime_select_employee_date']  = 'Select an employee and date to check eligibility.';
+$lang['hr_overtime_eligibility_hint']      = 'Overtime can only be requested for a weekend or a registered government/company holiday. Select a date to see whether it qualifies.';
+$lang['hr_overtime_approve_confirm']       = 'Approve this overtime request?';
+$lang['hr_overtime_reject_reason_prompt']  = 'Reason for rejecting (optional):';
+$lang['hr_overtime_dates']                 = 'Overtime Date(s)';
+$lang['hr_overtime_multi_date_hint']       = 'Worked overtime on more than one day this month? Add each date below in a single request.';
+$lang['hr_overtime_add_another_date']      = 'Add another date';
+$lang['hr_overtime_no_dates_selected']     = 'Select at least one date.';
+$lang['hr_overtime_batch_submitted']       = '%d overtime requests submitted.';
 
 // Performance
 $lang['hr_performance_list']               = 'Performance Reviews';
@@ -448,6 +486,7 @@ $lang['hr_report_download']                = 'Download Report';
 
 // Settings
 $lang['hr_settings_general']               = 'General Settings';
+$lang['hr_settings_company_structure']     = 'Company Structure';
 $lang['hr_settings_leave']                 = 'Leave Settings';
 $lang['hr_settings_attendance']            = 'Attendance Settings';
 $lang['hr_settings_payroll']               = 'Payroll Settings';
@@ -461,7 +500,8 @@ $lang['hr_settings_working_hours']         = 'Working Hours Per Day';
 $lang['hr_settings_office_start_time']     = 'Office Start Time';
 $lang['hr_settings_office_end_time']       = 'Office End Time';
 $lang['hr_settings_late_threshold']        = 'Late Threshold (minutes)';
-$lang['hr_settings_overtime_rate']         = 'Default Overtime Rate';
+$lang['hr_settings_overtime_rate']         = 'Weekend Overtime Rate';
+$lang['hr_settings_overtime_holiday_rate'] = 'Holiday Overtime Rate';
 $lang['hr_settings_employee_id_prefix']    = 'Employee ID Prefix';
 $lang['hr_settings_payroll_day']           = 'Payroll Generation Day';
 $lang['hr_settings_notify_leave_apply']    = 'Notify on Leave Apply';
@@ -470,6 +510,9 @@ $lang['hr_settings_notify_loan_apply']     = 'Notify on Loan Apply';
 $lang['hr_settings_notify_payroll']        = 'Notify on Payroll Generation';
 $lang['hr_settings_zkteco_enabled']        = 'Enable ZKTeco Integration';
 $lang['hr_settings_zkteco_sync_interval']  = 'Sync Interval (minutes)';
+$lang['hr_settings_danger_zone']           = 'Danger Zone';
+$lang['hr_settings_allow_data_removal']    = 'Allow HR data removal when this module is uninstalled';
+$lang['hr_settings_allow_data_removal_hint'] = 'By default, uninstalling this module keeps all HR data (leave, payroll, contracts, attendance, etc.) in the database. Enable this only if you want that data permanently deleted the next time the module is uninstalled.';
 
 // Notifications
 $lang['hr_notif_leave_applied']            = 'New leave request from {employee}';
@@ -507,6 +550,9 @@ $lang['hr_val_date_range']                 = 'End date must be after start date'
 $lang['hr_val_insufficient_leave']         = 'Insufficient leave balance';
 $lang['hr_val_overlapping_leave']          = 'Overlapping leave request exists';
 $lang['hr_val_duplicate_attendance']       = 'Attendance record already exists for this date';
+$lang['hr_val_no_leave_days']              = 'Please add at least one day to this leave request';
+$lang['hr_val_duplicate_leave_dates']      = 'The same date was added more than once';
+$lang['hr_val_invalid_leave_day']          = 'Invalid leave day entry';
 
 // Errors
 $lang['hr_error_permission']               = 'You do not have permission to perform this action';

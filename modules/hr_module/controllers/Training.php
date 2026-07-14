@@ -13,7 +13,7 @@ class Training extends AdminController
     public function index()
     {
         if (staff_cant('view', 'hr_training') && staff_cant('view_own', 'hr_training')) access_denied('hr_training');
-        if ($this->input->is_ajax_request() && !$this->input->post()) {
+        if ($this->input->is_ajax_request()) {
             $this->app->get_table_data(module_views_path('hr_module', 'training/table'));
             return;
         }

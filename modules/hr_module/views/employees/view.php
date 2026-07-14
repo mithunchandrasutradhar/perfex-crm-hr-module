@@ -30,7 +30,7 @@ function ef($v, $d = '-') { return !empty($v) ? htmlspecialchars($v) : $d; }
             <h5 class="tw-font-bold tw-text-base"><?php echo ef($e->first_name) . ' ' . ef($e->last_name); ?></h5>
             <p class="text-muted tw-text-sm"><?php echo ef($e->designation_name); ?></p>
             <p><span class="label label-default"><?php echo ef($e->employee_code); ?></span></p>
-            <?php if ($e->status == 1): ?>
+            <?php if ($e->staff_active == 1): ?>
             <span class="label label-success"><?php echo _l('hr_active'); ?></span>
             <?php else: ?>
             <span class="label label-danger"><?php echo _l('hr_inactive'); ?></span>

@@ -52,6 +52,7 @@ class Employees extends AdminController
             $data                  = $this->_prepare_post_data();
             $data['employee_code'] = $code;
             $data['staff_id']      = $staff_id;
+            $data['status']        = $this->_staff_active_status($staff_id);
 
             if (!empty($_FILES['photo']['name'])) {
                 $upload = $this->Employees_model->handle_photo_upload();
@@ -101,6 +102,7 @@ class Employees extends AdminController
 
             $data = $this->_prepare_post_data();
             $data['staff_id'] = $staff_id;
+            $data['status']   = $this->_staff_active_status($staff_id);
             $code = $this->input->post('employee_code', true);
             if (!empty($code) && $this->Employees_model->code_exists($code, $id)) {
                 set_alert('danger', 'Employee code already exists.');
@@ -181,22 +183,12 @@ class Employees extends AdminController
         ]);
     }
 
-    public function get_designations_by_dept()
-    {
-        if (!$this->input->is_ajax_request()) show_404();
-        $dept_id = $this->input->get('dept_id');
-        $this->db->where('status', 1);
-        if ($dept_id) $this->db->where('department_id', $dept_id);
-        $rows = $this->db->order_by('name', 'ASC')->get(db_prefix() . 'hr_designations')->result();
-        echo json_encode($rows);
-    }
-
     private function _prepare_post_data()
     {
         // Note: first_name, last_name, email, phone are synced from tblstaff in the model
         return [
             'gender'                  => $this->input->post('gender', true),
-            'date_of_birth'           => $this->input->post('date_of_birth') ?: null,
+            'date_of_birth'           => to_sql_date($this->input->post('date_of_birth')) ?: null,
             'address'                 => $this->input->post('address', true),
             'department_id'           => $this->input->post('department_id') ?: null,
             'designation_id'          => $this->input->post('designation_id') ?: null,
@@ -214,8 +206,15 @@ class Employees extends AdminController
             'marital_status'          => $this->input->post('marital_status', true),
             'emergency_contact_name'  => $this->input->post('emergency_contact_name', true),
             'emergency_contact_phone' => $this->input->post('emergency_contact_phone', true),
-            'status'                  => $this->input->post('status') ? 1 : 0,
             'notes'                   => $this->input->post('notes', true),
         ];
+    }
+
+    // Employee status always mirrors the linked staff account's active status -
+    // it is not independently editable in the HR profile.
+    private function _staff_active_status($staff_id)
+    {
+        $staff = get_staff($staff_id);
+        return $staff ? (int) $staff->active : 0;
     }
 }

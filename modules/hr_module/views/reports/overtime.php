@@ -1,5 +1,10 @@
 <?php defined('BASEPATH') or exit('No direct script access allowed');
 $sbadge = ['pending'=>'warning','approved'=>'success','rejected'=>'danger'];
+$day_type_labels = [
+    'weekend'            => _l('hr_overtime_weekend'),
+    'government_holiday' => _l('hr_overtime_government_holiday'),
+    'company_holiday'    => _l('hr_overtime_company_holiday'),
+];
 ?>
 <?php init_head(); ?>
 <div id="wrapper"><div class="content">
@@ -22,7 +27,7 @@ $sbadge = ['pending'=>'warning','approved'=>'success','rejected'=>'danger'];
   </div></div>
 
   <div class="row tw-mb-3">
-    <?php foreach([['Total Records',count($rows),'#4f46e5'],['Total Hours',number_format($total_hours,1).'h','#059669'],['Total Amount',number_format($total_amount,2),'#d97706']] as [$label,$val,$color]): ?>
+    <?php foreach([['Total Records',count($rows),'#4f46e5'],['Total Amount',number_format($total_amount,2),'#d97706']] as [$label,$val,$color]): ?>
     <div class="col-md-4"><div style="background:#fff;border-radius:8px;padding:12px 16px;border-left:3px solid <?php echo $color; ?>;box-shadow:0 1px 3px rgba(0,0,0,.08)">
       <div style="font-size:1.3rem;font-weight:700;color:<?php echo $color; ?>"><?php echo $val; ?></div>
       <div style="font-size:0.78rem;color:#64748b"><?php echo $label; ?></div>
@@ -32,7 +37,7 @@ $sbadge = ['pending'=>'warning','approved'=>'success','rejected'=>'danger'];
 
   <div class="panel_s"><div class="panel-body panel-table-full">
     <table class="table table-hover">
-      <thead><tr><th>Employee</th><th>Department</th><th>Date</th><th class="text-right">Hours</th><th>Rate</th><th class="text-right">Amount</th><th>Status</th></tr></thead>
+      <thead><tr><th>Employee</th><th>Department</th><th>Date</th><th>Day Type</th><th>Rate</th><th class="text-right">Amount</th><th>Status</th></tr></thead>
       <tbody>
       <?php if(empty($rows)): ?><tr><td colspan="7" class="text-center text-muted" style="padding:30px">No records.</td></tr>
       <?php else: foreach($rows as $r): ?>
@@ -40,7 +45,7 @@ $sbadge = ['pending'=>'warning','approved'=>'success','rejected'=>'danger'];
         <td><?php echo htmlspecialchars($r->first_name.' '.$r->last_name); ?><br><small class="text-muted"><?php echo $r->employee_code; ?></small></td>
         <td><?php echo htmlspecialchars($r->department_name ?? '-'); ?></td>
         <td><?php echo date('d M Y', strtotime($r->overtime_date)); ?></td>
-        <td class="text-right"><?php echo $r->hours; ?></td>
+        <td><?php echo $day_type_labels[$r->day_type] ?? '-'; ?><?php if($r->holiday_name): ?><br><small class="text-muted"><?php echo htmlspecialchars($r->holiday_name); ?></small><?php endif; ?></td>
         <td><?php echo $r->rate_multiplier; ?>x</td>
         <td class="text-right"><?php echo number_format($r->total_amount,2); ?></td>
         <td><span class="label label-<?php echo $sbadge[$r->status] ?? 'default'; ?>"><?php echo ucfirst($r->status); ?></span></td>

@@ -25,13 +25,22 @@
             <div class="table-responsive">
               <table class="table table-hover">
                 <thead><tr>
-                  <th>Name</th><th>Type</th><th>Calculation</th><th>Value</th><th>Taxable</th><th>Status</th><th><?php echo _l('hr_actions'); ?></th>
+                  <th>Name</th><th>Type</th><th>Calculation</th><th>Value</th><th>Taxable</th><th>Status</th>
                 </tr></thead>
                 <tbody>
                   <?php foreach ($items as $item): ?>
-                  <tr>
+                  <tr class="has-row-options">
                     <td><strong><?php echo htmlspecialchars($item->name); ?></strong>
                       <?php if ($item->description): ?><br><small class="text-muted"><?php echo htmlspecialchars($item->description); ?></small><?php endif; ?>
+                      <div class="row-options">
+                        <?php if (staff_can('edit','hr_payroll')): ?>
+                        <a href="#" class="hr-edit-item" data-id="<?php echo $item->id; ?>"><?php echo _l('hr_edit'); ?></a>
+                        <?php endif; ?>
+                        <?php if (staff_can('edit','hr_payroll') && staff_can('delete','hr_payroll')): ?> | <?php endif; ?>
+                        <?php if (staff_can('delete','hr_payroll')): ?>
+                        <a href="<?php echo admin_url('hr_module/payroll_items/delete/'.$item->id); ?>" class="_delete text-danger"><?php echo _l('hr_delete'); ?></a>
+                        <?php endif; ?>
+                      </div>
                     </td>
                     <td>
                       <?php if ($item->type === 'allowance'): ?>
@@ -50,18 +59,10 @@
                     </td>
                     <td><?php echo $item->taxable ? '<span class="label label-warning">Yes</span>' : '<span class="label label-default">No</span>'; ?></td>
                     <td><?php echo $item->status ? '<span class="label label-success">Active</span>' : '<span class="label label-default">Inactive</span>'; ?></td>
-                    <td>
-                      <?php if (staff_can('edit','hr_payroll')): ?>
-                      <a href="#" class="btn btn-default btn-xs hr-edit-item" data-id="<?php echo $item->id; ?>"><i class="fa fa-pencil-alt"></i></a>
-                      <?php endif; ?>
-                      <?php if (staff_can('delete','hr_payroll')): ?>
-                      <a href="<?php echo admin_url('hr_module/payroll_items/delete/'.$item->id); ?>" class="btn btn-danger btn-xs _delete"><i class="fa fa-times"></i></a>
-                      <?php endif; ?>
-                    </td>
                   </tr>
                   <?php endforeach; ?>
                   <?php if (empty($items)): ?>
-                  <tr><td colspan="7" class="tw-text-center text-muted">No payroll items configured yet. Add allowances and deductions to automate payroll.</td></tr>
+                  <tr><td colspan="6" class="tw-text-center text-muted">No payroll items configured yet. Add allowances and deductions to automate payroll.</td></tr>
                   <?php endif; ?>
                 </tbody>
               </table>

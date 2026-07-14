@@ -15,7 +15,7 @@ class Payroll extends AdminController
     public function index()
     {
         if (staff_cant('view', 'hr_payroll') && staff_cant('view_own', 'hr_payroll')) access_denied('hr_payroll');
-        if ($this->input->is_ajax_request() && !$this->input->post()) {
+        if ($this->input->is_ajax_request()) {
             $this->app->get_table_data(module_views_path('hr_module', 'payroll/table'));
             return;
         }
@@ -68,15 +68,6 @@ class Payroll extends AdminController
         $this->load->view('hr_module/payroll/view', $data);
     }
 
-    public function approve($id)
-    {
-        if (staff_cant('edit', 'hr_payroll')) access_denied('hr_payroll');
-        $result = $this->Payroll_model->approve($id);
-        if ($result['success']) set_alert('success', $result['message']);
-        else                    set_alert('danger',  $result['message']);
-        redirect(admin_url('hr_module/payroll/view/' . $id));
-    }
-
     public function mark_paid($id)
     {
         if (staff_cant('edit', 'hr_payroll')) access_denied('hr_payroll');
@@ -84,8 +75,11 @@ class Payroll extends AdminController
             $method = $this->input->post('payment_method');
             $date   = $this->input->post('payment_date') ?: date('Y-m-d');
             $result = $this->Payroll_model->mark_paid($id, $method, $date);
-            if ($result['success']) set_alert('success', $result['message']);
-            else                    set_alert('danger',  $result['message']);
+            if ($this->input->is_ajax_request()) {
+                echo json_encode($result);
+                return;
+            }
+            set_alert($result['success'] ? 'success' : 'danger', $result['message']);
         }
         redirect(admin_url('hr_module/payroll/view/' . $id));
     }
