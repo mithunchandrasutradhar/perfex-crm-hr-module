@@ -28,11 +28,20 @@ $form_url = $is_edit
               </div>
               <div class="row">
                 <div class="col-md-6">
-                  <div class="form-group">
-                    <label><?php echo _l('hr_training_trainer'); ?></label>
-                    <input type="text" name="trainer" class="form-control"
-                           value="<?php echo $is_edit ? htmlspecialchars($training->trainer) : ''; ?>"
-                           placeholder="Trainer / Instructor name">
+                  <div class="form-group select-placeholder">
+                    <label for="instructor_id"><?php echo _l('hr_training_trainer'); ?></label>
+                    <select name="instructor_id" id="instructor_id" class="selectpicker" data-width="100%"
+                            data-live-search="true" data-none-selected-text="<?php echo _l('hr_select'); ?>">
+                      <option value=""><?php echo _l('hr_select'); ?></option>
+                      <?php foreach ($staff as $id => $name): ?>
+                      <option value="<?php echo $id; ?>" <?php if ($is_edit && $training->instructor_id == $id) echo 'selected'; ?>>
+                        <?php echo htmlspecialchars($name); ?>
+                      </option>
+                      <?php endforeach; ?>
+                    </select>
+                    <?php if ($is_edit && !$training->instructor_id && $training->trainer): ?>
+                    <small class="text-muted"><?php echo _l('hr_training_legacy_trainer'); ?>: <?php echo htmlspecialchars($training->trainer); ?></small>
+                    <?php endif; ?>
                   </div>
                 </div>
                 <div class="col-md-6">
@@ -74,9 +83,9 @@ $form_url = $is_edit
                   </div>
                 </div>
               </div>
-              <div class="form-group">
-                <label><?php echo _l('hr_status'); ?></label>
-                <select name="status" class="form-control">
+              <div class="form-group select-placeholder">
+                <label for="status"><?php echo _l('hr_status'); ?></label>
+                <select name="status" id="status" class="selectpicker" data-width="100%">
                   <?php foreach (['scheduled','ongoing','completed','cancelled'] as $s): ?>
                   <option value="<?php echo $s; ?>" <?php if($is_edit && $training->status===$s) echo 'selected'; elseif(!$is_edit && $s==='scheduled') echo 'selected'; ?>>
                     <?php echo ucfirst($s); ?>

@@ -1,35 +1,83 @@
 <?php
 defined('BASEPATH') or exit('No direct script access allowed');
 
+/**
+ * A role-assigned person (HR/manager) assigns a training program to selected employees
+ * and picks an instructor (a real staff account, so the instructor can log in). After the
+ * training, the instructor (or HR) marks each enrolled employee's attendance (present /
+ * absent).
+ */
 class Training_model extends App_Model
 {
-    private $table        = 'hr_training';
-    private $parts_table  = 'hr_training_participants';
+    private $table       = 'hr_training';
+    private $parts_table = 'hr_training_participants';
 
     // ─── Programs ─────────────────────────────────────────────────────────────
 
     public function get($id)
     {
-        $row = $this->db->where('id', $id)->get(db_prefix() . $this->table)->row();
+        $row = $this->db
+            ->select('t.*, CONCAT(s.firstname," ",s.lastname) as instructor_name', false)
+            ->from(db_prefix() . $this->table . ' t')
+            ->join(db_prefix() . 'staff s', 's.staffid = t.instructor_id', 'left')
+            ->where('t.id', $id)
+            ->get()->row();
         if ($row) {
             $row->enrolled_count = $this->db
                 ->where('training_id', $id)->count_all_results(db_prefix() . $this->parts_table);
-            $row->completed_count = $this->db
-                ->where(['training_id' => $id, 'completed' => 1])
+            $row->present_count = $this->db
+                ->where(['training_id' => $id, 'attendance_status' => 'present'])
                 ->count_all_results(db_prefix() . $this->parts_table);
         }
         return $row;
     }
 
+    public function is_instructor($training_id, $staff_id)
+    {
+        if (!$staff_id) return false;
+        return (bool) $this->db->where(['id' => $training_id, 'instructor_id' => $staff_id])
+            ->get(db_prefix() . $this->table)->row();
+    }
+
+    // Whether this staff member is enrolled in (as employee) or assigned to (as
+    // instructor) at least one training - lets them reach their own list/menu item
+    // without needing module-wide view/view_own permission on their role.
+    public function has_own_or_instructor($employee_id, $staff_id)
+    {
+        $conditions = [];
+        if ($employee_id) {
+            $conditions[] = 'EXISTS (SELECT 1 FROM ' . db_prefix() . $this->parts_table . ' p WHERE p.employee_id = ' . (int) $employee_id . ')';
+        }
+        if ($staff_id) {
+            $conditions[] = 'instructor_id = ' . (int) $staff_id;
+        }
+        if (!$conditions) return false;
+
+        return (bool) $this->db->query(
+            'SELECT 1 FROM ' . db_prefix() . $this->table . ' WHERE ' . implode(' OR ', $conditions) . ' LIMIT 1'
+        )->row();
+    }
+
     public function get_for_table($filters = [])
     {
-        $this->db->select('t.*, (SELECT COUNT(*) FROM '.db_prefix().$this->parts_table.' p WHERE p.training_id=t.id) as enrolled_count')
-            ->from(db_prefix() . $this->table . ' t');
+        $this->db->select('t.*, CONCAT(s.firstname," ",s.lastname) as instructor_name,
+                           (SELECT COUNT(*) FROM '.db_prefix().$this->parts_table.' p WHERE p.training_id=t.id) as enrolled_count', false)
+            ->from(db_prefix() . $this->table . ' t')
+            ->join(db_prefix() . 'staff s', 's.staffid = t.instructor_id', 'left');
 
         if (!empty($filters['status']))               $this->db->where('t.status', $filters['status']);
         if (!empty($filters['from_date']))            $this->db->where('t.start_date >=', $filters['from_date']);
         if (!empty($filters['to_date']))              $this->db->where('t.end_date <=', $filters['to_date']);
-        if (!empty($filters['participant_employee_id'])) {
+
+        // Self-service (no module-wide "view"): trainings they're enrolled in, or
+        // trainings they've been picked as the instructor for.
+        if (!empty($filters['own_or_instructor'])) {
+            $own = $filters['own_or_instructor'];
+            $this->db->group_start()
+                ->where("EXISTS (SELECT 1 FROM " . db_prefix() . $this->parts_table . " p2 WHERE p2.training_id = t.id AND p2.employee_id = " . (int) $own['employee_id'] . ")")
+                ->or_where('t.instructor_id', $own['staff_id'])
+                ->group_end();
+        } elseif (!empty($filters['participant_employee_id'])) {
             $this->db->where('EXISTS (SELECT 1 FROM ' . db_prefix() . $this->parts_table . ' p2 WHERE p2.training_id = t.id AND p2.employee_id = ' . (int) $filters['participant_employee_id'] . ')');
         }
 
@@ -39,17 +87,17 @@ class Training_model extends App_Model
     public function add($data)
     {
         $record = [
-            'title'       => $data['title'],
-            'trainer'     => $data['trainer']     ?? null,
-            'venue'       => $data['venue']        ?? null,
-            'start_date'  => $data['start_date'],
-            'end_date'    => $data['end_date'],
-            'cost'        => (float) ($data['cost'] ?? 0),
-            'capacity'    => !empty($data['capacity']) ? (int) $data['capacity'] : null,
-            'description' => $data['description'] ?? null,
-            'status'      => $data['status'] ?? 'scheduled',
-            'created_by'  => get_staff_user_id(),
-            'created_at'  => date('Y-m-d H:i:s'),
+            'title'         => $data['title'],
+            'instructor_id' => !empty($data['instructor_id']) ? (int) $data['instructor_id'] : null,
+            'venue'         => $data['venue']        ?? null,
+            'start_date'    => $data['start_date'],
+            'end_date'      => $data['end_date'],
+            'cost'          => (float) ($data['cost'] ?? 0),
+            'capacity'      => !empty($data['capacity']) ? (int) $data['capacity'] : null,
+            'description'   => $data['description'] ?? null,
+            'status'        => $data['status'] ?? 'scheduled',
+            'created_by'    => get_staff_user_id(),
+            'created_at'    => date('Y-m-d H:i:s'),
         ];
         if (!empty($data['attachment'])) $record['attachment'] = $data['attachment'];
         $this->db->insert(db_prefix() . $this->table, $record);
@@ -61,16 +109,16 @@ class Training_model extends App_Model
     public function update($data, $id)
     {
         $update = [
-            'title'       => $data['title'],
-            'trainer'     => $data['trainer']     ?? null,
-            'venue'       => $data['venue']        ?? null,
-            'start_date'  => $data['start_date'],
-            'end_date'    => $data['end_date'],
-            'cost'        => (float) ($data['cost'] ?? 0),
-            'capacity'    => !empty($data['capacity']) ? (int) $data['capacity'] : null,
-            'description' => $data['description'] ?? null,
-            'status'      => $data['status'] ?? 'scheduled',
-            'updated_at'  => date('Y-m-d H:i:s'),
+            'title'         => $data['title'],
+            'instructor_id' => !empty($data['instructor_id']) ? (int) $data['instructor_id'] : null,
+            'venue'         => $data['venue']        ?? null,
+            'start_date'    => $data['start_date'],
+            'end_date'      => $data['end_date'],
+            'cost'          => (float) ($data['cost'] ?? 0),
+            'capacity'      => !empty($data['capacity']) ? (int) $data['capacity'] : null,
+            'description'   => $data['description'] ?? null,
+            'status'        => $data['status'] ?? 'scheduled',
+            'updated_at'    => date('Y-m-d H:i:s'),
         ];
         if (!empty($data['attachment'])) $update['attachment'] = $data['attachment'];
         $this->db->where('id', $id)->update(db_prefix() . $this->table, $update);
@@ -127,6 +175,7 @@ class Training_model extends App_Model
                 'employee_id' => $eid,
                 'enrolled_at' => date('Y-m-d H:i:s'),
                 'completed'   => 0,
+                'attendance_status' => 'pending',
             ]);
             $added++;
         }
@@ -140,13 +189,18 @@ class Training_model extends App_Model
         return ['success' => true];
     }
 
-    public function mark_completed($training_id, $employee_id, $date = null)
+    // Instructor (or HR) marks an enrolled employee present/absent for this training.
+    public function mark_attendance($training_id, $employee_id, $status, $date = null)
     {
+        if (!in_array($status, ['present', 'absent'], true)) {
+            return ['success' => false, 'message' => 'Invalid attendance status.'];
+        }
         $this->db->where(['training_id' => $training_id, 'employee_id' => $employee_id])
             ->update(db_prefix() . $this->parts_table, [
-                'completed'       => 1,
-                'completion_date' => $date ?: date('Y-m-d'),
+                'attendance_status' => $status,
+                'completed'         => $status === 'present' ? 1 : 0,
+                'completion_date'   => $status === 'present' ? ($date ?: date('Y-m-d')) : null,
             ]);
-        return ['success' => true, 'message' => 'Marked as completed.'];
+        return ['success' => true, 'message' => $status === 'present' ? _l('hr_training_marked_present') : _l('hr_training_marked_absent')];
     }
 }

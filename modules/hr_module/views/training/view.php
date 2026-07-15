@@ -1,6 +1,8 @@
 <?php defined('BASEPATH') or exit('No direct script access allowed');
 $badge = ['scheduled'=>'default','ongoing'=>'warning','completed'=>'success','cancelled'=>'danger'];
+$att_badge = ['pending'=>'default','present'=>'success','absent'=>'danger'];
 $enrolled_ids = array_column((array)$participants, 'employee_id');
+$instructor_label = $training->instructor_name ?: $training->trainer;
 ?>
 <?php init_head(); ?>
 <div id="wrapper">
@@ -22,8 +24,8 @@ $enrolled_ids = array_column((array)$participants, 'employee_id');
             <div class="tw-flex tw-justify-between tw-items-start tw-mb-4">
               <div>
                 <h4 class="tw-font-bold tw-mb-1"><?php echo htmlspecialchars($training->title); ?></h4>
-                <?php if ($training->trainer): ?>
-                <p class="text-muted tw-mb-0"><i class="fa fa-user-tie tw-mr-1"></i><?php echo htmlspecialchars($training->trainer); ?></p>
+                <?php if ($instructor_label): ?>
+                <p class="text-muted tw-mb-0"><i class="fa fa-user-tie tw-mr-1"></i><?php echo _l('hr_training_trainer'); ?>: <?php echo htmlspecialchars($instructor_label); ?></p>
                 <?php endif; ?>
                 <?php if ($training->venue): ?>
                 <p class="text-muted tw-mb-0"><i class="fa fa-map-marker-alt tw-mr-1"></i><?php echo htmlspecialchars($training->venue); ?></p>
@@ -88,8 +90,8 @@ $enrolled_ids = array_column((array)$participants, 'employee_id');
                   <th><?php echo _l('hr_employee'); ?></th>
                   <th><?php echo _l('hr_department'); ?></th>
                   <th>Enrolled On</th>
-                  <th>Status</th>
-                  <?php if (staff_can('edit','hr_training')): ?><th><?php echo _l('hr_actions'); ?></th><?php endif; ?>
+                  <th><?php echo _l('hr_training_attendance'); ?></th>
+                  <?php if ($can_mark_attendance || staff_can('edit','hr_training')): ?><th><?php echo _l('hr_actions'); ?></th><?php endif; ?>
                 </tr></thead>
                 <tbody>
                   <?php foreach ($participants as $p): ?>
@@ -99,29 +101,32 @@ $enrolled_ids = array_column((array)$participants, 'employee_id');
                     <td><?php echo htmlspecialchars($p->department_name ?? '-'); ?></td>
                     <td><?php echo date('d M Y', strtotime($p->enrolled_at)); ?></td>
                     <td>
-                      <?php if ($p->completed): ?>
-                      <span class="label label-success">Completed</span>
-                      <?php if ($p->completion_date): ?>
+                      <span class="label label-<?php echo $att_badge[$p->attendance_status] ?? 'default'; ?>">
+                        <?php echo ucfirst($p->attendance_status); ?>
+                      </span>
+                      <?php if ($p->attendance_status === 'present' && $p->completion_date): ?>
                       <br><small class="text-muted"><?php echo date('d M Y', strtotime($p->completion_date)); ?></small>
                       <?php endif; ?>
-                      <?php else: ?>
-                      <span class="label label-default">Enrolled</span>
-                      <?php endif; ?>
                     </td>
-                    <?php if (staff_can('edit','hr_training')): ?>
+                    <?php if ($can_mark_attendance || staff_can('edit','hr_training')): ?>
                     <td>
-                      <?php if (!$p->completed): ?>
-                      <?php echo form_open(admin_url('hr_module/training/mark_completed/'.$training->id.'/'.$p->employee_id), ['class'=>'d-inline']); ?>
-                        <input type="hidden" name="completion_date" value="<?php echo date('Y-m-d'); ?>">
-                        <button type="submit" class="btn btn-success btn-xs" title="Mark Completed">
+                      <?php if ($can_mark_attendance): ?>
+                      <?php echo form_open(admin_url('hr_module/training/mark_attendance/'.$training->id.'/'.$p->employee_id), ['style'=>'display:inline']); ?>
+                        <input type="hidden" name="attendance_date" value="<?php echo date('Y-m-d'); ?>">
+                        <button type="submit" name="status" value="present" class="btn btn-success btn-xs" title="<?php echo _l('hr_training_mark_present'); ?>">
                           <i class="fa fa-check"></i>
+                        </button>
+                        <button type="submit" name="status" value="absent" class="btn btn-danger btn-xs" title="<?php echo _l('hr_training_mark_absent'); ?>">
+                          <i class="fa fa-times"></i>
                         </button>
                       <?php echo form_close(); ?>
                       <?php endif; ?>
+                      <?php if (staff_can('edit','hr_training')): ?>
                       <a href="<?php echo admin_url('hr_module/training/remove_participant/'.$training->id.'/'.$p->employee_id); ?>"
-                         class="btn btn-danger btn-xs _confirm_delete" title="Remove">
-                        <i class="fa fa-times"></i>
+                         class="btn btn-default btn-xs _confirm_delete" title="Remove">
+                        <i class="fa fa-user-times"></i>
                       </a>
+                      <?php endif; ?>
                     </td>
                     <?php endif; ?>
                   </tr>
@@ -159,13 +164,13 @@ $enrolled_ids = array_column((array)$participants, 'employee_id');
         <?php if ($training->enrolled_count > 0): ?>
         <div class="panel_s">
           <div class="panel-body">
-            <h5 class="tw-font-semibold">Completion Progress</h5>
-            <?php $pct = $training->enrolled_count > 0 ? round(($training->completed_count / $training->enrolled_count)*100) : 0; ?>
+            <h5 class="tw-font-semibold"><?php echo _l('hr_training_attendance'); ?></h5>
+            <?php $pct = $training->enrolled_count > 0 ? round(($training->present_count / $training->enrolled_count)*100) : 0; ?>
             <div class="progress" style="height:10px">
               <div class="progress-bar progress-bar-success" style="width:<?php echo $pct; ?>%"></div>
             </div>
             <p class="text-muted tw-text-sm tw-mt-1">
-              <?php echo $training->completed_count; ?> of <?php echo $training->enrolled_count; ?> completed (<?php echo $pct; ?>%)
+              <?php echo $training->present_count; ?> of <?php echo $training->enrolled_count; ?> marked present (<?php echo $pct; ?>%)
             </p>
           </div>
         </div>
@@ -184,14 +189,15 @@ $enrolled_ids = array_column((array)$participants, 'employee_id');
     </div>
     <div class="modal-body">
       <p class="text-muted">Select employees to enroll. Already enrolled employees are excluded.</p>
-      <div style="max-height:340px;overflow-y:auto;border:1px solid #e2e8f0;border-radius:6px;padding:8px" id="enroll-list">
-        <?php foreach ($employees as $eid => $ename): ?>
-        <?php if (in_array($eid, $enrolled_ids)) continue; ?>
-        <div class="checkbox checkbox-primary">
-          <input type="checkbox" class="enroll-chk" id="enroll-<?php echo $eid; ?>" value="<?php echo $eid; ?>">
-          <label for="enroll-<?php echo $eid; ?>"><?php echo htmlspecialchars($ename); ?></label>
-        </div>
-        <?php endforeach; ?>
+      <div class="form-group select-placeholder tw-mb-0">
+        <select id="enroll-select" class="selectpicker" multiple data-width="100%"
+                data-live-search="true" data-actions-box="true"
+                data-none-selected-text="<?php echo _l('hr_select'); ?>">
+          <?php foreach ($employees as $eid => $ename): ?>
+          <?php if (in_array($eid, $enrolled_ids)) continue; ?>
+          <option value="<?php echo $eid; ?>"><?php echo htmlspecialchars($ename); ?></option>
+          <?php endforeach; ?>
+        </select>
       </div>
     </div>
     <div class="modal-footer">
@@ -206,9 +212,8 @@ $enrolled_ids = array_column((array)$participants, 'employee_id');
 <script>
 $(function(){
     $('#enroll-btn').on('click', function(){
-        var ids = [];
-        $('.enroll-chk:checked').each(function(){ ids.push($(this).val()); });
-        if (!ids.length) { alert('Select at least one employee.'); return; }
+        var ids = $('#enroll-select').val() || [];
+        if (!ids.length) { alert_float('danger', 'Select at least one employee.'); return; }
         $(this).prop('disabled', true).text('Enrolling...');
         $.post('<?php echo admin_url('hr_module/training/enroll/'.$training->id); ?>',
                {employee_ids: ids, '<?php echo $this->security->get_csrf_token_name(); ?>': '<?php echo $this->security->get_csrf_hash(); ?>'},

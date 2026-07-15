@@ -177,11 +177,22 @@ class Hr_module_model extends App_Model
         }
         $stats['latest_payroll'] = $payroll;
 
-        // Latest performance review
-        $perf = $this->db->where('employee_id', $employee_id)
-            ->order_by('id', 'DESC')->limit(1)
-            ->get(db_prefix() . 'hr_performance_reviews')->row();
-        $stats['latest_review'] = $perf;
+        // Latest performance sub-target + how many are still open, across all this
+        // employee's targets (a sub-target only carries employee_id via its parent Target).
+        $perf = $this->db->select('st.*', false)
+            ->from(db_prefix() . 'hr_performance_sub_targets st')
+            ->join(db_prefix() . 'hr_performance_targets t', 't.id = st.target_id')
+            ->where('t.employee_id', $employee_id)
+            ->order_by('st.id', 'DESC')->limit(1)
+            ->get()->row();
+        $stats['latest_task'] = $perf;
+
+        $stats['open_tasks'] = $this->db
+            ->from(db_prefix() . 'hr_performance_sub_targets st')
+            ->join(db_prefix() . 'hr_performance_targets t', 't.id = st.target_id')
+            ->where('t.employee_id', $employee_id)
+            ->where_in('st.status', ['pending', 'in_progress', 'partially_completed'])
+            ->count_all_results();
 
         // Upcoming / ongoing trainings (enrolled, not yet completed)
         $this->db->select('t.id, t.title, t.start_date, t.end_date, t.status', false)

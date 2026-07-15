@@ -12,7 +12,7 @@
           ['url'=>'payroll',     'icon'=>'fa-money',            'color'=>'#059669', 'title'=>'Payroll Report',       'desc'=>'Monthly salary, deductions, net pay totals'],
           ['url'=>'loan',        'icon'=>'fa-credit-card',      'color'=>'#d97706', 'title'=>'Loan Report',          'desc'=>'Active loans, outstanding amounts, repayment'],
           ['url'=>'overtime',    'icon'=>'fa-clock-o',          'color'=>'#7c3aed', 'title'=>'Overtime Report',      'desc'=>'Overtime hours and amounts by employee'],
-          ['url'=>'performance', 'icon'=>'fa-star',             'color'=>'#db2777', 'title'=>'Performance Report',   'desc'=>'Scores, ratings, review status'],
+          ['url'=>'performance', 'icon'=>'fa-tasks',            'color'=>'#db2777', 'title'=>'Performance Report',   'desc'=>'Assigned targets, evaluators, completion status'],
           ['url'=>'training',    'icon'=>'fa-graduation-cap',   'color'=>'#0284c7', 'title'=>'Training Report',      'desc'=>'Programs, enrollment, completion rates'],
           ['url'=>'headcount',   'icon'=>'fa-users',            'color'=>'#065f46', 'title'=>'Headcount Report',     'desc'=>'Employee count by dept, type, gender'],
           ['url'=>'department',  'icon'=>'fa-building',         'color'=>'#92400e', 'title'=>'Department Report',    'desc'=>'Per-employee leave, payroll by department'],

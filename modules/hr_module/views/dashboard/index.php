@@ -42,14 +42,15 @@ $att_labels = [
 ];
 $att = $att_status ? ($att_labels[$att_status] ?? ['label' => ucfirst($att_status), 'cls' => 'bg-secondary', 'icon' => 'fa-circle']) : null;
 
-$perf      = $stats['latest_review'] ?? null;
-$payroll   = $stats['latest_payroll'] ?? null;
-$loan      = $stats['active_loan']    ?? null;
-$trainings = $stats['upcoming_trainings'] ?? [];
+$perf       = $stats['latest_task'] ?? null;
+$open_tasks = $stats['open_tasks'] ?? 0;
+$payroll    = $stats['latest_payroll'] ?? null;
+$loan       = $stats['active_loan']    ?? null;
+$trainings  = $stats['upcoming_trainings'] ?? [];
 
-$rating_colors = [
-    'Excellent' => '#16a34a', 'Very Good' => '#2563eb',
-    'Good'      => '#0891b2', 'Average'   => '#d97706', 'Poor' => '#dc2626',
+$task_status_colors = [
+    'pending' => '#64748b', 'in_progress' => '#d97706',
+    'partially_completed' => '#2563eb', 'completed' => '#16a34a',
 ];
 ?>
 
@@ -245,30 +246,28 @@ $rating_colors = [
         <div class="panel_s hr-stat-card">
             <div class="panel-body tw-p-4">
                 <div class="tw-flex tw-items-center tw-gap-3 tw-mb-3">
-                    <div class="hr-stat-icon" style="background:<?php echo ($perf && $perf->rating) ? ($rating_colors[$perf->rating] ?? '#64748b') : '#64748b'; ?>">
-                        <i class="fa fa-star fa-lg tw-text-white"></i>
+                    <div class="hr-stat-icon" style="background:<?php echo $perf ? ($task_status_colors[$perf->status] ?? '#64748b') : '#64748b'; ?>">
+                        <i class="fa fa-tasks fa-lg tw-text-white"></i>
                     </div>
                     <div>
                         <div class="tw-text-xs tw-text-neutral-500 tw-uppercase tw-tracking-wide">Performance</div>
                         <div class="tw-text-xl tw-font-bold tw-text-neutral-800">
-                            <?php if ($perf && $perf->rating): ?>
-                                <?php echo htmlspecialchars($perf->rating); ?>
+                            <?php if ($open_tasks > 0): ?>
+                                <?php echo $open_tasks; ?> <span class="tw-text-base">open task<?php echo $open_tasks == 1 ? '' : 's'; ?></span>
                             <?php elseif ($perf): ?>
-                                <span class="tw-text-base">In Progress</span>
+                                <span class="tw-text-base">All caught up</span>
                             <?php else: ?>
-                                <span class="tw-text-base text-muted">Not reviewed</span>
+                                <span class="tw-text-base text-muted">No tasks yet</span>
                             <?php endif; ?>
                         </div>
                     </div>
                 </div>
                 <div class="tw-text-xs text-muted">
-                    <?php if ($perf && $perf->final_score): ?>
-                        Score: <?php echo number_format($perf->final_score, 1); ?>/100
-                        &bull; <?php echo date('Y', strtotime($perf->review_period_from)); ?>
-                    <?php elseif ($perf): ?>
-                        <?php echo $perf->review_period_from ? date('M Y', strtotime($perf->review_period_from)) : ''; ?> — <?php echo ucfirst(str_replace('_', ' ', $perf->status)); ?>
+                    <?php if ($perf): ?>
+                        <?php echo htmlspecialchars($perf->title); ?>
+                        &bull; <?php echo ucfirst(str_replace('_', ' ', $perf->status)); ?>
                     <?php else: ?>
-                        No review on record
+                        No tasks on record
                     <?php endif; ?>
                 </div>
             </div>

@@ -92,26 +92,116 @@ class Reports_model extends App_Model
     // ── Performance ───────────────────────────────────────────────────────────
     public function performance($f = [])
     {
-        $this->db->select('p.*, e.first_name, e.last_name, e.employee_code, d.name as department_name,
-                           CONCAT(s.firstname," ",s.lastname) as reviewer_name', false)
-            ->from(db_prefix() . 'hr_performance_reviews p')
-            ->join(db_prefix() . 'hr_employees e',  'e.id = p.employee_id', 'left')
+        $this->db->select('st.id, t.title as target_title, st.title as sub_target_title,
+                           st.due_date, st.status, st.completion_percentage, st.created_at,
+                           e.first_name, e.last_name, e.employee_code, d.name as department_name,
+                           CONCAT(s.firstname," ",s.lastname) as assigned_by_name,
+                           GROUP_CONCAT(DISTINCT CONCAT(ev_s.firstname," ",ev_s.lastname) SEPARATOR ", ") as evaluator_names', false)
+            ->from(db_prefix() . 'hr_performance_sub_targets st')
+            ->join(db_prefix() . 'hr_performance_targets t', 't.id = st.target_id')
+            ->join(db_prefix() . 'hr_employees e',  'e.id = t.employee_id', 'left')
             ->join(db_prefix() . 'departments d', 'd.departmentid = e.department_id', 'left')
-            ->join(db_prefix() . 'staff s',          's.staffid = p.reviewer_id', 'left');
+            ->join(db_prefix() . 'staff s',          's.staffid = t.assigned_by', 'left')
+            ->join(db_prefix() . 'hr_performance_sub_target_evaluators ev', 'ev.sub_target_id = st.id', 'left')
+            ->join(db_prefix() . 'staff ev_s',       'ev_s.staffid = ev.staff_id', 'left');
         if (!empty($f['department_id'])) $this->db->where('e.department_id', $f['department_id']);
-        if (!empty($f['year']))          $this->db->where('YEAR(p.review_period_from)', $f['year']);
-        if (!empty($f['rating']))        $this->db->where('p.rating', $f['rating']);
-        if (!empty($f['status']))        $this->db->where('p.status', $f['status']);
-        return $this->db->order_by('p.created_at DESC')->get()->result();
+        if (!empty($f['year']))          $this->db->where('YEAR(st.created_at)', $f['year']);
+        if (!empty($f['status']))        $this->db->where('st.status', $f['status']);
+        return $this->db->group_by('st.id')->order_by('st.created_at DESC')->get()->result();
+    }
+
+    // One row per employee: how many sub-targets, their status breakdown, average
+    // completion % and average evaluator rating (Excellent..Poor mapped to 5..1).
+    public function performance_by_employee($f = [])
+    {
+        $this->db->select('e.id as employee_id, e.first_name, e.last_name, e.employee_code, d.name as department_name,
+                           COUNT(*) as total_sub_targets,
+                           SUM(sub.status = "completed") as completed_count,
+                           SUM(sub.status = "pending") as pending_count,
+                           SUM(sub.status = "in_progress") as in_progress_count,
+                           SUM(sub.status = "partially_completed") as partial_count,
+                           AVG(sub.completion_percentage) as avg_completion', false)
+            ->from(db_prefix() . 'hr_employees e')
+            ->join(db_prefix() . 'departments d', 'd.departmentid = e.department_id', 'left')
+            ->join(db_prefix() . 'hr_performance_targets t', 't.employee_id = e.id')
+            ->join(db_prefix() . 'hr_performance_sub_targets sub', 'sub.target_id = t.id');
+
+        if (!empty($f['department_id'])) $this->db->where('e.department_id', $f['department_id']);
+        if (!empty($f['year']))          $this->db->where('YEAR(sub.created_at)', $f['year']);
+        if (!empty($f['status']))        $this->db->where('sub.status', $f['status']);
+
+        $rows = $this->db->group_by('e.id')->order_by('e.first_name', 'ASC')->get()->result();
+
+        $ratings = $this->_performance_avg_ratings('t.employee_id', $f);
+        foreach ($rows as $r) {
+            $r->avg_rating = $ratings[$r->employee_id] ?? null;
+        }
+        return $rows;
+    }
+
+    // One row per department: same breakdown as performance_by_employee(), rolled up
+    // across every employee in the department.
+    public function performance_by_department($f = [])
+    {
+        $this->db->select('d.departmentid as department_id, d.name as department_name,
+                           COUNT(*) as total_sub_targets,
+                           SUM(sub.status = "completed") as completed_count,
+                           SUM(sub.status = "pending") as pending_count,
+                           SUM(sub.status = "in_progress") as in_progress_count,
+                           SUM(sub.status = "partially_completed") as partial_count,
+                           AVG(sub.completion_percentage) as avg_completion', false)
+            ->from(db_prefix() . 'hr_performance_sub_targets sub')
+            ->join(db_prefix() . 'hr_performance_targets t', 't.id = sub.target_id')
+            ->join(db_prefix() . 'hr_employees e', 'e.id = t.employee_id')
+            ->join(db_prefix() . 'departments d', 'd.departmentid = e.department_id');
+
+        if (!empty($f['department_id'])) $this->db->where('e.department_id', $f['department_id']);
+        if (!empty($f['year']))          $this->db->where('YEAR(sub.created_at)', $f['year']);
+        if (!empty($f['status']))        $this->db->where('sub.status', $f['status']);
+
+        $rows = $this->db->group_by('d.departmentid')->order_by('d.name', 'ASC')->get()->result();
+
+        $ratings = $this->_performance_avg_ratings('e.department_id', $f);
+        foreach ($rows as $r) {
+            $r->avg_rating = $ratings[$r->department_id] ?? null;
+        }
+        return $rows;
+    }
+
+    // Average evaluator rating (Excellent..Poor mapped to 5..1), grouped by whichever
+    // column is passed ('t.employee_id' or 'e.department_id') - kept separate from the
+    // sub-target counts above because joining feedback would fan out those counts.
+    private function _performance_avg_ratings($group_column, $f = [])
+    {
+        $this->db->select($group_column . ' as group_key,
+                           AVG(CASE fb.rating
+                               WHEN "Excellent" THEN 5 WHEN "Very Good" THEN 4 WHEN "Good" THEN 3
+                               WHEN "Average" THEN 2 WHEN "Poor" THEN 1 END) as avg_rating', false)
+            ->from(db_prefix() . 'hr_performance_sub_target_feedback fb')
+            ->join(db_prefix() . 'hr_performance_sub_targets sub', 'sub.id = fb.sub_target_id')
+            ->join(db_prefix() . 'hr_performance_targets t', 't.id = sub.target_id')
+            ->join(db_prefix() . 'hr_employees e', 'e.id = t.employee_id');
+
+        if (!empty($f['department_id'])) $this->db->where('e.department_id', $f['department_id']);
+        if (!empty($f['year']))          $this->db->where('YEAR(sub.created_at)', $f['year']);
+        if (!empty($f['status']))        $this->db->where('sub.status', $f['status']);
+
+        $rows = $this->db->group_by($group_column)->get()->result();
+        $map  = [];
+        foreach ($rows as $r) {
+            $map[$r->group_key] = $r->avg_rating !== null ? round($r->avg_rating, 2) : null;
+        }
+        return $map;
     }
 
     // ── Training ──────────────────────────────────────────────────────────────
     public function training($f = [])
     {
-        $this->db->select('t.*,
+        $this->db->select('t.*, CONCAT(s.firstname," ",s.lastname) as instructor_name,
             (SELECT COUNT(*) FROM ' . db_prefix() . 'hr_training_participants tp WHERE tp.training_id = t.id) as enrolled,
-            (SELECT COUNT(*) FROM ' . db_prefix() . 'hr_training_participants tp WHERE tp.training_id = t.id AND tp.completed = 1) as completed')
-            ->from(db_prefix() . 'hr_training t');
+            (SELECT COUNT(*) FROM ' . db_prefix() . 'hr_training_participants tp WHERE tp.training_id = t.id AND tp.attendance_status = "present") as present', false)
+            ->from(db_prefix() . 'hr_training t')
+            ->join(db_prefix() . 'staff s', 's.staffid = t.instructor_id', 'left');
         if (!empty($f['status']))    $this->db->where('t.status', $f['status']);
         if (!empty($f['year']))      $this->db->where('YEAR(t.start_date)', $f['year']);
         return $this->db->order_by('t.start_date DESC')->get()->result();

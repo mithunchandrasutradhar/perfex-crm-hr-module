@@ -104,6 +104,20 @@ function hr_get_own_employee_id()
 }
 
 /**
+ * Whether the currently logged-in staff member is personally enrolled in (as
+ * employee) or assigned to (as instructor) at least one training - used to show
+ * the Training menu item even if their role has no view/view_own permission.
+ */
+function hr_training_has_own_records()
+{
+    $CI = &get_instance();
+    if (!class_exists('Training_model', false)) {
+        $CI->load->model('hr_module/Training_model');
+    }
+    return $CI->Training_model->has_own_or_instructor(hr_get_own_employee_id(), get_staff_user_id());
+}
+
+/**
  * Human-readable label for a hr_leave_request_days.day_type value - shared by the
  * leave list table and the leave view/detail page so "Before Lunch"/"After Lunch"
  * are labelled identically everywhere.
@@ -218,8 +232,9 @@ function hr_module_init_menu_items()
         ]);
     }
 
-    // Training
-    if (staff_can('view', 'hr_training') || staff_can('view_own', 'hr_training')) {
+    // Training - also shown to staff with no view/view_own permission if they're
+    // personally enrolled in (or assigned as instructor for) at least one training
+    if (staff_can('view', 'hr_training') || staff_can('view_own', 'hr_training') || hr_training_has_own_records()) {
         $CI->app_menu->add_sidebar_children_item('human-resource', [
             'slug'     => 'hr-training',
             'name'     => _l('hr_menu_training'),

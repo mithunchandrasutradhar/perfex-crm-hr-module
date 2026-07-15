@@ -561,6 +561,188 @@ if (!$CI->db->table_exists(db_prefix() . 'hr_performance_reviews')) {
       MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1;');
 }
 
+// 17b. Performance Tasks - a role-assigned person (HR/manager) assigns an employee a task
+// with one or more evaluators; the employee marks their own progress and evaluators leave
+// feedback. Replaces the single period-review workflow above with a task list.
+if (!$CI->db->table_exists(db_prefix() . 'hr_performance_tasks')) {
+    $CI->db->query('CREATE TABLE `' . db_prefix() . 'hr_performance_tasks` (
+      `id` int(11) NOT NULL,
+      `employee_id` int(11) NOT NULL,
+      `assigned_by` int(11) DEFAULT NULL,
+      `title` varchar(191) NOT NULL,
+      `description` text DEFAULT NULL,
+      `due_date` date DEFAULT NULL,
+      `status` enum(\'pending\',\'in_progress\',\'partially_completed\',\'completed\') NOT NULL DEFAULT \'pending\',
+      `completion_percentage` decimal(5,2) DEFAULT NULL,
+      `employee_note` text DEFAULT NULL,
+      `created_at` datetime NOT NULL,
+      `updated_at` datetime DEFAULT NULL
+    ) ENGINE=InnoDB DEFAULT CHARSET=' . $CI->db->char_set . ';');
+    $CI->db->query('ALTER TABLE `' . db_prefix() . 'hr_performance_tasks`
+      ADD PRIMARY KEY (`id`),
+      ADD KEY `employee_id` (`employee_id`),
+      ADD KEY `status` (`status`);');
+    $CI->db->query('ALTER TABLE `' . db_prefix() . 'hr_performance_tasks`
+      MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1;');
+}
+
+if (!$CI->db->table_exists(db_prefix() . 'hr_performance_task_evaluators')) {
+    $CI->db->query('CREATE TABLE `' . db_prefix() . 'hr_performance_task_evaluators` (
+      `id` int(11) NOT NULL,
+      `task_id` int(11) NOT NULL,
+      `staff_id` int(11) NOT NULL,
+      `created_at` datetime NOT NULL
+    ) ENGINE=InnoDB DEFAULT CHARSET=' . $CI->db->char_set . ';');
+    $CI->db->query('ALTER TABLE `' . db_prefix() . 'hr_performance_task_evaluators`
+      ADD PRIMARY KEY (`id`),
+      ADD UNIQUE KEY `task_staff` (`task_id`,`staff_id`),
+      ADD KEY `staff_id` (`staff_id`);');
+    $CI->db->query('ALTER TABLE `' . db_prefix() . 'hr_performance_task_evaluators`
+      MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1;');
+}
+
+if (!$CI->db->table_exists(db_prefix() . 'hr_performance_task_feedback')) {
+    $CI->db->query('CREATE TABLE `' . db_prefix() . 'hr_performance_task_feedback` (
+      `id` int(11) NOT NULL,
+      `task_id` int(11) NOT NULL,
+      `evaluator_id` int(11) NOT NULL,
+      `feedback` text NOT NULL,
+      `rating` varchar(30) DEFAULT NULL,
+      `created_at` datetime NOT NULL
+    ) ENGINE=InnoDB DEFAULT CHARSET=' . $CI->db->char_set . ';');
+    $CI->db->query('ALTER TABLE `' . db_prefix() . 'hr_performance_task_feedback`
+      ADD PRIMARY KEY (`id`),
+      ADD KEY `task_id` (`task_id`);');
+    $CI->db->query('ALTER TABLE `' . db_prefix() . 'hr_performance_task_feedback`
+      MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1;');
+}
+
+// 17c. Performance is Target-based, not a flat task list: a role-assigned person (HR/
+// manager) assigns an employee an overall Target, which can contain several Sub-Targets
+// - each with its own title/description/due date/status/completion/evaluators/feedback.
+// Superseded the flat hr_performance_tasks above (kept in place, unused, for history).
+$hr_targets_is_new = !$CI->db->table_exists(db_prefix() . 'hr_performance_targets');
+if ($hr_targets_is_new) {
+    $CI->db->query('CREATE TABLE `' . db_prefix() . 'hr_performance_targets` (
+      `id` int(11) NOT NULL,
+      `employee_id` int(11) NOT NULL,
+      `assigned_by` int(11) DEFAULT NULL,
+      `title` varchar(191) NOT NULL,
+      `description` text DEFAULT NULL,
+      `due_date` date DEFAULT NULL,
+      `created_at` datetime NOT NULL,
+      `updated_at` datetime DEFAULT NULL
+    ) ENGINE=InnoDB DEFAULT CHARSET=' . $CI->db->char_set . ';');
+    $CI->db->query('ALTER TABLE `' . db_prefix() . 'hr_performance_targets`
+      ADD PRIMARY KEY (`id`),
+      ADD KEY `employee_id` (`employee_id`);');
+    $CI->db->query('ALTER TABLE `' . db_prefix() . 'hr_performance_targets`
+      MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1;');
+}
+
+if (!$CI->db->table_exists(db_prefix() . 'hr_performance_sub_targets')) {
+    $CI->db->query('CREATE TABLE `' . db_prefix() . 'hr_performance_sub_targets` (
+      `id` int(11) NOT NULL,
+      `target_id` int(11) NOT NULL,
+      `title` varchar(191) NOT NULL,
+      `description` text DEFAULT NULL,
+      `due_date` date DEFAULT NULL,
+      `status` enum(\'pending\',\'in_progress\',\'partially_completed\',\'completed\') NOT NULL DEFAULT \'pending\',
+      `completion_percentage` decimal(5,2) DEFAULT NULL,
+      `employee_note` text DEFAULT NULL,
+      `created_at` datetime NOT NULL,
+      `updated_at` datetime DEFAULT NULL
+    ) ENGINE=InnoDB DEFAULT CHARSET=' . $CI->db->char_set . ';');
+    $CI->db->query('ALTER TABLE `' . db_prefix() . 'hr_performance_sub_targets`
+      ADD PRIMARY KEY (`id`),
+      ADD KEY `target_id` (`target_id`),
+      ADD KEY `status` (`status`);');
+    $CI->db->query('ALTER TABLE `' . db_prefix() . 'hr_performance_sub_targets`
+      MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1;');
+}
+
+if (!$CI->db->table_exists(db_prefix() . 'hr_performance_sub_target_evaluators')) {
+    $CI->db->query('CREATE TABLE `' . db_prefix() . 'hr_performance_sub_target_evaluators` (
+      `id` int(11) NOT NULL,
+      `sub_target_id` int(11) NOT NULL,
+      `staff_id` int(11) NOT NULL,
+      `created_at` datetime NOT NULL
+    ) ENGINE=InnoDB DEFAULT CHARSET=' . $CI->db->char_set . ';');
+    $CI->db->query('ALTER TABLE `' . db_prefix() . 'hr_performance_sub_target_evaluators`
+      ADD PRIMARY KEY (`id`),
+      ADD UNIQUE KEY `sub_target_staff` (`sub_target_id`,`staff_id`),
+      ADD KEY `staff_id` (`staff_id`);');
+    $CI->db->query('ALTER TABLE `' . db_prefix() . 'hr_performance_sub_target_evaluators`
+      MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1;');
+}
+
+if (!$CI->db->table_exists(db_prefix() . 'hr_performance_sub_target_feedback')) {
+    $CI->db->query('CREATE TABLE `' . db_prefix() . 'hr_performance_sub_target_feedback` (
+      `id` int(11) NOT NULL,
+      `sub_target_id` int(11) NOT NULL,
+      `evaluator_id` int(11) NOT NULL,
+      `feedback` text NOT NULL,
+      `rating` varchar(30) DEFAULT NULL,
+      `created_at` datetime NOT NULL
+    ) ENGINE=InnoDB DEFAULT CHARSET=' . $CI->db->char_set . ';');
+    $CI->db->query('ALTER TABLE `' . db_prefix() . 'hr_performance_sub_target_feedback`
+      ADD PRIMARY KEY (`id`),
+      ADD KEY `sub_target_id` (`sub_target_id`);');
+    $CI->db->query('ALTER TABLE `' . db_prefix() . 'hr_performance_sub_target_feedback`
+      MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1;');
+}
+
+// One-time migration: each existing flat hr_performance_tasks row becomes a Target with
+// exactly one Sub-Target carrying over its status/completion/note/evaluators/feedback.
+if ($hr_targets_is_new && $CI->db->table_exists(db_prefix() . 'hr_performance_tasks')) {
+    $old_tasks = $CI->db->get(db_prefix() . 'hr_performance_tasks')->result();
+    foreach ($old_tasks as $t) {
+        $CI->db->insert(db_prefix() . 'hr_performance_targets', [
+            'employee_id' => $t->employee_id,
+            'assigned_by' => $t->assigned_by,
+            'title'       => $t->title,
+            'description' => $t->description,
+            'due_date'    => $t->due_date,
+            'created_at'  => $t->created_at,
+            'updated_at'  => $t->updated_at,
+        ]);
+        $target_id = $CI->db->insert_id();
+
+        $CI->db->insert(db_prefix() . 'hr_performance_sub_targets', [
+            'target_id'             => $target_id,
+            'title'                 => $t->title,
+            'description'           => $t->description,
+            'due_date'              => $t->due_date,
+            'status'                => $t->status,
+            'completion_percentage' => $t->completion_percentage,
+            'employee_note'         => $t->employee_note,
+            'created_at'            => $t->created_at,
+            'updated_at'            => $t->updated_at,
+        ]);
+        $sub_target_id = $CI->db->insert_id();
+
+        $evaluators = $CI->db->where('task_id', $t->id)->get(db_prefix() . 'hr_performance_task_evaluators')->result();
+        foreach ($evaluators as $ev) {
+            $CI->db->insert(db_prefix() . 'hr_performance_sub_target_evaluators', [
+                'sub_target_id' => $sub_target_id,
+                'staff_id'      => $ev->staff_id,
+                'created_at'    => $ev->created_at,
+            ]);
+        }
+
+        $feedback = $CI->db->where('task_id', $t->id)->get(db_prefix() . 'hr_performance_task_feedback')->result();
+        foreach ($feedback as $f) {
+            $CI->db->insert(db_prefix() . 'hr_performance_sub_target_feedback', [
+                'sub_target_id' => $sub_target_id,
+                'evaluator_id'  => $f->evaluator_id,
+                'feedback'      => $f->feedback,
+                'rating'        => $f->rating,
+                'created_at'    => $f->created_at,
+            ]);
+        }
+    }
+}
+
 // 18. Training Programs
 if (!$CI->db->table_exists(db_prefix() . 'hr_training')) {
     $CI->db->query('CREATE TABLE `' . db_prefix() . 'hr_training` (
@@ -584,6 +766,15 @@ if (!$CI->db->table_exists(db_prefix() . 'hr_training')) {
     $CI->db->query('ALTER TABLE `' . db_prefix() . 'hr_training`
       MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1;');
 }
+// Upgrade: instructor is a real staff account (selected, not free text), so the
+// instructor can log in and mark attendance themselves. `trainer` is kept as a
+// read-only fallback label for older records that only ever had a free-text name.
+if ($CI->db->table_exists(db_prefix() . 'hr_training')) {
+    $col = $CI->db->query("SHOW COLUMNS FROM `" . db_prefix() . "hr_training` LIKE 'instructor_id'")->num_rows();
+    if ($col === 0) {
+        $CI->db->query("ALTER TABLE `" . db_prefix() . "hr_training` ADD COLUMN `instructor_id` int(11) DEFAULT NULL AFTER `trainer`");
+    }
+}
 
 // 19. Training Participants
 if (!$CI->db->table_exists(db_prefix() . 'hr_training_participants')) {
@@ -594,6 +785,7 @@ if (!$CI->db->table_exists(db_prefix() . 'hr_training_participants')) {
       `enrolled_at` datetime NOT NULL,
       `completed` tinyint(1) NOT NULL DEFAULT 0,
       `completion_date` date DEFAULT NULL,
+      `attendance_status` enum(\'pending\',\'present\',\'absent\') NOT NULL DEFAULT \'pending\',
       `certificate` varchar(255) DEFAULT NULL,
       `notes` text DEFAULT NULL
     ) ENGINE=InnoDB DEFAULT CHARSET=' . $CI->db->char_set . ';');
@@ -602,6 +794,16 @@ if (!$CI->db->table_exists(db_prefix() . 'hr_training_participants')) {
       ADD UNIQUE KEY `training_employee` (`training_id`, `employee_id`);');
     $CI->db->query('ALTER TABLE `' . db_prefix() . 'hr_training_participants`
       MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1;');
+}
+// Upgrade: attendance is now Pending/Present/Absent (marked by the instructor or HR),
+// not just a completed flag - backfill from the old boolean so existing data lines up.
+if ($CI->db->table_exists(db_prefix() . 'hr_training_participants')) {
+    $col = $CI->db->query("SHOW COLUMNS FROM `" . db_prefix() . "hr_training_participants` LIKE 'attendance_status'")->num_rows();
+    if ($col === 0) {
+        $CI->db->query("ALTER TABLE `" . db_prefix() . "hr_training_participants`
+          ADD COLUMN `attendance_status` enum('pending','present','absent') NOT NULL DEFAULT 'pending' AFTER `completion_date`");
+        $CI->db->query("UPDATE `" . db_prefix() . "hr_training_participants` SET `attendance_status` = 'present' WHERE `completed` = 1");
+    }
 }
 
 // 20. HR Helpdesk Tickets

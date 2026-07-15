@@ -12,7 +12,10 @@ class Training extends AdminController
 
     public function index()
     {
-        if (staff_cant('view', 'hr_training') && staff_cant('view_own', 'hr_training')) access_denied('hr_training');
+        $has_own = $this->Training_model->has_own_or_instructor(hr_get_own_employee_id(), get_staff_user_id());
+        if (staff_cant('view', 'hr_training') && staff_cant('view_own', 'hr_training') && !$has_own) {
+            access_denied('hr_training');
+        }
         if ($this->input->is_ajax_request()) {
             $this->app->get_table_data(module_views_path('hr_module', 'training/table'));
             return;
@@ -37,6 +40,7 @@ class Training extends AdminController
         }
         $data['title']    = _l('hr_training_add');
         $data['training'] = null;
+        $data['staff']    = $this->_get_staff_dropdown();
         $this->load->view('hr_module/training/form', $data);
     }
 
@@ -54,18 +58,28 @@ class Training extends AdminController
         }
         $data['title']    = _l('hr_training_edit');
         $data['training'] = $training;
+        $data['staff']    = $this->_get_staff_dropdown();
         $this->load->view('hr_module/training/form', $data);
     }
 
     public function view($id)
     {
-        if (staff_cant('view', 'hr_training') && staff_cant('view_own', 'hr_training')) access_denied('hr_training');
         $training = $this->Training_model->get($id);
         if (!$training) show_404();
-        $data['title']        = _l('hr_training_view');
-        $data['training']     = $training;
-        $data['participants'] = $this->Training_model->get_participants($id);
-        $data['employees']    = $this->Hr_module_model->get_active_employees_dropdown();
+
+        $own_emp_id   = hr_get_own_employee_id();
+        $is_instructor = $this->Training_model->is_instructor($id, get_staff_user_id());
+
+        if (staff_cant('view', 'hr_training') && staff_cant('view_own', 'hr_training') && !$is_instructor) {
+            access_denied('hr_training');
+        }
+
+        $data['title']         = _l('hr_training_view');
+        $data['training']      = $training;
+        $data['participants']  = $this->Training_model->get_participants($id);
+        $data['employees']     = $this->Hr_module_model->get_active_employees_dropdown();
+        $data['is_instructor'] = $is_instructor;
+        $data['can_mark_attendance'] = staff_can('edit', 'hr_training') || $is_instructor;
         $this->load->view('hr_module/training/view', $data);
     }
 
@@ -97,27 +111,31 @@ class Training extends AdminController
         redirect(admin_url('hr_module/training/view/' . $training_id));
     }
 
-    public function mark_completed($training_id, $employee_id)
+    public function mark_attendance($training_id, $employee_id)
     {
-        if (staff_cant('edit', 'hr_training')) access_denied('hr_training');
-        $date = $this->input->post('completion_date') ?: date('Y-m-d');
-        $this->Training_model->mark_completed($training_id, $employee_id, $date);
-        set_alert('success', 'Marked as completed.');
+        $is_instructor = $this->Training_model->is_instructor($training_id, get_staff_user_id());
+        if (staff_cant('edit', 'hr_training') && !$is_instructor) {
+            access_denied('hr_training');
+        }
+        $status = $this->input->post('status');
+        $date   = $this->input->post('attendance_date') ?: date('Y-m-d');
+        $result = $this->Training_model->mark_attendance($training_id, $employee_id, $status, $date);
+        set_alert($result['success'] ? 'success' : 'danger', $result['message']);
         redirect(admin_url('hr_module/training/view/' . $training_id));
     }
 
     private function _post_data()
     {
         return [
-            'title'       => $this->input->post('title', true),
-            'trainer'     => $this->input->post('trainer', true),
-            'venue'       => $this->input->post('venue', true),
-            'start_date'  => $this->input->post('start_date'),
-            'end_date'    => $this->input->post('end_date'),
-            'cost'        => $this->input->post('cost'),
-            'capacity'    => $this->input->post('capacity'),
-            'description' => $this->input->post('description', true),
-            'status'      => $this->input->post('status'),
+            'title'         => $this->input->post('title', true),
+            'instructor_id' => $this->input->post('instructor_id'),
+            'venue'         => $this->input->post('venue', true),
+            'start_date'    => $this->input->post('start_date'),
+            'end_date'      => $this->input->post('end_date'),
+            'cost'          => $this->input->post('cost'),
+            'capacity'      => $this->input->post('capacity'),
+            'description'   => $this->input->post('description', true),
+            'status'        => $this->input->post('status'),
         ];
     }
 
@@ -135,5 +153,14 @@ class Training extends AdminController
         if ($this->upload->do_upload('attachment')) {
             $data['attachment'] = $this->upload->data('file_name');
         }
+    }
+
+    private function _get_staff_dropdown()
+    {
+        $staff = $this->db->select('staffid, CONCAT(firstname," ",lastname) as name')
+            ->where('active', 1)->get(db_prefix() . 'staff')->result();
+        $out = [];
+        foreach ($staff as $s) $out[$s->staffid] = $s->name;
+        return $out;
     }
 }

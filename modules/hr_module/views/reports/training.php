@@ -20,7 +20,7 @@ $sbadge = ['scheduled'=>'info','ongoing'=>'primary','completed'=>'success','canc
 
   <?php
   $total_enrolled  = array_sum(array_column((array)$rows,'enrolled'));
-  $total_completed = array_sum(array_column((array)$rows,'completed'));
+  $total_completed = array_sum(array_column((array)$rows,'present'));
   $completion_rate = $total_enrolled > 0 ? round($total_completed/$total_enrolled*100) : 0;
   ?>
   <div class="row tw-mb-3">
@@ -34,19 +34,19 @@ $sbadge = ['scheduled'=>'info','ongoing'=>'primary','completed'=>'success','canc
 
   <div class="panel_s"><div class="panel-body panel-table-full">
     <table class="table table-hover">
-      <thead><tr><th>Training</th><th>Trainer</th><th>Start</th><th>End</th><th class="text-right">Capacity</th><th class="text-right">Enrolled</th><th class="text-right">Completed</th><th>Rate</th><th>Status</th></tr></thead>
+      <thead><tr><th>Training</th><th>Trainer</th><th>Start</th><th>End</th><th class="text-right">Capacity</th><th class="text-right">Enrolled</th><th class="text-right">Present</th><th>Rate</th><th>Status</th></tr></thead>
       <tbody>
       <?php if(empty($rows)): ?><tr><td colspan="9" class="text-center text-muted" style="padding:30px">No records.</td></tr>
       <?php else: foreach($rows as $r): ?>
-      <?php $rate = $r->enrolled > 0 ? round($r->completed/$r->enrolled*100) : 0; ?>
+      <?php $rate = $r->enrolled > 0 ? round($r->present/$r->enrolled*100) : 0; ?>
       <tr>
         <td><a href="<?php echo admin_url('hr_module/training/view/'.$r->id); ?>"><?php echo htmlspecialchars($r->title); ?></a></td>
-        <td><?php echo htmlspecialchars($r->trainer ?? '-'); ?></td>
+        <td><?php echo htmlspecialchars(($r->instructor_name ?: $r->trainer) ?? '-'); ?></td>
         <td><?php echo date('d M Y', strtotime($r->start_date)); ?></td>
         <td><?php echo $r->end_date ? date('d M Y', strtotime($r->end_date)) : '-'; ?></td>
         <td class="text-right"><?php echo $r->capacity ?: '∞'; ?></td>
         <td class="text-right"><?php echo $r->enrolled; ?></td>
-        <td class="text-right text-success"><?php echo $r->completed; ?></td>
+        <td class="text-right text-success"><?php echo $r->present; ?></td>
         <td>
           <div style="background:#e2e8f0;border-radius:4px;height:8px;width:80px">
             <div style="background:#059669;border-radius:4px;height:8px;width:<?php echo $rate; ?>%"></div>

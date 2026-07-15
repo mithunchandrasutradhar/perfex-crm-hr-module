@@ -11,7 +11,8 @@ foreach (['employee_id', 'department_id', 'status', 'year'] as $key) {
 }
 
 if (!is_admin() && !staff_can('view', 'hr_performance')) {
-    $filters['employee_id'] = hr_get_own_employee_id();
+    $filters['own_or_evaluator'] = ['employee_id' => hr_get_own_employee_id(), 'staff_id' => get_staff_user_id()];
+    unset($filters['employee_id']);
 }
 
 $rows = $CI->Performance_model->get_for_table($filters);
@@ -23,15 +24,7 @@ $output = [
     'aaData'               => [],
 ];
 
-$badge        = ['pending' => 'default', 'in_progress' => 'warning', 'completed' => 'success'];
-$rating_color = ['Excellent' => 'success', 'Very Good' => 'info', 'Good' => 'primary', 'Average' => 'warning', 'Poor' => 'danger'];
-
 foreach ($rows as $r) {
-    $period  = date('d M Y', strtotime($r->review_period_from)) . ' &ndash; ' . date('d M Y', strtotime($r->review_period_to));
-    $status  = '<span class="label label-' . ($badge[$r->status] ?? 'default') . '">' . ucfirst(str_replace('_', ' ', $r->status)) . '</span>';
-    $score   = $r->final_score !== null ? $r->final_score . '%' : '-';
-    $rating  = $r->rating ? '<span class="label label-' . ($rating_color[$r->rating] ?? 'default') . '">' . $r->rating . '</span>' : '-';
-
     $view_url = admin_url('hr_module/performance/view/' . $r->id);
     $employee_cell = '<a href="' . $view_url . '">' . htmlspecialchars($r->first_name . ' ' . $r->last_name) . '</a><br><small class="text-muted">' . $r->employee_code . '</small>';
     $options = [];
@@ -44,14 +37,24 @@ foreach ($rows as $r) {
     }
     $employee_cell .= '<div class="row-options">' . implode(' | ', $options) . '</div>';
 
+    $count     = (int) $r->sub_target_count;
+    $completed = (int) $r->completed_count;
+    $pct       = $count > 0 ? round(($completed / $count) * 100) : 0;
+    $progress_cell = $count > 0
+        ? '<small class="text-muted">' . $completed . ' / ' . $count . '</small>'
+            . '<div class="progress tw-my-0 progress-bar-mini" style="min-width:80px">'
+            . '<div class="progress-bar progress-bar-success no-percent-text not-dynamic" role="progressbar" '
+            . 'aria-valuenow="' . $pct . '" aria-valuemin="0" aria-valuemax="100" '
+            . 'style="width: ' . $pct . '%" data-percent="' . $pct . '"></div></div>'
+        : '-';
+
     $row = [
         $employee_cell,
         $r->department_name ? htmlspecialchars($r->department_name) : '-',
-        $period,
-        htmlspecialchars($r->reviewer_name ?? '-'),
-        $score,
-        $rating,
-        $status,
+        htmlspecialchars($r->title),
+        htmlspecialchars($r->assigned_by_name ?? '-'),
+        $progress_cell,
+        $r->due_date ? date('d M Y', strtotime($r->due_date)) : '-',
     ];
     $row['DT_RowClass'] = 'has-row-options';
     $output['aaData'][] = $row;

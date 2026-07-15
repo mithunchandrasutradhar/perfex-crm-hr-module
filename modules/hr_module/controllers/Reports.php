@@ -133,16 +133,31 @@ class Reports extends AdminController
     public function performance()
     {
         if (staff_cant('view', 'hr_reports')) access_denied('hr_reports');
-        $f = $this->_get_filters(['department_id','year','rating','status']);
+        $f = $this->_get_filters(['department_id','year','status']);
         if (empty($f['year'])) $f['year'] = date('Y');
 
-        $rows = $this->Reports_model->performance($f);
+        $view = in_array($this->input->get('view'), ['employee', 'department'], true) ? $this->input->get('view') : 'detailed';
+
+        if ($view === 'employee') {
+            $rows = $this->Reports_model->performance_by_employee($f);
+            $csv_cols = ['employee_code','first_name','last_name','department_name','total_sub_targets','completed_count','pending_count','in_progress_count','partial_count','avg_completion','avg_rating'];
+            $csv_name = 'performance_report_by_employee';
+        } elseif ($view === 'department') {
+            $rows = $this->Reports_model->performance_by_department($f);
+            $csv_cols = ['department_name','total_sub_targets','completed_count','pending_count','in_progress_count','partial_count','avg_completion','avg_rating'];
+            $csv_name = 'performance_report_by_department';
+        } else {
+            $rows = $this->Reports_model->performance($f);
+            $csv_cols = ['employee_code','first_name','last_name','department_name','target_title','sub_target_title','assigned_by_name','evaluator_names','due_date','completion_percentage','status'];
+            $csv_name = 'performance_report';
+        }
 
         if ($this->input->get('export') === 'csv') {
-            $this->_export_csv($rows, ['employee_code','first_name','last_name','department_name','reviewer_name','final_score','rating','status'], 'performance_report');
+            $this->_export_csv($rows, $csv_cols, $csv_name);
             return;
         }
         $data['title']       = 'Performance Report';
+        $data['view']        = $view;
         $data['rows']        = $rows;
         $data['filters']     = $f;
         $data['departments'] = $this->Departments_model->get_active();
@@ -157,7 +172,7 @@ class Reports extends AdminController
         $rows = $this->Reports_model->training($f);
 
         if ($this->input->get('export') === 'csv') {
-            $this->_export_csv($rows, ['title','trainer','start_date','end_date','capacity','enrolled','completed','status'], 'training_report');
+            $this->_export_csv($rows, ['title','instructor_name','start_date','end_date','capacity','enrolled','present','status'], 'training_report');
             return;
         }
         $data['title']   = 'Training Report';

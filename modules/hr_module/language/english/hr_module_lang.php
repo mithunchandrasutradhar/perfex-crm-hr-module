@@ -382,11 +382,7 @@ $lang['hr_overtime_add_another_date']      = 'Add another date';
 $lang['hr_overtime_no_dates_selected']     = 'Select at least one date.';
 $lang['hr_overtime_batch_submitted']       = '%d overtime requests submitted.';
 
-// Performance
-$lang['hr_performance_list']               = 'Performance Reviews';
-$lang['hr_performance_add']                = 'Create Review';
-$lang['hr_performance_edit']               = 'Edit Review';
-$lang['hr_performance_view']               = 'View Review';
+// Performance (legacy period-review workflow - superseded by Targets below, kept for history)
 $lang['hr_performance_period']             = 'Review Period';
 $lang['hr_performance_reviewer']           = 'Reviewer';
 $lang['hr_performance_score']              = 'Score';
@@ -398,6 +394,58 @@ $lang['hr_performance_rating']             = 'Rating';
 $lang['hr_performance_added']              = 'Performance review created';
 $lang['hr_performance_updated']            = 'Performance review updated';
 $lang['hr_performance_deleted']            = 'Performance review deleted';
+
+// Performance Targets (a role-assigned person assigns a Target containing one or more
+// Sub-Targets, each with its own evaluators, progress, and evaluator feedback)
+$lang['hr_performance_list']               = 'Performance Targets';
+$lang['hr_performance_edit']               = 'Edit Target';
+$lang['hr_performance_view']               = 'View Target';
+$lang['hr_performance_assign']             = 'Assign Target';
+$lang['hr_performance_target_title']       = 'Target Title';
+$lang['hr_performance_target_description'] = 'Description';
+$lang['hr_performance_sub_targets']        = 'Sub-Targets';
+$lang['hr_performance_sub_targets_hint']   = 'Add one or more sub-targets - each can have its own due date and its own evaluators.';
+$lang['hr_performance_sub_target_title']   = 'Sub-Target Title';
+$lang['hr_performance_add_sub_target']     = 'Add Sub-Target';
+$lang['hr_performance_edit_sub_target']    = 'Edit Sub-Target';
+$lang['hr_performance_manage_sub_targets_hint'] = 'Manage this target\'s sub-targets (add, edit, or remove them) from the target\'s view page.';
+$lang['hr_performance_task_title']         = 'Target';
+$lang['hr_performance_task_description']   = 'Description';
+$lang['hr_performance_assigned_by']        = 'Assigned By';
+$lang['hr_performance_progress']           = 'Progress';
+$lang['hr_performance_evaluators']         = 'Evaluators';
+$lang['hr_performance_evaluators_hint']    = 'Hold Ctrl (Cmd on Mac) to select multiple evaluators.';
+$lang['hr_performance_due_date']           = 'Due Date';
+$lang['hr_performance_status_pending']     = 'Pending';
+$lang['hr_performance_status_in_progress'] = 'In Progress';
+$lang['hr_performance_status_partial']     = 'Partially Completed';
+$lang['hr_performance_status_completed']   = 'Completed';
+$lang['hr_performance_update_status']      = 'Update Status';
+$lang['hr_performance_completion_percentage'] = 'Completion %';
+$lang['hr_performance_employee_note']      = 'Note';
+$lang['hr_performance_feedback']           = 'Evaluator Feedback';
+$lang['hr_performance_add_feedback']       = 'Add Feedback';
+$lang['hr_performance_no_feedback']        = 'No feedback yet.';
+$lang['hr_performance_no_evaluators']      = 'No evaluators assigned.';
+$lang['hr_performance_no_sub_targets']     = 'Add at least one sub-target with a title.';
+$lang['hr_performance_target_assigned']    = 'Target assigned';
+$lang['hr_performance_target_updated']     = 'Target updated';
+$lang['hr_performance_target_deleted']     = 'Target deleted';
+$lang['hr_performance_sub_target_title_required'] = 'Sub-target title is required.';
+$lang['hr_performance_sub_target_added']   = 'Sub-target added';
+$lang['hr_performance_sub_target_updated'] = 'Sub-target updated';
+$lang['hr_performance_sub_target_deleted'] = 'Sub-target deleted';
+$lang['hr_performance_only_pending_deletable'] = 'Only a still-pending sub-target (no progress recorded yet) can be deleted.';
+$lang['hr_performance_status_updated']     = 'Status updated';
+$lang['hr_performance_invalid_percentage'] = 'Enter a completion percentage between 0 and 100.';
+$lang['hr_performance_feedback_required']  = 'Feedback text is required.';
+$lang['hr_performance_feedback_added']     = 'Feedback added';
+$lang['hr_performance_employee_report']    = 'Employee Performance Report';
+$lang['hr_performance_generate_report']    = 'Generate Report';
+$lang['hr_performance_select_employee_first'] = 'Select an employee first.';
+$lang['hr_performance_total_tasks']        = 'Total Sub-Targets';
+$lang['hr_performance_avg_completion']     = 'Average Completion';
+$lang['hr_performance_avg_rating']         = 'Average Rating';
 
 // Training
 $lang['hr_training_list']                  = 'Training Programs';
@@ -421,6 +469,12 @@ $lang['hr_training_enroll']                = 'Enroll';
 $lang['hr_training_added']                 = 'Training added successfully';
 $lang['hr_training_updated']               = 'Training updated successfully';
 $lang['hr_training_deleted']               = 'Training deleted successfully';
+$lang['hr_training_legacy_trainer']        = 'Legacy trainer (no linked staff account)';
+$lang['hr_training_attendance']            = 'Attendance';
+$lang['hr_training_mark_present']          = 'Mark Present';
+$lang['hr_training_mark_absent']           = 'Mark Absent';
+$lang['hr_training_marked_present']        = 'Marked as present successfully';
+$lang['hr_training_marked_absent']         = 'Marked as absent successfully';
 
 // Helpdesk
 $lang['hr_helpdesk_list']                  = 'HR Helpdesk Tickets';

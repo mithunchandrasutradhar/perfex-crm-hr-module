@@ -9,7 +9,7 @@
           <div class="tw-flex tw-flex-wrap tw-gap-2">
             <input type="date" id="f-from" class="form-control input-sm" style="width:135px" placeholder="From">
             <input type="date" id="f-to"   class="form-control input-sm" style="width:135px" placeholder="To">
-            <select id="f-status" class="form-control input-sm" style="width:130px">
+            <select id="f-status" class="selectpicker" data-width="140px">
               <option value="">All Status</option>
               <option value="scheduled">Scheduled</option>
               <option value="ongoing">Ongoing</option>
@@ -29,7 +29,7 @@
               _l('hr_training_title'), _l('hr_training_trainer'), _l('hr_training_venue'),
               _l('hr_training_start_date'), _l('hr_training_end_date'),
               _l('hr_training_cost'), _l('hr_training_enrolled'),
-              _l('hr_status'), _l('hr_actions'),
+              _l('hr_status'),
             ], 'hr-training'); ?>
           </div>
         </div>

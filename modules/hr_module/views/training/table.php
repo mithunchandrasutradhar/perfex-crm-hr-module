@@ -10,8 +10,8 @@ foreach (['status', 'from_date', 'to_date'] as $key) {
     if ($v !== null && $v !== '') $filters[$key] = $v;
 }
 
-if (!staff_can('view', 'hr_training') && staff_can('view_own', 'hr_training')) {
-    $filters['participant_employee_id'] = hr_get_own_employee_id();
+if (!is_admin() && !staff_can('view', 'hr_training')) {
+    $filters['own_or_instructor'] = ['employee_id' => hr_get_own_employee_id(), 'staff_id' => get_staff_user_id()];
 }
 
 $rows = $CI->Training_model->get_for_table($filters);
@@ -28,22 +28,30 @@ $badge = ['scheduled' => 'default', 'ongoing' => 'warning', 'completed' => 'succ
 foreach ($rows as $r) {
     $status   = '<span class="label label-' . ($badge[$r->status] ?? 'default') . '">' . ucfirst($r->status) . '</span>';
     $capacity = $r->capacity ? $r->enrolled_count . '/' . $r->capacity : $r->enrolled_count . ' enrolled';
-    $actions  = '<a href="' . admin_url('hr_module/training/view/' . $r->id) . '" class="btn btn-default btn-xs"><i class="fa fa-eye"></i></a> ';
-    if (staff_can('edit',   'hr_training')) {
-        $actions .= '<a href="' . admin_url('hr_module/training/edit/' . $r->id) . '" class="btn btn-default btn-xs"><i class="fa fa-pencil-alt"></i></a> ';
+    $instructor = $r->instructor_name ?: ($r->trainer ?: '-');
+
+    $view_url = admin_url('hr_module/training/view/' . $r->id);
+    $title_cell = '<a href="' . $view_url . '">' . htmlspecialchars($r->title) . '</a>';
+    $options = [];
+    $options[] = '<a href="' . $view_url . '">' . _l('hr_view') . '</a>';
+    if (staff_can('edit', 'hr_training')) {
+        $options[] = '<a href="' . admin_url('hr_module/training/edit/' . $r->id) . '">' . _l('hr_edit') . '</a>';
     }
     if (staff_can('delete', 'hr_training')) {
-        $actions .= '<a href="' . admin_url('hr_module/training/delete/' . $r->id) . '" class="btn btn-danger btn-xs _delete"><i class="fa fa-times"></i></a>';
+        $options[] = '<a href="' . admin_url('hr_module/training/delete/' . $r->id) . '" class="_delete text-danger">' . _l('hr_delete') . '</a>';
     }
-    $output['aaData'][] = [
-        '<a href="' . admin_url('hr_module/training/view/' . $r->id) . '">' . htmlspecialchars($r->title) . '</a>',
-        $r->trainer ? htmlspecialchars($r->trainer) : '-',
+    $title_cell .= '<div class="row-options">' . implode(' | ', $options) . '</div>';
+
+    $row = [
+        $title_cell,
+        htmlspecialchars($instructor),
         $r->venue   ? htmlspecialchars($r->venue)   : '-',
         date('d M Y', strtotime($r->start_date)),
         date('d M Y', strtotime($r->end_date)),
         number_format($r->cost, 2),
         $capacity,
         $status,
-        $actions,
     ];
+    $row['DT_RowClass'] = 'has-row-options';
+    $output['aaData'][] = $row;
 }
