@@ -38,7 +38,7 @@
               _l('hr_employee'), _l('hr_department'),
               _l('hr_performance_period'), _l('hr_performance_reviewer'),
               _l('hr_performance_score'), _l('hr_performance_rating'),
-              _l('hr_status'), _l('hr_actions'),
+              _l('hr_status'),
             ], 'hr-performance'); ?>
           </div>
         </div>
