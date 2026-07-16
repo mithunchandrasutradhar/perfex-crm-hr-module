@@ -22,7 +22,7 @@ class Helpdesk_model extends App_Model
 
     public function get_for_table($filters = [])
     {
-        $this->db->select('t.id, t.subject, t.category, t.priority, t.status, t.created_at, t.updated_at,
+        $this->db->select('t.id, t.subject, t.category, t.priority, t.status, t.is_anonymous, t.created_at, t.updated_at,
                            e.first_name, e.last_name, e.employee_code, d.name as department_name,
                            CONCAT(s.firstname," ",s.lastname) as assigned_name,
                            (SELECT COUNT(*) FROM '.db_prefix().$this->reply_table.' r WHERE r.ticket_id=t.id) as reply_count', false)
@@ -52,14 +52,16 @@ class Helpdesk_model extends App_Model
 
     public function submit($data)
     {
+        $is_anonymous = !empty($data['is_anonymous']);
         $record = [
-            'employee_id' => (int) $data['employee_id'],
-            'subject'     => $data['subject'],
-            'category'    => $data['category']   ?? null,
-            'priority'    => $data['priority']   ?? 'medium',
-            'message'     => $data['message'],
-            'status'      => 'open',
-            'created_at'  => date('Y-m-d H:i:s'),
+            'employee_id'  => $is_anonymous ? null : ((int) $data['employee_id'] ?: null),
+            'is_anonymous' => $is_anonymous ? 1 : 0,
+            'subject'      => $data['subject'],
+            'category'     => $data['category']   ?? null,
+            'priority'     => $data['priority']   ?? 'medium',
+            'message'      => $data['message'],
+            'status'       => 'open',
+            'created_at'   => date('Y-m-d H:i:s'),
         ];
         if (!empty($data['attachment'])) $record['attachment'] = $data['attachment'];
         $this->db->insert(db_prefix() . $this->table, $record);

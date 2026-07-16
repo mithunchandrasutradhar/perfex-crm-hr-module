@@ -125,6 +125,11 @@ $route['hr_module/training/delete/(:num)']        = 'hr_module/Training/delete/$
 $route['hr_module/training/enroll/(:num)']                     = 'hr_module/Training/enroll/$1';
 $route['hr_module/training/remove_participant/(:num)/(:num)']  = 'hr_module/Training/remove_participant/$1/$2';
 $route['hr_module/training/mark_attendance/(:num)/(:num)']     = 'hr_module/Training/mark_attendance/$1/$2';
+$route['hr_module/training/mark_complete/(:num)']              = 'hr_module/Training/mark_complete/$1';
+$route['hr_module/training/mark_daily_attendance/(:num)/(:num)'] = 'hr_module/Training/mark_daily_attendance/$1/$2';
+$route['hr_module/training/report/(:num)']                     = 'hr_module/Training/report/$1';
+$route['hr_module/training/save_employee_note/(:num)/(:num)']     = 'hr_module/Training/save_employee_note/$1/$2';
+$route['hr_module/training/save_employee_feedback/(:num)/(:num)'] = 'hr_module/Training/save_employee_feedback/$1/$2';
 
 // Helpdesk
 $route['hr_module/helpdesk']                      = 'hr_module/Helpdesk/index';

@@ -33,11 +33,12 @@ class Helpdesk extends AdminController
         if ($this->input->post()) {
             $posted_emp_id = (int) $this->input->post('employee_id');
             $data = [
-                'employee_id' => $own_only ? $own_emp_id : $posted_emp_id,
-                'subject'     => $this->input->post('subject', true),
-                'category'    => $this->input->post('category', true),
-                'priority'    => $this->input->post('priority'),
-                'message'     => $this->input->post('message', true),
+                'employee_id'  => $own_only ? $own_emp_id : $posted_emp_id,
+                'is_anonymous' => (bool) $this->input->post('is_anonymous'),
+                'subject'      => $this->input->post('subject', true),
+                'category'     => $this->input->post('category', true),
+                'priority'     => $this->input->post('priority'),
+                'message'      => $this->input->post('message', true),
             ];
             $this->_handle_attachment($data, 'attachment');
             $result = $this->Helpdesk_model->submit($data);
@@ -69,7 +70,9 @@ class Helpdesk extends AdminController
         $ticket = $this->Helpdesk_model->get($id);
         if (!$ticket) show_404();
         if (!staff_can('view', 'hr_helpdesk') && staff_can('view_own', 'hr_helpdesk')) {
-            if ((int) $ticket->employee_id !== hr_get_own_employee_id()) access_denied('hr_helpdesk');
+            if ($ticket->is_anonymous || (int) $ticket->employee_id !== hr_get_own_employee_id()) {
+                access_denied('hr_helpdesk');
+            }
         }
         $data['title']   = _l('hr_helpdesk_view');
         $data['ticket']  = $ticket;

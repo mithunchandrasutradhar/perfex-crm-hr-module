@@ -776,6 +776,15 @@ if ($CI->db->table_exists(db_prefix() . 'hr_training')) {
     }
 }
 
+// Upgrade: the instructor can leave a closing note (summary/feedback) when they
+// mark the training session complete.
+if ($CI->db->table_exists(db_prefix() . 'hr_training')) {
+    $col = $CI->db->query("SHOW COLUMNS FROM `" . db_prefix() . "hr_training` LIKE 'completion_note'")->num_rows();
+    if ($col === 0) {
+        $CI->db->query("ALTER TABLE `" . db_prefix() . "hr_training` ADD COLUMN `completion_note` text DEFAULT NULL AFTER `description`");
+    }
+}
+
 // 19. Training Participants
 if (!$CI->db->table_exists(db_prefix() . 'hr_training_participants')) {
     $CI->db->query('CREATE TABLE `' . db_prefix() . 'hr_training_participants` (
@@ -785,9 +794,10 @@ if (!$CI->db->table_exists(db_prefix() . 'hr_training_participants')) {
       `enrolled_at` datetime NOT NULL,
       `completed` tinyint(1) NOT NULL DEFAULT 0,
       `completion_date` date DEFAULT NULL,
-      `attendance_status` enum(\'pending\',\'present\',\'absent\') NOT NULL DEFAULT \'pending\',
+      `attendance_status` enum(\'pending\',\'present\',\'absent\',\'partial\') NOT NULL DEFAULT \'pending\',
       `certificate` varchar(255) DEFAULT NULL,
-      `notes` text DEFAULT NULL
+      `notes` text DEFAULT NULL,
+      `employee_feedback` text DEFAULT NULL
     ) ENGINE=InnoDB DEFAULT CHARSET=' . $CI->db->char_set . ';');
     $CI->db->query('ALTER TABLE `' . db_prefix() . 'hr_training_participants`
       ADD PRIMARY KEY (`id`),
@@ -801,8 +811,109 @@ if ($CI->db->table_exists(db_prefix() . 'hr_training_participants')) {
     $col = $CI->db->query("SHOW COLUMNS FROM `" . db_prefix() . "hr_training_participants` LIKE 'attendance_status'")->num_rows();
     if ($col === 0) {
         $CI->db->query("ALTER TABLE `" . db_prefix() . "hr_training_participants`
-          ADD COLUMN `attendance_status` enum('pending','present','absent') NOT NULL DEFAULT 'pending' AFTER `completion_date`");
+          ADD COLUMN `attendance_status` enum('pending','present','absent','partial') NOT NULL DEFAULT 'pending' AFTER `completion_date`");
         $CI->db->query("UPDATE `" . db_prefix() . "hr_training_participants` SET `attendance_status` = 'present' WHERE `completed` = 1");
+    }
+}
+// Upgrade: attendance can be Partial (present on some days, absent on others) for
+// a multi-day training, not just a strict all-or-nothing present/absent split.
+if ($CI->db->table_exists(db_prefix() . 'hr_training_participants')) {
+    $col = $CI->db->query("SHOW COLUMNS FROM `" . db_prefix() . "hr_training_participants` LIKE 'attendance_status'")->row();
+    if ($col && strpos($col->Type, "'partial'") === false) {
+        $CI->db->query("ALTER TABLE `" . db_prefix() . "hr_training_participants`
+          MODIFY COLUMN `attendance_status` enum('pending','present','absent','partial') NOT NULL DEFAULT 'pending'");
+    }
+}
+
+// Upgrade: the instructor/HR can leave a private note about how an enrolled
+// employee did, and the employee can leave their own feedback about the
+// training/instructor - two independent notes on the same participant row.
+if ($CI->db->table_exists(db_prefix() . 'hr_training_participants')) {
+    $col = $CI->db->query("SHOW COLUMNS FROM `" . db_prefix() . "hr_training_participants` LIKE 'employee_feedback'")->num_rows();
+    if ($col === 0) {
+        $CI->db->query("ALTER TABLE `" . db_prefix() . "hr_training_participants` ADD COLUMN `employee_feedback` text DEFAULT NULL AFTER `notes`");
+    }
+}
+
+// 19b. Training Daily Attendance - a multi-day training needs each calendar day
+// confirmed separately by the instructor/HR, instead of one mark for the whole
+// training. hr_training_participants.attendance_status stays as an overall summary
+// (all days present / any day absent / still pending), recomputed after each daily mark.
+if (!$CI->db->table_exists(db_prefix() . 'hr_training_attendance')) {
+    $CI->db->query('CREATE TABLE `' . db_prefix() . 'hr_training_attendance` (
+      `id` int(11) NOT NULL,
+      `training_id` int(11) NOT NULL,
+      `employee_id` int(11) NOT NULL,
+      `attendance_date` date NOT NULL,
+      `status` enum(\'pending\',\'present\',\'absent\') NOT NULL DEFAULT \'pending\',
+      `marked_by` int(11) DEFAULT NULL,
+      `marked_at` datetime DEFAULT NULL
+    ) ENGINE=InnoDB DEFAULT CHARSET=' . $CI->db->char_set . ';');
+    $CI->db->query('ALTER TABLE `' . db_prefix() . 'hr_training_attendance`
+      ADD PRIMARY KEY (`id`),
+      ADD UNIQUE KEY `training_employee_date` (`training_id`, `employee_id`, `attendance_date`);');
+    $CI->db->query('ALTER TABLE `' . db_prefix() . 'hr_training_attendance`
+      MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1;');
+
+    // Backfill: generate one row per calendar day of each existing training for
+    // each already-enrolled participant, carrying over their existing overall status.
+    $trainings = $CI->db->select('id, start_date, end_date')->get(db_prefix() . 'hr_training')->result();
+    foreach ($trainings as $t) {
+        $participants = $CI->db->select('employee_id, attendance_status, completion_date')
+            ->where('training_id', $t->id)->get(db_prefix() . 'hr_training_participants')->result();
+        if (!$participants) continue;
+        $start = new DateTime($t->start_date);
+        $end   = new DateTime($t->end_date);
+        if ($end < $start) $end = clone $start;
+        foreach ($participants as $p) {
+            $date = clone $start;
+            while ($date <= $end) {
+                $CI->db->insert(db_prefix() . 'hr_training_attendance', [
+                    'training_id'     => $t->id,
+                    'employee_id'     => $p->employee_id,
+                    'attendance_date' => $date->format('Y-m-d'),
+                    'status'          => $p->attendance_status,
+                    'marked_at'       => $p->attendance_status !== 'pending' ? ($p->completion_date ?: null) : null,
+                ]);
+                $date->modify('+1 day');
+            }
+        }
+    }
+}
+
+// 19c. Training Sessions - day-by-day schedule (each day picked individually, with
+// its own start/end time) instead of a continuous start_date/end_date range. A
+// training's start_date/end_date on hr_training are now DERIVED (min/max session
+// date), kept only for quick list sorting/filtering.
+if (!$CI->db->table_exists(db_prefix() . 'hr_training_sessions')) {
+    $CI->db->query('CREATE TABLE `' . db_prefix() . 'hr_training_sessions` (
+      `id` int(11) NOT NULL,
+      `training_id` int(11) NOT NULL,
+      `session_date` date NOT NULL,
+      `start_time` time DEFAULT NULL,
+      `end_time` time DEFAULT NULL
+    ) ENGINE=InnoDB DEFAULT CHARSET=' . $CI->db->char_set . ';');
+    $CI->db->query('ALTER TABLE `' . db_prefix() . 'hr_training_sessions`
+      ADD PRIMARY KEY (`id`),
+      ADD UNIQUE KEY `training_session_date` (`training_id`, `session_date`);');
+    $CI->db->query('ALTER TABLE `' . db_prefix() . 'hr_training_sessions`
+      MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1;');
+
+    // Backfill: one session per calendar day of each existing training's old
+    // start_date/end_date range - times are left blank since none were recorded.
+    $trainings = $CI->db->select('id, start_date, end_date')->get(db_prefix() . 'hr_training')->result();
+    foreach ($trainings as $t) {
+        $start = new DateTime($t->start_date);
+        $end   = new DateTime($t->end_date);
+        if ($end < $start) $end = clone $start;
+        $date = clone $start;
+        while ($date <= $end) {
+            $CI->db->insert(db_prefix() . 'hr_training_sessions', [
+                'training_id'  => $t->id,
+                'session_date' => $date->format('Y-m-d'),
+            ]);
+            $date->modify('+1 day');
+        }
     }
 }
 
@@ -810,7 +921,8 @@ if ($CI->db->table_exists(db_prefix() . 'hr_training_participants')) {
 if (!$CI->db->table_exists(db_prefix() . 'hr_helpdesk')) {
     $CI->db->query('CREATE TABLE `' . db_prefix() . 'hr_helpdesk` (
       `id` int(11) NOT NULL,
-      `employee_id` int(11) NOT NULL,
+      `employee_id` int(11) DEFAULT NULL,
+      `is_anonymous` tinyint(1) NOT NULL DEFAULT 0,
       `subject` varchar(255) NOT NULL,
       `category` varchar(100) DEFAULT NULL,
       `priority` varchar(20) NOT NULL DEFAULT \'medium\',
@@ -827,6 +939,15 @@ if (!$CI->db->table_exists(db_prefix() . 'hr_helpdesk')) {
       ADD KEY `status` (`status`);');
     $CI->db->query('ALTER TABLE `' . db_prefix() . 'hr_helpdesk`
       MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1;');
+}
+// Upgrade: an employee can submit a ticket anonymously - identity is not stored
+// at all (employee_id stays NULL) so even HR can't trace it back to them.
+if ($CI->db->table_exists(db_prefix() . 'hr_helpdesk')) {
+    $col = $CI->db->query("SHOW COLUMNS FROM `" . db_prefix() . "hr_helpdesk` LIKE 'is_anonymous'")->num_rows();
+    if ($col === 0) {
+        $CI->db->query("ALTER TABLE `" . db_prefix() . "hr_helpdesk` ADD COLUMN `is_anonymous` tinyint(1) NOT NULL DEFAULT 0 AFTER `employee_id`");
+    }
+    $CI->db->query("ALTER TABLE `" . db_prefix() . "hr_helpdesk` MODIFY COLUMN `employee_id` int(11) DEFAULT NULL");
 }
 
 // 21. HR Helpdesk Replies

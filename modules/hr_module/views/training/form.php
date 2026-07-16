@@ -53,29 +53,64 @@ $form_url = $is_edit
                   </div>
                 </div>
               </div>
+              <div class="form-group">
+                <label><?php echo _l('hr_training_sessions'); ?> <span class="text-danger">*</span></label>
+                <p class="text-muted tw-mb-2" style="font-size:0.85rem"><?php echo _l('hr_training_sessions_hint'); ?></p>
+                <div id="sessions-container">
+                  <?php if (!empty($sessions)): foreach ($sessions as $s): ?>
+                  <div class="row session-row tw-mb-2">
+                    <div class="col-md-5">
+                      <div class="input-group date">
+                        <input type="text" name="session_date[]" class="form-control datepicker" autocomplete="off" required
+                               value="<?php echo _d($s->session_date); ?>">
+                        <div class="input-group-addon"><i class="fa-regular fa-calendar calendar-icon"></i></div>
+                      </div>
+                    </div>
+                    <div class="col-md-3">
+                      <input type="time" name="session_start_time[]" class="form-control"
+                             value="<?php echo $s->start_time ? substr($s->start_time, 0, 5) : ''; ?>">
+                    </div>
+                    <div class="col-md-3">
+                      <input type="time" name="session_end_time[]" class="form-control"
+                             value="<?php echo $s->end_time ? substr($s->end_time, 0, 5) : ''; ?>">
+                    </div>
+                    <div class="col-md-1">
+                      <a href="#" class="btn btn-danger" onclick="remove_session_row(this); return false;"><i class="fa fa-trash"></i></a>
+                    </div>
+                  </div>
+                  <?php endforeach; else: ?>
+                  <div class="row session-row tw-mb-2">
+                    <div class="col-md-5">
+                      <div class="input-group date">
+                        <input type="text" name="session_date[]" class="form-control datepicker" autocomplete="off" required value="">
+                        <div class="input-group-addon"><i class="fa-regular fa-calendar calendar-icon"></i></div>
+                      </div>
+                    </div>
+                    <div class="col-md-3">
+                      <input type="time" name="session_start_time[]" class="form-control" value="">
+                    </div>
+                    <div class="col-md-3">
+                      <input type="time" name="session_end_time[]" class="form-control" value="">
+                    </div>
+                    <div class="col-md-1">
+                      <a href="#" class="btn btn-danger" onclick="remove_session_row(this); return false;"><i class="fa fa-trash"></i></a>
+                    </div>
+                  </div>
+                  <?php endif; ?>
+                </div>
+                <button type="button" class="btn btn-default btn-sm" id="add-session-btn">
+                  <i class="fa fa-plus tw-mr-1"></i><?php echo _l('hr_training_add_day'); ?>
+                </button>
+              </div>
               <div class="row">
-                <div class="col-md-3">
-                  <div class="form-group">
-                    <label><?php echo _l('hr_training_start_date'); ?> <span class="text-danger">*</span></label>
-                    <input type="date" name="start_date" class="form-control" required
-                           value="<?php echo $is_edit ? $training->start_date : ''; ?>">
-                  </div>
-                </div>
-                <div class="col-md-3">
-                  <div class="form-group">
-                    <label><?php echo _l('hr_training_end_date'); ?> <span class="text-danger">*</span></label>
-                    <input type="date" name="end_date" class="form-control" required
-                           value="<?php echo $is_edit ? $training->end_date : ''; ?>">
-                  </div>
-                </div>
-                <div class="col-md-3">
+                <div class="col-md-6">
                   <div class="form-group">
                     <label><?php echo _l('hr_training_cost'); ?></label>
                     <input type="number" step="0.01" min="0" name="cost" class="form-control"
                            value="<?php echo $is_edit ? $training->cost : '0'; ?>">
                   </div>
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-6">
                   <div class="form-group">
                     <label><?php echo _l('hr_training_capacity'); ?> <small class="text-muted">(leave blank = unlimited)</small></label>
                     <input type="number" min="1" name="capacity" class="form-control"
@@ -122,3 +157,26 @@ $form_url = $is_edit
   </div>
 </div>
 <?php init_tail(); ?>
+<script>
+function remove_session_row(el) {
+    if ($('#sessions-container .session-row').length <= 1) {
+        alert_float('danger', '<?php echo _l('hr_training_at_least_one_day'); ?>');
+        return;
+    }
+    $(el).closest('.session-row').remove();
+}
+$(function(){
+    $('#add-session-btn').on('click', function(){
+        var row = '<div class="row session-row tw-mb-2">'
+            + '<div class="col-md-5"><div class="input-group date">'
+            + '<input type="text" name="session_date[]" class="form-control datepicker" autocomplete="off" required value="">'
+            + '<div class="input-group-addon"><i class="fa-regular fa-calendar calendar-icon"></i></div></div></div>'
+            + '<div class="col-md-3"><input type="time" name="session_start_time[]" class="form-control" value=""></div>'
+            + '<div class="col-md-3"><input type="time" name="session_end_time[]" class="form-control" value=""></div>'
+            + '<div class="col-md-1"><a href="#" class="btn btn-danger" onclick="remove_session_row(this); return false;"><i class="fa fa-trash"></i></a></div>'
+            + '</div>';
+        $('#sessions-container').append(row);
+        init_datepicker();
+    });
+});
+</script>

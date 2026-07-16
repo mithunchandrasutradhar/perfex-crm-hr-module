@@ -12,10 +12,11 @@
           <div class="panel-body">
             <h4 class="tw-font-semibold tw-mb-4"><?php echo _l('hr_helpdesk_add'); ?></h4>
             <?php echo form_open_multipart(admin_url('hr_module/helpdesk/submit')); ?>
-              <div class="form-group">
+              <div class="form-group select-placeholder">
                 <label><?php echo _l('hr_employee'); ?> <span class="text-danger">*</span></label>
-                <select name="employee_id" class="form-control" required
-                  <?php if (!empty($own_only)) echo 'disabled'; ?>>
+                <select name="employee_id" id="employee_id" class="selectpicker" data-width="100%"
+                        data-live-search="true" data-none-selected-text="<?php echo _l('hr_select'); ?>"
+                        required <?php if (!empty($own_only)) echo 'disabled'; ?>>
                   <option value=""><?php echo _l('hr_select'); ?></option>
                   <?php foreach ($employees as $id => $name): ?>
                   <option value="<?php echo $id; ?>" <?php if (!empty($own_only)) echo 'selected'; ?>>
@@ -27,6 +28,11 @@
                 <input type="hidden" name="employee_id" value="<?php echo (int) $own_emp_id; ?>">
                 <?php endif; ?>
               </div>
+              <div class="checkbox checkbox-primary tw-mb-3">
+                <input type="checkbox" id="is_anonymous" name="is_anonymous" value="1">
+                <label for="is_anonymous"><?php echo _l('hr_helpdesk_submit_anonymous'); ?></label>
+                <p class="text-muted tw-mb-0" style="font-size:0.85rem"><?php echo _l('hr_helpdesk_anonymous_notice'); ?></p>
+              </div>
               <div class="form-group">
                 <label><?php echo _l('hr_helpdesk_subject'); ?> <span class="text-danger">*</span></label>
                 <input type="text" name="subject" class="form-control" required
@@ -34,9 +40,9 @@
               </div>
               <div class="row">
                 <div class="col-md-6">
-                  <div class="form-group">
+                  <div class="form-group select-placeholder">
                     <label><?php echo _l('hr_helpdesk_category'); ?></label>
-                    <select name="category" class="form-control">
+                    <select name="category" class="selectpicker" data-width="100%">
                       <option value="">-- Select Category --</option>
                       <option value="Payroll">Payroll</option>
                       <option value="Leave">Leave</option>
@@ -48,9 +54,9 @@
                   </div>
                 </div>
                 <div class="col-md-6">
-                  <div class="form-group">
+                  <div class="form-group select-placeholder">
                     <label><?php echo _l('hr_helpdesk_priority'); ?></label>
-                    <select name="priority" class="form-control">
+                    <select name="priority" class="selectpicker" data-width="100%">
                       <option value="low">Low</option>
                       <option value="medium" selected>Medium</option>
                       <option value="high">High</option>
@@ -80,3 +86,12 @@
   </div>
 </div>
 <?php init_tail(); ?>
+<?php if (empty($own_only)): ?>
+<script>
+$(function(){
+    $('#is_anonymous').on('change', function(){
+        $('#employee_id').prop('disabled', this.checked).prop('required', !this.checked).selectpicker('refresh');
+    });
+});
+</script>
+<?php endif; ?>

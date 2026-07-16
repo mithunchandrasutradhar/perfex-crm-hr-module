@@ -41,6 +41,14 @@ $is_closed = in_array($ticket->status, ['closed','resolved']);
             </div>
 
             <div class="tw-flex tw-items-center tw-gap-3 tw-mb-3">
+              <?php if ($ticket->is_anonymous): ?>
+              <div style="width:36px;height:36px;border-radius:50%;background:#e2e8f0;display:flex;align-items:center;justify-content:center;color:#64748b">
+                <i class="fa fa-user-secret"></i>
+              </div>
+              <div>
+                <strong class="text-muted"><?php echo _l('hr_helpdesk_anonymous'); ?></strong>
+              </div>
+              <?php else: ?>
               <div style="width:36px;height:36px;border-radius:50%;background:#e2e8f0;display:flex;align-items:center;justify-content:center;font-weight:700;color:#64748b">
                 <?php echo strtoupper(substr($ticket->first_name,0,1)); ?>
               </div>
@@ -49,6 +57,7 @@ $is_closed = in_array($ticket->status, ['closed','resolved']);
                 <span class="label label-default tw-ml-1" style="font-size:0.65rem"><?php echo $ticket->employee_code; ?></span>
                 <br><small class="text-muted"><?php echo htmlspecialchars($ticket->department_name ?? ''); ?></small>
               </div>
+              <?php endif; ?>
             </div>
 
             <div style="background:#f8fafc;border-left:3px solid #6366f1;padding:12px 16px;border-radius:0 6px 6px 0">
@@ -103,9 +112,9 @@ $is_closed = in_array($ticket->status, ['closed','resolved']);
               </div>
               <div class="row">
                 <div class="col-md-4">
-                  <div class="form-group">
+                  <div class="form-group select-placeholder">
                     <label><?php echo _l('hr_status'); ?></label>
-                    <select name="status" class="form-control">
+                    <select name="status" class="selectpicker" data-width="100%">
                       <option value="">Keep current</option>
                       <option value="in_progress">In Progress</option>
                       <option value="resolved">Resolved</option>
@@ -114,9 +123,9 @@ $is_closed = in_array($ticket->status, ['closed','resolved']);
                   </div>
                 </div>
                 <div class="col-md-4">
-                  <div class="form-group">
+                  <div class="form-group select-placeholder">
                     <label><?php echo _l('hr_helpdesk_assigned_to'); ?></label>
-                    <select name="assigned_to" class="form-control">
+                    <select name="assigned_to" class="selectpicker" data-width="100%" data-live-search="true">
                       <?php foreach ($staff as $sid => $sname): ?>
                       <option value="<?php echo $sid; ?>" <?php if($ticket->assigned_to==$sid) echo 'selected'; ?>>
                         <?php echo htmlspecialchars($sname); ?>

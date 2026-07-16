@@ -457,6 +457,10 @@ $lang['hr_training_trainer']               = 'Trainer/Instructor';
 $lang['hr_training_venue']                 = 'Venue';
 $lang['hr_training_start_date']            = 'Start Date';
 $lang['hr_training_end_date']              = 'End Date';
+$lang['hr_training_sessions']              = 'Sessions';
+$lang['hr_training_sessions_hint']         = 'Add each training day individually, with its start and end time.';
+$lang['hr_training_add_day']               = 'Add Day';
+$lang['hr_training_at_least_one_day']      = 'At least one session day is required.';
 $lang['hr_training_cost']                  = 'Cost';
 $lang['hr_training_capacity']              = 'Capacity';
 $lang['hr_training_enrolled']              = 'Enrolled';
@@ -475,6 +479,23 @@ $lang['hr_training_mark_present']          = 'Mark Present';
 $lang['hr_training_mark_absent']           = 'Mark Absent';
 $lang['hr_training_marked_present']        = 'Marked as present successfully';
 $lang['hr_training_marked_absent']         = 'Marked as absent successfully';
+$lang['hr_training_mark_complete']         = 'Mark Training as Complete';
+$lang['hr_training_confirm_mark_complete'] = 'Mark this training session as completed?';
+$lang['hr_training_marked_complete']       = 'Training marked as completed';
+$lang['hr_training_daily_attendance']      = 'Daily Attendance';
+$lang['hr_training_completion_note']       = 'Completion Note';
+$lang['hr_training_completion_note_placeholder'] = 'Summary, feedback, or observations about how the training went (optional)';
+$lang['hr_training_generate_report']       = 'Generate Report';
+$lang['hr_training_report']                = 'Training Report';
+$lang['hr_training_add_note']              = 'Add/Edit Note';
+$lang['hr_training_note_about']            = 'Note about';
+$lang['hr_training_note_placeholder']      = 'Private note about this employee\'s performance/participation (visible to HR and the instructor only)';
+$lang['hr_training_note_saved']            = 'Note saved';
+$lang['hr_training_my_feedback']           = 'My Feedback';
+$lang['hr_training_my_feedback_hint']      = 'Share your feedback about the instructor and this training session.';
+$lang['hr_training_feedback_placeholder']  = 'What did you think of the training and the instructor?';
+$lang['hr_training_feedback_saved']        = 'Feedback saved';
+$lang['hr_training_employee_feedback']     = 'Employee Feedback';
 
 // Helpdesk
 $lang['hr_helpdesk_list']                  = 'HR Helpdesk Tickets';
@@ -497,6 +518,9 @@ $lang['hr_helpdesk_replies']               = 'Replies';
 $lang['hr_helpdesk_close']                 = 'Close Ticket';
 $lang['hr_helpdesk_reopen']                = 'Reopen Ticket';
 $lang['hr_helpdesk_added']                 = 'Ticket submitted successfully';
+$lang['hr_helpdesk_submit_anonymous']      = 'Submit this ticket anonymously';
+$lang['hr_helpdesk_anonymous_notice']      = 'Your identity will not be recorded or shown to anyone reviewing this ticket, including HR.';
+$lang['hr_helpdesk_anonymous']             = 'Anonymous';
 
 // Contracts
 $lang['hr_contract_list']                  = 'HR Contracts';

@@ -29,19 +29,30 @@ foreach ($rows as $r) {
     $status   = '<span class="label label-' . ($sbadge[$r->status] ?? 'default') . '">' . ucfirst(str_replace('_', ' ', $r->status)) . '</span>';
     $priority = '<span class="label label-' . ($pbadge[$r->priority] ?? 'default') . '">' . ucfirst($r->priority) . '</span>';
     $replies  = $r->reply_count > 0 ? '<span class="badge badge-secondary">' . $r->reply_count . '</span>' : '-';
-    $actions  = '<a href="' . admin_url('hr_module/helpdesk/view/' . $r->id) . '" class="btn btn-default btn-xs"><i class="fa fa-eye"></i></a> ';
+
+    $view_url = admin_url('hr_module/helpdesk/view/' . $r->id);
+    $subject_cell = '<a href="' . $view_url . '"><strong>#' . $r->id . '</strong> ' . htmlspecialchars($r->subject) . '</a>';
+    $options = [];
+    $options[] = '<a href="' . $view_url . '">' . _l('hr_view') . '</a>';
     if (staff_can('delete', 'hr_helpdesk')) {
-        $actions .= '<a href="' . admin_url('hr_module/helpdesk/delete/' . $r->id) . '" class="btn btn-danger btn-xs _delete"><i class="fa fa-times"></i></a>';
+        $options[] = '<a href="' . admin_url('hr_module/helpdesk/delete/' . $r->id) . '" class="_delete text-danger">' . _l('hr_delete') . '</a>';
     }
-    $output['aaData'][] = [
-        '<a href="' . admin_url('hr_module/helpdesk/view/' . $r->id) . '"><strong>#' . $r->id . '</strong> ' . htmlspecialchars($r->subject) . '</a>',
-        htmlspecialchars($r->first_name . ' ' . $r->last_name) . '<br><small class="text-muted">' . htmlspecialchars($r->department_name ?? '') . '</small>',
+    $subject_cell .= '<div class="row-options">' . implode(' | ', $options) . '</div>';
+
+    $submitter = $r->is_anonymous
+        ? '<span class="text-muted"><i class="fa fa-user-secret tw-mr-1"></i>' . _l('hr_helpdesk_anonymous') . '</span>'
+        : htmlspecialchars($r->first_name . ' ' . $r->last_name) . '<br><small class="text-muted">' . htmlspecialchars($r->department_name ?? '') . '</small>';
+
+    $row = [
+        $subject_cell,
+        $submitter,
         $r->category ? htmlspecialchars($r->category) : '-',
         $priority,
         $replies,
         $r->assigned_name ? htmlspecialchars($r->assigned_name) : '<span class="text-muted">Unassigned</span>',
         $status,
         date('d M Y H:i', strtotime($r->created_at)),
-        $actions,
     ];
+    $row['DT_RowClass'] = 'has-row-options';
+    $output['aaData'][] = $row;
 }
