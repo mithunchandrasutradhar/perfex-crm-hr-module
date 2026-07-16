@@ -288,7 +288,7 @@ if (!isset($can_manage_deductions)) $can_manage_deductions = staff_can('edit', '
               </p>
               <?php if ($can_manage_deductions): ?>
               <button class="btn btn-sm btn-primary btn-block" data-toggle="modal" data-target="#deductModal">
-                <i class="fa fa-plus tw-mr-1"></i>Request Deduction
+                <i class="fa-regular fa-plus tw-mr-1"></i>Request Deduction
               </button>
               <?php endif; ?>
             <?php endif; ?>
@@ -504,7 +504,7 @@ if (!isset($can_manage_deductions)) $can_manage_deductions = staff_can('edit', '
     </div>
     <div class="modal-footer">
       <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
-      <button type="submit" class="btn btn-primary"><i class="fa fa-save tw-mr-1"></i>Save</button>
+      <button type="submit" class="btn btn-primary">Save</button>
     </div>
     <?php echo form_close(); ?>
   </div></div>

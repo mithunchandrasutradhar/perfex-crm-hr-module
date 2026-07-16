@@ -7,8 +7,8 @@
         <div class="tw-mb-2 tw-flex tw-items-center tw-justify-between">
           <h4 class="tw-font-semibold tw-text-lg tw-text-neutral-700"><?php echo _l('hr_designation_list'); ?></h4>
           <?php if (staff_can('create', 'hr_departments')): ?>
-          <a href="<?php echo admin_url('hr_module/designations/add'); ?>" class="btn btn-primary btn-sm">
-            <i class="fa fa-plus tw-mr-1"></i><?php echo _l('hr_designation_add'); ?>
+          <a href="<?php echo admin_url('hr_module/designations/add'); ?>" class="btn btn-primary">
+            <i class="fa-regular fa-plus tw-mr-1"></i><?php echo _l('hr_designation_add'); ?>
           </a>
           <?php endif; ?>
         </div>

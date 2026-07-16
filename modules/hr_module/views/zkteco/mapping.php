@@ -47,7 +47,7 @@
                     Check the device's user management to find this number.
                   </div>
                   <button type="submit" class="btn btn-primary btn-block">
-                    <i class="fa fa-save tw-mr-1"></i>Save Mapping
+                    Save Mapping
                   </button>
                 <?php echo form_close(); ?>
               </div>

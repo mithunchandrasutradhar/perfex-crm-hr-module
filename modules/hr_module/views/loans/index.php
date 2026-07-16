@@ -22,8 +22,8 @@
               <option value="closed">Closed</option>
             </select>
             <?php if (staff_can('create', 'hr_loans')): ?>
-            <a href="<?php echo admin_url('hr_module/loans/apply'); ?>" class="btn btn-primary btn-sm">
-              <i class="fa fa-plus tw-mr-1"></i><?php echo _l('hr_loan_add'); ?>
+            <a href="<?php echo admin_url('hr_module/loans/apply'); ?>" class="btn btn-primary">
+              <i class="fa-regular fa-plus tw-mr-1"></i><?php echo _l('hr_loan_add'); ?>
             </a>
             <?php endif; ?>
           </div>

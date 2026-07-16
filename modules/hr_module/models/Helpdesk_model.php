@@ -91,6 +91,24 @@ class Helpdesk_model extends App_Model
         return ['success' => true, 'message' => 'Reply posted.'];
     }
 
+    // Anonymous tickets have no one to reply back to, so instead of a growing
+    // reply thread, staff just keep a single internal note on the ticket itself.
+    public function save_note($ticket_id, $note, $attachment = null)
+    {
+        $update = [
+            'internal_note' => $note,
+            'updated_at'    => date('Y-m-d H:i:s'),
+        ];
+        if ($attachment) $update['internal_note_attachment'] = $attachment;
+
+        $ticket = $this->db->select('status')->where('id', $ticket_id)
+            ->get(db_prefix() . $this->table)->row();
+        if ($ticket && $ticket->status === 'open') $update['status'] = 'in_progress';
+
+        $this->db->where('id', $ticket_id)->update(db_prefix() . $this->table, $update);
+        return ['success' => true, 'message' => _l('hr_helpdesk_note_saved')];
+    }
+
     public function assign($ticket_id, $staff_id)
     {
         $this->db->where('id', $ticket_id)->update(db_prefix() . $this->table, [

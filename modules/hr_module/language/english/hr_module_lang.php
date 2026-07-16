@@ -496,6 +496,7 @@ $lang['hr_training_my_feedback_hint']      = 'Share your feedback about the inst
 $lang['hr_training_feedback_placeholder']  = 'What did you think of the training and the instructor?';
 $lang['hr_training_feedback_saved']        = 'Feedback saved';
 $lang['hr_training_employee_feedback']     = 'Employee Feedback';
+$lang['hr_training_instructor_note']       = 'Instructor/HR Note';
 
 // Helpdesk
 $lang['hr_helpdesk_list']                  = 'HR Helpdesk Tickets';
@@ -521,6 +522,10 @@ $lang['hr_helpdesk_added']                 = 'Ticket submitted successfully';
 $lang['hr_helpdesk_submit_anonymous']      = 'Submit this ticket anonymously';
 $lang['hr_helpdesk_anonymous_notice']      = 'Your identity will not be recorded or shown to anyone reviewing this ticket, including HR.';
 $lang['hr_helpdesk_anonymous']             = 'Anonymous';
+$lang['hr_helpdesk_internal_note']         = 'Internal Note';
+$lang['hr_helpdesk_internal_note_placeholder'] = 'Keep an internal note about this ticket (there is no submitter to reply back to)...';
+$lang['hr_helpdesk_note_saved']            = 'Note saved';
+$lang['hr_helpdesk_note_last_saved']       = 'Note last saved:';
 
 // Contracts
 $lang['hr_contract_list']                  = 'HR Contracts';

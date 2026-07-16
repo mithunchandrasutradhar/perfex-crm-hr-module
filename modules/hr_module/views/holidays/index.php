@@ -39,8 +39,8 @@ $day_names = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Satur
           <div class="panel-heading tw-flex tw-items-center tw-justify-between">
             <h5 class="tw-font-semibold tw-mb-0">Holidays for <?php echo $year; ?></h5>
             <?php if ($can_edit): ?>
-            <button class="btn btn-primary btn-sm" id="btn-add-holiday">
-              <i class="fa fa-plus tw-mr-1"></i>Add Holiday
+            <button class="btn btn-primary" id="btn-add-holiday">
+              <i class="fa-regular fa-plus tw-mr-1"></i>Add Holiday
             </button>
             <?php endif; ?>
           </div>
@@ -72,7 +72,7 @@ $day_names = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Satur
               </div>
               <div class="col-md-2 tw-flex tw-items-end tw-pb-2">
                 <button class="btn btn-success btn-sm btn-block" id="btn-save-holiday">
-                  <i class="fa fa-save tw-mr-1"></i>Save
+                  Save
                 </button>
               </div>
             </div>
@@ -147,7 +147,7 @@ $day_names = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Satur
               <?php if ($can_edit): ?>
               <hr>
               <button type="submit" class="btn btn-primary btn-sm">
-                <i class="fa fa-save tw-mr-1"></i>Save Weekly Off
+                Save Weekly Off
               </button>
               <span id="weekly-off-saved" style="display:none" class="text-success tw-ml-2 tw-text-sm">
                 <i class="fa fa-check"></i> Saved

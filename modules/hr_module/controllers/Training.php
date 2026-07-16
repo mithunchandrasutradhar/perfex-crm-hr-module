@@ -231,8 +231,8 @@ class Training extends AdminController
             if (empty($date)) continue;
             $sessions[] = [
                 'session_date' => to_sql_date($date),
-                'start_time'   => $starts[$i] ?? null,
-                'end_time'     => $ends[$i] ?? null,
+                'start_time'   => !empty($starts[$i]) ? date('H:i:s', strtotime($starts[$i])) : null,
+                'end_time'     => !empty($ends[$i]) ? date('H:i:s', strtotime($ends[$i])) : null,
             ];
         }
         return $sessions;

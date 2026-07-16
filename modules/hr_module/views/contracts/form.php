@@ -160,7 +160,7 @@ $v = function($field) use ($contract) {
 
               <div class="tw-flex tw-gap-2 tw-mt-4">
                 <button type="submit" class="btn btn-primary">
-                  <i class="fa fa-save tw-mr-1"></i><?php echo $editing ? _l('hr_save_changes') : _l('hr_contract_add'); ?>
+                  <?php echo $editing ? _l('hr_save_changes') : _l('hr_contract_add'); ?>
                 </button>
                 <a href="<?php echo admin_url('hr_module/hr_contracts'.($editing ? '/view/'.$contract->id : '')); ?>" class="btn btn-default">
                   <?php echo _l('hr_cancel'); ?>

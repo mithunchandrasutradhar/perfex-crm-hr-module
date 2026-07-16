@@ -136,6 +136,7 @@ $route['hr_module/helpdesk']                      = 'hr_module/Helpdesk/index';
 $route['hr_module/helpdesk/submit']               = 'hr_module/Helpdesk/submit';
 $route['hr_module/helpdesk/view/(:num)']          = 'hr_module/Helpdesk/view/$1';
 $route['hr_module/helpdesk/reply/(:num)']         = 'hr_module/Helpdesk/reply/$1';
+$route['hr_module/helpdesk/save_note/(:num)']     = 'hr_module/Helpdesk/save_note/$1';
 $route['hr_module/helpdesk/close/(:num)']         = 'hr_module/Helpdesk/close/$1';
 $route['hr_module/helpdesk/delete/(:num)']        = 'hr_module/Helpdesk/delete/$1';
 

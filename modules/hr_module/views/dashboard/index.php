@@ -317,7 +317,7 @@ $task_status_colors = [
             <div class="panel-body">
                 <div class="tw-flex tw-flex-wrap tw-gap-2">
                     <?php if (staff_can('create', 'hr_leave') || staff_can('view_own', 'hr_leave')): ?>
-                    <a href="<?php echo admin_url('hr_module/leave/apply'); ?>" class="btn btn-primary btn-sm">
+                    <a href="<?php echo admin_url('hr_module/leave/apply'); ?>" class="btn btn-primary">
                         <i class="fa fa-calendar-plus tw-mr-1"></i>Apply for Leave
                     </a>
                     <?php endif; ?>
@@ -488,8 +488,8 @@ $task_status_colors = [
                 <h5 class="tw-font-semibold tw-mb-4"><?php echo _l('hr_dashboard_quick_actions'); ?></h5>
                 <div class="tw-flex tw-flex-wrap tw-gap-2">
                     <?php if (staff_can('create', 'hr_employees')): ?>
-                    <a href="<?php echo admin_url('hr_module/employees/add'); ?>" class="btn btn-primary btn-sm">
-                        <i class="fa fa-plus"></i> <?php echo _l('hr_employee_add'); ?>
+                    <a href="<?php echo admin_url('hr_module/employees/add'); ?>" class="btn btn-primary">
+                        <i class="fa-regular fa-plus"></i> <?php echo _l('hr_employee_add'); ?>
                     </a>
                     <?php endif; ?>
                     <?php if (staff_can('create', 'hr_leave')): ?>

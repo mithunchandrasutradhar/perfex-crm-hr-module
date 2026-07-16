@@ -107,6 +107,29 @@ class Helpdesk extends AdminController
         redirect(admin_url('hr_module/helpdesk/view/' . $id));
     }
 
+    // Anonymous tickets have no one to reply back to, so instead of a reply
+    // thread, staff keep a single internal note - status/assign/attachment
+    // still work exactly like they do on the normal reply form.
+    public function save_note($id)
+    {
+        if (staff_cant('edit', 'hr_helpdesk')) access_denied('hr_helpdesk');
+        if (!$this->input->post()) redirect(admin_url('hr_module/helpdesk/view/' . $id));
+
+        $note = $this->input->post('note', true);
+        $data = [];
+        $this->_handle_attachment($data, 'attachment');
+        $this->Helpdesk_model->save_note($id, $note, $data['attachment'] ?? null);
+
+        if ($this->input->post('assigned_to') !== null) {
+            $this->Helpdesk_model->assign($id, (int) $this->input->post('assigned_to'));
+        }
+        if ($this->input->post('status')) {
+            $this->Helpdesk_model->set_status($id, $this->input->post('status'));
+        }
+        set_alert('success', _l('hr_helpdesk_note_saved'));
+        redirect(admin_url('hr_module/helpdesk/view/' . $id));
+    }
+
     public function close($id)
     {
         if (staff_cant('edit', 'hr_helpdesk')) access_denied('hr_helpdesk');

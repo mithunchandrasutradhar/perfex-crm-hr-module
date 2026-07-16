@@ -3,6 +3,7 @@ $is_edit  = !empty($training);
 $form_url = $is_edit
     ? admin_url('hr_module/training/edit/' . $training->id)
     : admin_url('hr_module/training/add');
+$time_fmt = get_option('time_format') == 24 ? 'H:i' : 'g:i A';
 ?>
 <?php init_head(); ?>
 <div id="wrapper">
@@ -67,12 +68,18 @@ $form_url = $is_edit
                       </div>
                     </div>
                     <div class="col-md-3">
-                      <input type="time" name="session_start_time[]" class="form-control"
-                             value="<?php echo $s->start_time ? substr($s->start_time, 0, 5) : ''; ?>">
+                      <div class="input-group">
+                        <input type="text" name="session_start_time[]" class="form-control session-timepicker" autocomplete="off"
+                               value="<?php echo $s->start_time ? date($time_fmt, strtotime($s->start_time)) : ''; ?>">
+                        <div class="input-group-addon"><i class="fa-regular fa-clock clock-icon"></i></div>
+                      </div>
                     </div>
                     <div class="col-md-3">
-                      <input type="time" name="session_end_time[]" class="form-control"
-                             value="<?php echo $s->end_time ? substr($s->end_time, 0, 5) : ''; ?>">
+                      <div class="input-group">
+                        <input type="text" name="session_end_time[]" class="form-control session-timepicker" autocomplete="off"
+                               value="<?php echo $s->end_time ? date($time_fmt, strtotime($s->end_time)) : ''; ?>">
+                        <div class="input-group-addon"><i class="fa-regular fa-clock clock-icon"></i></div>
+                      </div>
                     </div>
                     <div class="col-md-1">
                       <a href="#" class="btn btn-danger" onclick="remove_session_row(this); return false;"><i class="fa fa-trash"></i></a>
@@ -87,10 +94,16 @@ $form_url = $is_edit
                       </div>
                     </div>
                     <div class="col-md-3">
-                      <input type="time" name="session_start_time[]" class="form-control" value="">
+                      <div class="input-group">
+                        <input type="text" name="session_start_time[]" class="form-control session-timepicker" autocomplete="off" value="">
+                        <div class="input-group-addon"><i class="fa-regular fa-clock clock-icon"></i></div>
+                      </div>
                     </div>
                     <div class="col-md-3">
-                      <input type="time" name="session_end_time[]" class="form-control" value="">
+                      <div class="input-group">
+                        <input type="text" name="session_end_time[]" class="form-control session-timepicker" autocomplete="off" value="">
+                        <div class="input-group-addon"><i class="fa-regular fa-clock clock-icon"></i></div>
+                      </div>
                     </div>
                     <div class="col-md-1">
                       <a href="#" class="btn btn-danger" onclick="remove_session_row(this); return false;"><i class="fa fa-trash"></i></a>
@@ -99,7 +112,7 @@ $form_url = $is_edit
                   <?php endif; ?>
                 </div>
                 <button type="button" class="btn btn-default btn-sm" id="add-session-btn">
-                  <i class="fa fa-plus tw-mr-1"></i><?php echo _l('hr_training_add_day'); ?>
+                  <i class="fa-regular fa-plus tw-mr-1"></i><?php echo _l('hr_training_add_day'); ?>
                 </button>
               </div>
               <div class="row">
@@ -146,7 +159,7 @@ $form_url = $is_edit
                        accept=".pdf,.doc,.docx,.ppt,.pptx,.jpg,.jpeg,.png">
               </div>
               <div class="tw-flex tw-gap-2">
-                <button type="submit" class="btn btn-primary"><i class="fa fa-save tw-mr-1"></i><?php echo _l('hr_save'); ?></button>
+                <button type="submit" class="btn btn-primary"><?php echo _l('hr_save'); ?></button>
                 <a href="<?php echo $is_edit ? admin_url('hr_module/training/view/'.$training->id) : admin_url('hr_module/training'); ?>" class="btn btn-default">Cancel</a>
               </div>
             <?php echo form_close(); ?>
@@ -165,18 +178,43 @@ function remove_session_row(el) {
     }
     $(el).closest('.session-row').remove();
 }
+function init_session_timepickers() {
+    var fmt = app.options.time_format == 24 ? 'H:i' : 'g:i A';
+    $('.session-timepicker').each(function(){
+        var that = $(this);
+        if (that.data('xdsoft_datetimepicker')) return;
+        that.datetimepicker({
+            datepicker: false,
+            format: fmt,
+            formatTime: fmt,
+            step: 15,
+            scrollInput: false,
+            lazyInit: true,
+        });
+        that.parents('.input-group').find('.clock-icon').on('click', function(){
+            that.focus();
+            that.trigger('open.xdsoft');
+        });
+    });
+}
 $(function(){
+    init_session_timepickers();
     $('#add-session-btn').on('click', function(){
         var row = '<div class="row session-row tw-mb-2">'
             + '<div class="col-md-5"><div class="input-group date">'
             + '<input type="text" name="session_date[]" class="form-control datepicker" autocomplete="off" required value="">'
             + '<div class="input-group-addon"><i class="fa-regular fa-calendar calendar-icon"></i></div></div></div>'
-            + '<div class="col-md-3"><input type="time" name="session_start_time[]" class="form-control" value=""></div>'
-            + '<div class="col-md-3"><input type="time" name="session_end_time[]" class="form-control" value=""></div>'
+            + '<div class="col-md-3"><div class="input-group">'
+            + '<input type="text" name="session_start_time[]" class="form-control session-timepicker" autocomplete="off" value="">'
+            + '<div class="input-group-addon"><i class="fa-regular fa-clock clock-icon"></i></div></div></div>'
+            + '<div class="col-md-3"><div class="input-group">'
+            + '<input type="text" name="session_end_time[]" class="form-control session-timepicker" autocomplete="off" value="">'
+            + '<div class="input-group-addon"><i class="fa-regular fa-clock clock-icon"></i></div></div></div>'
             + '<div class="col-md-1"><a href="#" class="btn btn-danger" onclick="remove_session_row(this); return false;"><i class="fa fa-trash"></i></a></div>'
             + '</div>';
         $('#sessions-container').append(row);
         init_datepicker();
+        init_session_timepickers();
     });
 });
 </script>

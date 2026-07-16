@@ -10,8 +10,8 @@
             <h4 class="tw-font-semibold tw-text-lg tw-text-neutral-700 tw-mb-0"><?php echo _l('hr_leave_types_list'); ?></h4>
           </div>
           <?php if (staff_can('create', 'hr_leave')): ?>
-          <a href="<?php echo admin_url('hr_module/leave_types/add'); ?>" class="btn btn-primary btn-sm">
-            <i class="fa fa-plus tw-mr-1"></i><?php echo _l('hr_leave_type_add'); ?>
+          <a href="<?php echo admin_url('hr_module/leave_types/add'); ?>" class="btn btn-primary">
+            <i class="fa-regular fa-plus tw-mr-1"></i><?php echo _l('hr_leave_type_add'); ?>
           </a>
           <?php endif; ?>
         </div>

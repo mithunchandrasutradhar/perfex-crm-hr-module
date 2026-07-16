@@ -949,6 +949,15 @@ if ($CI->db->table_exists(db_prefix() . 'hr_helpdesk')) {
     }
     $CI->db->query("ALTER TABLE `" . db_prefix() . "hr_helpdesk` MODIFY COLUMN `employee_id` int(11) DEFAULT NULL");
 }
+// Upgrade: an anonymous ticket has no one to reply back to, so instead of a
+// back-and-forth reply thread, staff keep a single internal note on the ticket.
+if ($CI->db->table_exists(db_prefix() . 'hr_helpdesk')) {
+    $col = $CI->db->query("SHOW COLUMNS FROM `" . db_prefix() . "hr_helpdesk` LIKE 'internal_note'")->num_rows();
+    if ($col === 0) {
+        $CI->db->query("ALTER TABLE `" . db_prefix() . "hr_helpdesk` ADD COLUMN `internal_note` text DEFAULT NULL AFTER `attachment`");
+        $CI->db->query("ALTER TABLE `" . db_prefix() . "hr_helpdesk` ADD COLUMN `internal_note_attachment` varchar(255) DEFAULT NULL AFTER `internal_note`");
+    }
+}
 
 // 21. HR Helpdesk Replies
 if (!$CI->db->table_exists(db_prefix() . 'hr_helpdesk_replies')) {

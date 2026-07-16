@@ -269,7 +269,7 @@ $can_edit = staff_can('edit', 'hr_settings') || is_admin();
             <div class="row">
                 <div class="col-md-12">
                     <button type="submit" class="btn btn-primary" id="hr-save-settings">
-                        <i class="fa fa-save"></i> <?php echo _l('hr_save'); ?>
+                        <?php echo _l('hr_save'); ?>
                     </button>
                 </div>
             </div>
@@ -291,7 +291,7 @@ $(document).ready(function(){
                 alert_float('danger', resp.message);
             }
         }, 'json').always(function(){
-            $btn.prop('disabled', false).html('<i class="fa fa-save"></i> <?php echo _l('hr_save'); ?>');
+            $btn.prop('disabled', false).html('<?php echo _l('hr_save'); ?>');
         });
     });
 });

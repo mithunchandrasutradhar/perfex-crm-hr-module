@@ -80,7 +80,7 @@ $editing = !empty($device);
 
               <div class="tw-flex tw-gap-2 tw-mt-3">
                 <button type="submit" class="btn btn-primary">
-                  <i class="fa fa-save tw-mr-1"></i><?php echo $editing ? _l('hr_save_changes') : 'Add Device'; ?>
+                  <?php echo $editing ? _l('hr_save_changes') : 'Add Device'; ?>
                 </button>
                 <a href="<?php echo admin_url('hr_module/zkteco'); ?>" class="btn btn-default">
                   <?php echo _l('hr_cancel'); ?>

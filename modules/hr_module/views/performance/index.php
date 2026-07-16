@@ -33,8 +33,8 @@ $can_assign = staff_can('create', 'hr_performance') || staff_can('edit', 'hr_per
             <button type="button" id="generate-report-btn" class="btn btn-default btn-sm">
               <i class="fa fa-file-text-o tw-mr-1"></i><?php echo _l('hr_performance_generate_report'); ?>
             </button>
-            <a href="<?php echo admin_url('hr_module/performance/add'); ?>" class="btn btn-primary btn-sm">
-              <i class="fa fa-plus tw-mr-1"></i><?php echo _l('hr_performance_assign'); ?>
+            <a href="<?php echo admin_url('hr_module/performance/add'); ?>" class="btn btn-primary">
+              <i class="fa-regular fa-plus tw-mr-1"></i><?php echo _l('hr_performance_assign'); ?>
             </a>
             <?php endif; ?>
           </div>

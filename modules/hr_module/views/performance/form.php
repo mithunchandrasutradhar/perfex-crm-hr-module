@@ -50,11 +50,11 @@
 
               <div id="sub-targets-wrap"></div>
               <button type="button" class="btn btn-default btn-xs tw-mb-3" id="add-sub-target-btn">
-                <i class="fa fa-plus tw-mr-1"></i><?php echo _l('hr_performance_add_sub_target'); ?>
+                <i class="fa-regular fa-plus tw-mr-1"></i><?php echo _l('hr_performance_add_sub_target'); ?>
               </button>
 
               <div class="tw-flex tw-gap-2 tw-mt-3">
-                <button type="submit" class="btn btn-primary"><i class="fa fa-save tw-mr-1"></i><?php echo _l('hr_save'); ?></button>
+                <button type="submit" class="btn btn-primary"><?php echo _l('hr_save'); ?></button>
                 <a href="<?php echo admin_url('hr_module/performance'); ?>" class="btn btn-default">Cancel</a>
               </div>
             <?php echo form_close(); ?>

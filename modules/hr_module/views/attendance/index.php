@@ -34,8 +34,8 @@ if (!isset($is_global))   $is_global   = is_admin() || staff_can('view', 'hr_att
               <option value="half_day">Half Day</option>
             </select>
             <?php if (staff_can('create', 'hr_attendance')): ?>
-            <button class="btn btn-primary btn-sm" id="btn-add-att">
-              <i class="fa fa-plus tw-mr-1"></i><?php echo _l('hr_attendance_add'); ?>
+            <button class="btn btn-primary" id="btn-add-att">
+              <i class="fa-regular fa-plus tw-mr-1"></i><?php echo _l('hr_attendance_add'); ?>
             </button>
             <?php endif; ?>
             <a href="<?php echo admin_url('hr_module/attendance/monthly'); ?>" class="btn btn-default btn-sm">
@@ -125,7 +125,7 @@ if (!isset($is_global))   $is_global   = is_admin() || staff_can('view', 'hr_att
       <div class="modal-footer">
         <button type="button" class="btn btn-default" data-dismiss="modal"><?php echo _l('hr_cancel'); ?></button>
         <button type="submit" class="btn btn-primary" id="att-submit-btn">
-          <i class="fa fa-save tw-mr-1"></i><?php echo _l('hr_save'); ?>
+          <?php echo _l('hr_save'); ?>
         </button>
       </div>
     </form>

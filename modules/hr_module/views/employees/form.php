@@ -349,7 +349,7 @@ function ev($obj, $key, $default = '') {
           <i class="fa fa-arrow-left tw-mr-1"></i><?php echo _l('hr_back'); ?>
         </a>
         <button type="submit" class="btn btn-primary">
-          <i class="fa fa-save tw-mr-1"></i><?php echo _l('hr_save'); ?>
+          <?php echo _l('hr_save'); ?>
         </button>
       </div>
     </div>

@@ -80,7 +80,7 @@ $existing_dates = $is_edit ? array_column($dates, 'overtime_date') : [];
                       <?php endif; ?>
                     </div>
                     <button type="button" class="btn btn-default btn-xs" id="ot_add_date">
-                      <i class="fa fa-plus tw-mr-1"></i><?php echo _l('hr_overtime_add_another_date'); ?>
+                      <i class="fa-regular fa-plus tw-mr-1"></i><?php echo _l('hr_overtime_add_another_date'); ?>
                     </button>
                   </div>
                 </div>
@@ -92,7 +92,7 @@ $existing_dates = $is_edit ? array_column($dates, 'overtime_date') : [];
               </div>
               <div class="tw-flex tw-gap-2">
                 <button type="submit" class="btn btn-primary" id="ot_submit_btn">
-                  <i class="fa fa-save tw-mr-1"></i><?php echo $is_edit ? _l('hr_save') : 'Submit Request'; ?>
+                  <?php echo $is_edit ? _l('hr_save') : 'Submit Request'; ?>
                 </button>
                 <a href="<?php echo $is_edit ? admin_url('hr_module/overtime/view/'.$overtime->id) : admin_url('hr_module/overtime'); ?>" class="btn btn-default">Cancel</a>
               </div>

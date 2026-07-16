@@ -116,10 +116,12 @@ $sessions_by_date = array_column($sessions, null, 'session_date');
                   <th><?php echo _l('hr_department'); ?></th>
                   <th>Enrolled On</th>
                   <th><?php echo _l('hr_training_attendance'); ?></th>
+                  <?php if ($can_mark_attendance): ?><th><?php echo _l('hr_training_instructor_note'); ?></th><?php endif; ?>
                   <?php if ($can_mark_attendance): ?><th><?php echo _l('hr_actions'); ?></th><?php endif; ?>
                 </tr></thead>
                 <tbody>
                   <?php foreach ($participants as $p): ?>
+                  <?php $note_preview = $p->notes ? mb_strimwidth($p->notes, 0, 60, '...') : ''; ?>
                   <tr>
                     <td><?php echo htmlspecialchars($p->first_name.' '.$p->last_name); ?>
                       <br><small class="text-muted"><?php echo $p->employee_code; ?></small></td>
@@ -134,10 +136,17 @@ $sessions_by_date = array_column($sessions, null, 'session_date');
                       <?php endif; ?>
                     </td>
                     <?php if ($can_mark_attendance): ?>
+                    <td style="max-width:220px">
+                      <a href="#" data-toggle="modal" data-target="#noteModal<?php echo $p->employee_id; ?>"
+                         class="<?php echo $p->notes ? '' : 'text-muted'; ?>"
+                         title="<?php echo $p->notes ? htmlspecialchars($p->notes) : _l('hr_training_add_note'); ?>">
+                        <?php echo $note_preview !== '' ? htmlspecialchars($note_preview) : '<i class="fa-regular fa-plus tw-mr-1"></i>'._l('hr_training_add_note'); ?>
+                      </a>
+                    </td>
                     <td>
                       <a href="#" data-toggle="modal" data-target="#noteModal<?php echo $p->employee_id; ?>"
-                         class="<?php echo $p->notes ? 'text-warning' : 'tw-text-neutral-500'; ?>" title="<?php echo _l('hr_training_add_note'); ?>">
-                        <i class="fa fa-sticky-note"></i>
+                         class="tw-text-neutral-500" title="<?php echo _l('hr_edit'); ?>">
+                        <i class="fa fa-pencil-alt"></i>
                       </a>
                       <?php if (staff_can('edit','hr_training')): ?>
                       <a href="<?php echo admin_url('hr_module/training/remove_participant/'.$training->id.'/'.$p->employee_id); ?>"
@@ -216,7 +225,7 @@ $sessions_by_date = array_column($sessions, null, 'session_date');
         </div>
         <?php endif; ?>
 
-        <!-- Employee Feedback (about the instructor/training) -->
+        <!-- Employee Feedback (about the instructor/training) - stacked, always visible -->
         <?php $has_feedback = false; foreach ($participants as $p) { if (!empty($p->employee_feedback)) { $has_feedback = true; break; } } ?>
         <?php if ($can_mark_attendance && $has_feedback): ?>
         <div class="panel_s">
@@ -242,14 +251,27 @@ $sessions_by_date = array_column($sessions, null, 'session_date');
             <h5 class="tw-font-semibold tw-mb-0"><?php echo _l('hr_training_my_feedback'); ?></h5>
           </div>
           <div class="panel-body">
-            <p class="text-muted"><?php echo _l('hr_training_my_feedback_hint'); ?></p>
-            <?php echo form_open(admin_url('hr_module/training/save_employee_feedback/'.$training->id.'/'.$own_emp_id)); ?>
-              <div class="form-group">
-                <textarea name="feedback" class="form-control" rows="4"
-                          placeholder="<?php echo _l('hr_training_feedback_placeholder'); ?>"><?php echo htmlspecialchars($my_feedback ?? ''); ?></textarea>
-              </div>
-              <button type="submit" class="btn btn-primary"><?php echo _l('hr_save'); ?></button>
-            <?php echo form_close(); ?>
+            <?php if ($my_feedback): ?>
+            <div id="feedback-display">
+              <p class="tw-mb-2"><?php echo nl2br(htmlspecialchars($my_feedback)); ?></p>
+              <button type="button" class="btn btn-default btn-sm" id="feedback-edit-btn">
+                <i class="fa fa-pencil-alt tw-mr-1"></i><?php echo _l('hr_edit'); ?>
+              </button>
+            </div>
+            <?php endif; ?>
+            <div id="feedback-form" <?php if ($my_feedback) echo 'style="display:none"'; ?>>
+              <p class="text-muted"><?php echo _l('hr_training_my_feedback_hint'); ?></p>
+              <?php echo form_open(admin_url('hr_module/training/save_employee_feedback/'.$training->id.'/'.$own_emp_id)); ?>
+                <div class="form-group">
+                  <textarea name="feedback" class="form-control" rows="4"
+                            placeholder="<?php echo _l('hr_training_feedback_placeholder'); ?>"><?php echo htmlspecialchars($my_feedback ?? ''); ?></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary"><?php echo _l('hr_save'); ?></button>
+                <?php if ($my_feedback): ?>
+                <button type="button" class="btn btn-default" id="feedback-cancel-btn"><?php echo _l('hr_cancel'); ?></button>
+                <?php endif; ?>
+              <?php echo form_close(); ?>
+            </div>
           </div>
         </div>
         <?php endif; ?>
@@ -401,6 +423,14 @@ $(function(){
                    if(r.success){ alert_float('success', r.message); location.reload(); }
                    else alert_float('danger', r.message);
                }, 'json');
+    });
+    $('#feedback-edit-btn').on('click', function(){
+        $('#feedback-display').hide();
+        $('#feedback-form').show();
+    });
+    $('#feedback-cancel-btn').on('click', function(){
+        $('#feedback-form').hide();
+        $('#feedback-display').show();
     });
 });
 </script>

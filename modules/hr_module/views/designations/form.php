@@ -39,7 +39,7 @@ $d       = $is_edit ? $designation : (object)[];
         </div>
 
         <div class="form-group">
-          <button type="submit" class="btn btn-primary"><i class="fa fa-save tw-mr-1"></i><?php echo _l('hr_save'); ?></button>
+          <button type="submit" class="btn btn-primary"><?php echo _l('hr_save'); ?></button>
           <a href="<?php echo admin_url('hr_module/designations'); ?>" class="btn btn-default"><?php echo _l('hr_cancel'); ?></a>
         </div>
       </div>

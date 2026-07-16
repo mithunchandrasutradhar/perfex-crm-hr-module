@@ -106,7 +106,7 @@ if (!isset($weekly_off_json))  $weekly_off_json  = '[5]';
               <div class="tw-flex tw-items-center tw-justify-between tw-mb-2">
                 <label class="tw-mb-0"><?php echo _l('hr_leave_days_breakdown'); ?> <span class="text-danger">*</span></label>
                 <button type="button" class="btn btn-primary btn-sm" id="btn-add-day">
-                  <i class="fa fa-plus tw-mr-1"></i><?php echo _l('hr_leave_add_day'); ?>
+                  <i class="fa-regular fa-plus tw-mr-1"></i><?php echo _l('hr_leave_add_day'); ?>
                 </button>
               </div>
 

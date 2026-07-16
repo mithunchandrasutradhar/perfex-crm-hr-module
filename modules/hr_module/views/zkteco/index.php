@@ -15,8 +15,8 @@
               <i class="fa fa-link tw-mr-1"></i><?php echo _l('hr_zkteco_mapping'); ?>
             </a>
             <?php if (staff_can('create', 'hr_zkteco')): ?>
-            <a href="<?php echo admin_url('hr_module/zkteco/add'); ?>" class="btn btn-primary btn-sm">
-              <i class="fa fa-plus tw-mr-1"></i><?php echo _l('hr_zkteco_add_device'); ?>
+            <a href="<?php echo admin_url('hr_module/zkteco/add'); ?>" class="btn btn-primary">
+              <i class="fa-regular fa-plus tw-mr-1"></i><?php echo _l('hr_zkteco_add_device'); ?>
             </a>
             <?php endif; ?>
           </div>
@@ -29,7 +29,7 @@
             <h5 class="tw-mt-3 text-muted">No ZKTeco devices configured.</h5>
             <?php if (staff_can('create', 'hr_zkteco')): ?>
             <a href="<?php echo admin_url('hr_module/zkteco/add'); ?>" class="btn btn-primary tw-mt-3">
-              <i class="fa fa-plus tw-mr-1"></i>Add First Device
+              <i class="fa-regular fa-plus tw-mr-1"></i>Add First Device
             </a>
             <?php endif; ?>
           </div>

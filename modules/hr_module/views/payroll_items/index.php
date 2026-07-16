@@ -12,8 +12,8 @@
             </ol>
           </div>
           <?php if (staff_can('create','hr_payroll')): ?>
-          <button class="btn btn-primary btn-sm" id="btn-add-item">
-            <i class="fa fa-plus tw-mr-1"></i><?php echo _l('hr_payroll_item_add'); ?>
+          <button class="btn btn-primary" id="btn-add-item">
+            <i class="fa-regular fa-plus tw-mr-1"></i><?php echo _l('hr_payroll_item_add'); ?>
           </button>
           <?php endif; ?>
         </div>
@@ -143,7 +143,7 @@
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
-        <button type="submit" class="btn btn-primary"><i class="fa fa-save tw-mr-1"></i>Save</button>
+        <button type="submit" class="btn btn-primary">Save</button>
       </div>
     </form>
   </div></div>

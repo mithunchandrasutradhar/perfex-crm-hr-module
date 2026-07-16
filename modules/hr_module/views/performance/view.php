@@ -124,7 +124,7 @@ $can_assign = staff_can('create', 'hr_performance') || staff_can('edit', 'hr_per
                 <textarea name="employee_note" class="form-control input-sm" rows="2"
                           placeholder="<?php echo _l('hr_performance_employee_note'); ?>"><?php echo htmlspecialchars($st->employee_note ?? ''); ?></textarea>
               </div>
-              <button type="submit" class="btn btn-primary btn-xs"><i class="fa fa-save tw-mr-1"></i><?php echo _l('hr_save'); ?></button>
+              <button type="submit" class="btn btn-primary btn-xs"><?php echo _l('hr_save'); ?></button>
             <?php echo form_close(); ?>
             <?php endif; ?>
 
@@ -170,7 +170,7 @@ $can_assign = staff_can('create', 'hr_performance') || staff_can('edit', 'hr_per
 
         <?php if ($can_edit_details): ?>
         <a href="<?php echo admin_url('hr_module/performance/add_sub_target/'.$target->id); ?>" class="btn btn-default btn-sm">
-          <i class="fa fa-plus tw-mr-1"></i><?php echo _l('hr_performance_add_sub_target'); ?>
+          <i class="fa-regular fa-plus tw-mr-1"></i><?php echo _l('hr_performance_add_sub_target'); ?>
         </a>
         <?php endif; ?>
 

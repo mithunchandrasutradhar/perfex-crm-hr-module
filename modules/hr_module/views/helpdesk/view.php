@@ -100,6 +100,104 @@ $is_closed = in_array($ticket->status, ['closed','resolved']);
         </div>
         <?php endforeach; ?>
 
+        <?php if ($ticket->is_anonymous): ?>
+        <!-- Internal Note - anonymous tickets have no one to reply back to,
+             so staff keep a single note instead of a reply thread -->
+        <?php if (staff_can('edit','hr_helpdesk') && ($ticket->internal_note || !$is_closed)): ?>
+        <div class="panel_s">
+          <div class="panel-heading"><h5 class="tw-font-semibold tw-mb-0"><?php echo _l('hr_helpdesk_internal_note'); ?></h5></div>
+          <div class="panel-body">
+            <?php if ($ticket->internal_note): ?>
+            <div id="note-display">
+              <p class="text-muted tw-mb-2" style="font-size:0.8rem">
+                <i class="fa fa-check-circle text-success tw-mr-1"></i><?php echo _l('hr_helpdesk_note_last_saved'); ?> <?php echo date('d M Y H:i', strtotime($ticket->updated_at)); ?>
+              </p>
+              <p class="tw-mb-2"><?php echo nl2br(htmlspecialchars($ticket->internal_note)); ?></p>
+              <?php if ($ticket->internal_note_attachment): ?>
+              <div class="tw-mb-2">
+                <a href="<?php echo base_url('uploads/hr_module/helpdesk/'.$ticket->internal_note_attachment); ?>" target="_blank" class="btn btn-default btn-xs">
+                  <i class="fa fa-paperclip tw-mr-1"></i>Attachment
+                </a>
+              </div>
+              <?php endif; ?>
+              <p class="tw-mb-3">
+                <span class="label label-<?php echo $sbadge[$ticket->status] ?? 'default'; ?>"><?php echo ucfirst(str_replace('_',' ',$ticket->status)); ?></span>
+                <span class="tw-ml-2 text-muted"><?php echo _l('hr_helpdesk_assigned_to'); ?>: <?php echo $ticket->assigned_name ? htmlspecialchars($ticket->assigned_name) : '-'; ?></span>
+              </p>
+              <?php if (!$is_closed): ?>
+              <button type="button" class="btn btn-default btn-sm" id="note-edit-btn">
+                <i class="fa fa-pencil-alt tw-mr-1"></i><?php echo _l('hr_edit'); ?>
+              </button>
+              <?php endif; ?>
+            </div>
+            <?php endif; ?>
+
+            <?php if (!$is_closed): ?>
+            <div id="note-form" <?php if ($ticket->internal_note) echo 'style="display:none"'; ?>>
+              <?php echo form_open_multipart(admin_url('hr_module/helpdesk/save_note/'.$ticket->id)); ?>
+                <div class="form-group">
+                  <textarea name="note" class="form-control" rows="4"
+                            placeholder="<?php echo _l('hr_helpdesk_internal_note_placeholder'); ?>"><?php echo htmlspecialchars($ticket->internal_note ?? ''); ?></textarea>
+                </div>
+                <?php if ($ticket->internal_note_attachment): ?>
+                <div class="tw-mb-3">
+                  <a href="<?php echo base_url('uploads/hr_module/helpdesk/'.$ticket->internal_note_attachment); ?>" target="_blank" class="btn btn-default btn-xs">
+                    <i class="fa fa-paperclip tw-mr-1"></i>Current Attachment
+                  </a>
+                </div>
+                <?php endif; ?>
+                <div class="row">
+                  <div class="col-md-4">
+                    <div class="form-group select-placeholder">
+                      <label><?php echo _l('hr_status'); ?></label>
+                      <select name="status" class="selectpicker" data-width="100%">
+                        <option value="open" <?php if ($ticket->status === 'open') echo 'selected'; ?>><?php echo _l('hr_helpdesk_status_open'); ?></option>
+                        <option value="in_progress" <?php if ($ticket->status === 'in_progress') echo 'selected'; ?>><?php echo _l('hr_helpdesk_status_in_progress'); ?></option>
+                        <option value="resolved" <?php if ($ticket->status === 'resolved') echo 'selected'; ?>><?php echo _l('hr_helpdesk_status_resolved'); ?></option>
+                        <option value="closed" <?php if ($ticket->status === 'closed') echo 'selected'; ?>><?php echo _l('hr_helpdesk_status_closed'); ?></option>
+                      </select>
+                    </div>
+                  </div>
+                  <div class="col-md-4">
+                    <div class="form-group select-placeholder">
+                      <label><?php echo _l('hr_helpdesk_assigned_to'); ?></label>
+                      <select name="assigned_to" class="selectpicker" data-width="100%" data-live-search="true">
+                        <?php foreach ($staff as $sid => $sname): ?>
+                        <option value="<?php echo $sid; ?>" <?php if($ticket->assigned_to==$sid) echo 'selected'; ?>>
+                          <?php echo htmlspecialchars($sname); ?>
+                        </option>
+                        <?php endforeach; ?>
+                      </select>
+                    </div>
+                  </div>
+                  <div class="col-md-4">
+                    <div class="form-group">
+                      <label>Attachment</label>
+                      <input type="file" name="attachment" class="form-control" accept=".pdf,.doc,.jpg,.png,.txt">
+                    </div>
+                  </div>
+                </div>
+                <button type="submit" class="btn btn-primary">
+                  <?php echo _l('hr_save'); ?>
+                </button>
+                <?php if ($ticket->internal_note): ?>
+                <button type="button" class="btn btn-default" id="note-cancel-btn"><?php echo _l('hr_cancel'); ?></button>
+                <?php endif; ?>
+              <?php echo form_close(); ?>
+            </div>
+            <?php endif; ?>
+          </div>
+        </div>
+        <?php elseif ($ticket->internal_note): ?>
+        <div class="panel_s">
+          <div class="panel-heading"><h5 class="tw-font-semibold tw-mb-0"><?php echo _l('hr_helpdesk_internal_note'); ?></h5></div>
+          <div class="panel-body">
+            <p class="tw-mb-0"><?php echo nl2br(htmlspecialchars($ticket->internal_note)); ?></p>
+          </div>
+        </div>
+        <?php endif; ?>
+
+        <?php else: ?>
         <!-- Reply form -->
         <?php if (!$is_closed && staff_can('edit','hr_helpdesk')): ?>
         <div class="panel_s">
@@ -115,10 +213,10 @@ $is_closed = in_array($ticket->status, ['closed','resolved']);
                   <div class="form-group select-placeholder">
                     <label><?php echo _l('hr_status'); ?></label>
                     <select name="status" class="selectpicker" data-width="100%">
-                      <option value="">Keep current</option>
-                      <option value="in_progress">In Progress</option>
-                      <option value="resolved">Resolved</option>
-                      <option value="closed">Closed</option>
+                      <option value="open" <?php if ($ticket->status === 'open') echo 'selected'; ?>><?php echo _l('hr_helpdesk_status_open'); ?></option>
+                      <option value="in_progress" <?php if ($ticket->status === 'in_progress') echo 'selected'; ?>><?php echo _l('hr_helpdesk_status_in_progress'); ?></option>
+                      <option value="resolved" <?php if ($ticket->status === 'resolved') echo 'selected'; ?>><?php echo _l('hr_helpdesk_status_resolved'); ?></option>
+                      <option value="closed" <?php if ($ticket->status === 'closed') echo 'selected'; ?>><?php echo _l('hr_helpdesk_status_closed'); ?></option>
                     </select>
                   </div>
                 </div>
@@ -147,6 +245,7 @@ $is_closed = in_array($ticket->status, ['closed','resolved']);
             <?php echo form_close(); ?>
           </div>
         </div>
+        <?php endif; ?>
         <?php endif; ?>
       </div>
 
@@ -195,3 +294,15 @@ $is_closed = in_array($ticket->status, ['closed','resolved']);
   </div>
 </div>
 <?php init_tail(); ?>
+<script>
+$(function(){
+    $('#note-edit-btn').on('click', function(){
+        $('#note-display').hide();
+        $('#note-form').show();
+    });
+    $('#note-cancel-btn').on('click', function(){
+        $('#note-form').hide();
+        $('#note-display').show();
+    });
+});
+</script>

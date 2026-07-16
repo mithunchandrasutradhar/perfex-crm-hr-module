@@ -32,8 +32,8 @@
               <option value="paid">Paid</option>
             </select>
             <?php if (staff_can('create', 'hr_payroll')): ?>
-            <a href="<?php echo admin_url('hr_module/payroll/generate'); ?>" class="btn btn-primary btn-sm">
-              <i class="fa fa-plus tw-mr-1"></i><?php echo _l('hr_payroll_generate'); ?>
+            <a href="<?php echo admin_url('hr_module/payroll/generate'); ?>" class="btn btn-primary">
+              <i class="fa-regular fa-plus tw-mr-1"></i><?php echo _l('hr_payroll_generate'); ?>
             </a>
             <?php endif; ?>
             <a href="<?php echo admin_url('hr_module/payroll_items'); ?>" class="btn btn-default btn-sm">
