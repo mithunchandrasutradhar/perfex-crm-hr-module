@@ -29,9 +29,9 @@ if (!isset($weekly_off_json))  $weekly_off_json  = '[5]';
         <div class="panel_s">
           <div class="panel-body">
             <?php echo form_open_multipart(admin_url('hr_module/leave/apply'), ['id' => 'leave-form']); ?>
-            <div class="form-group">
+            <div class="form-group select-placeholder">
               <label><?php echo _l('hr_employee'); ?> <span class="text-danger">*</span></label>
-              <select name="employee_id" id="leave-employee" class="form-control" required
+              <select name="employee_id" id="leave-employee" class="selectpicker" data-width="100%" data-live-search="true" required
                 <?php if (!empty($own_only)) echo 'disabled'; ?>>
                 <option value=""><?php echo _l('hr_select'); ?></option>
                 <?php foreach ($employees as $id => $name): ?>
@@ -46,9 +46,9 @@ if (!isset($weekly_off_json))  $weekly_off_json  = '[5]';
             </div>
             <div class="row">
               <div class="col-md-6">
-                <div class="form-group">
+                <div class="form-group select-placeholder">
                   <label><?php echo _l('hr_leave_type'); ?> <span class="text-danger">*</span></label>
-                  <select name="leave_type_id" id="leave-type" class="form-control" required>
+                  <select name="leave_type_id" id="leave-type" class="selectpicker" data-width="100%" required>
                     <option value=""><?php echo _l('hr_select'); ?></option>
                     <?php foreach ($leave_types as $t): ?>
                     <option value="<?php echo $t->id; ?>"
@@ -82,7 +82,7 @@ if (!isset($weekly_off_json))  $weekly_off_json  = '[5]';
                     <label><?php echo _l('hr_from_date'); ?> <span class="text-danger">*</span></label>
                     <div class="input-group date">
                       <input type="text" name="range_from_date" id="range-from" class="form-control datepicker" autocomplete="off">
-                      <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                      <span class="input-group-addon"><i class="fa-regular fa-calendar calendar-icon"></i></span>
                     </div>
                   </div>
                 </div>
@@ -91,7 +91,7 @@ if (!isset($weekly_off_json))  $weekly_off_json  = '[5]';
                     <label><?php echo _l('hr_to_date'); ?> <span class="text-danger">*</span></label>
                     <div class="input-group date">
                       <input type="text" name="range_to_date" id="range-to" class="form-control datepicker" autocomplete="off">
-                      <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                      <span class="input-group-addon"><i class="fa-regular fa-calendar calendar-icon"></i></span>
                     </div>
                   </div>
                 </div>
@@ -131,7 +131,7 @@ if (!isset($weekly_off_json))  $weekly_off_json  = '[5]';
             </div>
             <hr>
             <a href="<?php echo admin_url('hr_module/leave'); ?>" class="btn btn-default"><?php echo _l('hr_cancel'); ?></a>
-            <button type="submit" class="btn btn-primary"><i class="fa fa-paper-plane tw-mr-1"></i><?php echo _l('hr_submit'); ?></button>
+            <button type="submit" class="btn btn-primary"><?php echo _l('hr_submit'); ?></button>
             <?php echo form_close(); ?>
           </div>
         </div>
@@ -140,56 +140,6 @@ if (!isset($weekly_off_json))  $weekly_off_json  = '[5]';
   </div>
 </div>
 <?php init_tail(); ?>
-
-<!-- Row template: cloned via JS, never submitted directly (outside the form) -->
-<div id="day-row-template" style="display:none">
-  <div class="panel panel-default leave-day-row">
-    <div class="panel-body">
-      <div class="row">
-        <div class="col-sm-3">
-          <label class="tw-text-xs"><?php echo _l('hr_date'); ?></label>
-          <input type="text" class="form-control input-sm datepicker day-date" autocomplete="off" required>
-        </div>
-        <div class="col-sm-3">
-          <label class="tw-text-xs"><?php echo _l('hr_leave_duration_type'); ?></label>
-          <select class="form-control input-sm day-type">
-            <option value="full"><?php echo _l('hr_leave_day_type_full'); ?></option>
-            <option value="half"><?php echo _l('hr_leave_day_type_half'); ?></option>
-            <option value="hourly"><?php echo _l('hr_leave_day_type_hourly'); ?></option>
-          </select>
-        </div>
-        <div class="col-sm-4">
-          <div class="day-detail-half" style="display:none">
-            <label class="tw-text-xs"><?php echo _l('hr_leave_half_day'); ?></label>
-            <select class="form-control input-sm day-half-period">
-              <option value="before_lunch"><?php echo _l('hr_leave_before_lunch'); ?></option>
-              <option value="after_lunch"><?php echo _l('hr_leave_after_lunch'); ?></option>
-            </select>
-          </div>
-          <div class="day-detail-hourly" style="display:none">
-            <div class="row">
-              <div class="col-xs-6">
-                <label class="tw-text-xs"><?php echo _l('hr_leave_hour_start'); ?></label>
-                <input type="time" class="form-control input-sm day-hour-start">
-              </div>
-              <div class="col-xs-6">
-                <label class="tw-text-xs"><?php echo _l('hr_leave_hour_end'); ?></label>
-                <input type="time" class="form-control input-sm day-hour-end">
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="col-sm-1 tw-flex tw-items-end tw-mb-2">
-          <span class="label label-info day-value">1.0</span>
-        </div>
-        <div class="col-sm-1 tw-flex tw-items-end tw-mb-2">
-          <button type="button" class="btn btn-danger btn-xs remove-day"><i class="fa fa-times"></i></button>
-        </div>
-      </div>
-      <div class="day-warning text-muted tw-text-xs" style="display:none"></div>
-    </div>
-  </div>
-</div>
 
 <script>
 (function(){
@@ -236,19 +186,28 @@ if (!isset($weekly_off_json))  $weekly_off_json  = '[5]';
         };
     }
 
+    // Parses either a 24-hour "H:i" or a 12-hour "h:mm A" string (whichever the
+    // site's time_format setting renders in the timepicker) into minutes-since-midnight.
+    function parseTimeToMinutes(str) {
+        if (!str) return null;
+        var m = str.match(/(\d{1,2}):(\d{2})\s*(AM|PM|am|pm)?/);
+        if (!m) return null;
+        var h = parseInt(m[1], 10), min = parseInt(m[2], 10);
+        var ap = m[3] ? m[3].toUpperCase() : null;
+        if (ap === 'PM' && h !== 12) h += 12;
+        if (ap === 'AM' && h === 12) h = 0;
+        return h * 60 + min;
+    }
+
     function computeRowValue($row) {
-        var type = $row.find('.day-type').val();
+        var type = $row.find('select.day-type').val();
         var meta = selectedLeaveTypeMeta();
         if (type === 'full') return 1;
         if (type === 'half') return meta.allowHalf ? 0.5 : 0;
         if (type === 'hourly') {
-            var start = $row.find('.day-hour-start').val();
-            var end   = $row.find('.day-hour-end').val();
-            if (!start || !end) return 0;
-            var s = start.split(':'), e = end.split(':');
-            var startMin = parseInt(s[0]) * 60 + parseInt(s[1]);
-            var endMin   = parseInt(e[0]) * 60 + parseInt(e[1]);
-            if (endMin <= startMin) return 0;
+            var startMin = parseTimeToMinutes($row.find('.day-hour-start').val());
+            var endMin   = parseTimeToMinutes($row.find('.day-hour-end').val());
+            if (startMin === null || endMin === null || endMin <= startMin) return 0;
             var hours = (endMin - startMin) / 60;
             return Math.round((hours / meta.hoursPerDay) * 100) / 100;
         }
@@ -256,7 +215,7 @@ if (!isset($weekly_off_json))  $weekly_off_json  = '[5]';
     }
 
     function refreshRow($row) {
-        var type = $row.find('.day-type').val();
+        var type = $row.find('select.day-type').val();
         $row.find('.day-detail-half').toggle(type === 'half');
         $row.find('.day-detail-hourly').toggle(type === 'hourly');
 
@@ -284,7 +243,7 @@ if (!isset($weekly_off_json))  $weekly_off_json  = '[5]';
         $('#day-rows .leave-day-row').each(function(){
             var v = $(this).find('.day-date').val();
             var d = v ? parseDateLocal(v) : null;
-            if (d && !isNaN(d)) entries.push({ date: d, type: $(this).find('.day-type').val() });
+            if (d && !isNaN(d)) entries.push({ date: d, type: $(this).find('select.day-type').val() });
         });
         entries.sort(function(a, b){ return a.date - b.date; });
 
@@ -336,18 +295,94 @@ if (!isset($weekly_off_json))  $weekly_off_json  = '[5]';
         }
     }
 
+    function init_day_hour_timepickers($row) {
+        var fmt = app.options.time_format == 24 ? 'H:i' : 'g:i A';
+        $row.find('.day-hour-timepicker').each(function(){
+            var that = $(this);
+            if (that.data('xdsoft_datetimepicker')) return;
+            that.datetimepicker({
+                datepicker: false,
+                format: fmt,
+                formatTime: fmt,
+                step: 15,
+                scrollInput: false,
+                lazyInit: true,
+            });
+        });
+    }
+
+    // Built as a plain HTML string (not cloned from a hidden template) - Perfex's
+    // global.js bootstrap-selects *every* <select> on the page on document ready,
+    // so a hidden template select would already be widget-rendered by the time we
+    // clone it, and re-initializing the clone then produces a duplicated dropdown.
+    function dayRowHtml(i) {
+        return ''
+            + '<div class="panel panel-default leave-day-row">'
+            +   '<div class="panel-body">'
+            +     '<div class="row">'
+            +       '<div class="col-sm-3">'
+            +         '<label class="tw-text-xs"><?php echo _l('hr_date'); ?></label>'
+            +         '<input type="text" name="days[' + i + '][date]" class="form-control input-sm datepicker day-date" autocomplete="off" required>'
+            +       '</div>'
+            +       '<div class="col-sm-3">'
+            +         '<label class="tw-text-xs"><?php echo _l('hr_leave_duration_type'); ?></label>'
+            +         '<div class="select-placeholder">'
+            +           '<select name="days[' + i + '][type]" class="selectpicker day-type" data-width="100%">'
+            +             '<option value="full"><?php echo _l('hr_leave_day_type_full'); ?></option>'
+            +             '<option value="half"><?php echo _l('hr_leave_day_type_half'); ?></option>'
+            +             '<option value="hourly"><?php echo _l('hr_leave_day_type_hourly'); ?></option>'
+            +           '</select>'
+            +         '</div>'
+            +       '</div>'
+            +       '<div class="col-sm-4">'
+            +         '<div class="day-detail-half" style="display:none">'
+            +           '<label class="tw-text-xs"><?php echo _l('hr_leave_half_day'); ?></label>'
+            +           '<div class="select-placeholder">'
+            +             '<select name="days[' + i + '][half_period]" class="selectpicker day-half-period" data-width="100%">'
+            +               '<option value="before_lunch"><?php echo _l('hr_leave_before_lunch'); ?></option>'
+            +               '<option value="after_lunch"><?php echo _l('hr_leave_after_lunch'); ?></option>'
+            +             '</select>'
+            +           '</div>'
+            +         '</div>'
+            +         '<div class="day-detail-hourly" style="display:none">'
+            +           '<div class="row">'
+            +             '<div class="col-xs-6">'
+            +               '<label class="tw-text-xs"><?php echo _l('hr_leave_hour_start'); ?></label>'
+            +               '<div class="input-group">'
+            +                 '<input type="text" name="days[' + i + '][hour_start]" class="form-control input-sm day-hour-timepicker day-hour-start" autocomplete="off">'
+            +                 '<span class="input-group-addon"><i class="fa-regular fa-clock clock-icon"></i></span>'
+            +               '</div>'
+            +             '</div>'
+            +             '<div class="col-xs-6">'
+            +               '<label class="tw-text-xs"><?php echo _l('hr_leave_hour_end'); ?></label>'
+            +               '<div class="input-group">'
+            +                 '<input type="text" name="days[' + i + '][hour_end]" class="form-control input-sm day-hour-timepicker day-hour-end" autocomplete="off">'
+            +                 '<span class="input-group-addon"><i class="fa-regular fa-clock clock-icon"></i></span>'
+            +               '</div>'
+            +             '</div>'
+            +           '</div>'
+            +         '</div>'
+            +       '</div>'
+            +       '<div class="col-sm-1 tw-flex tw-items-end tw-mb-2">'
+            +         '<span class="label label-info day-value">1.0</span>'
+            +       '</div>'
+            +       '<div class="col-sm-1 tw-flex tw-items-end tw-mb-2">'
+            +         '<button type="button" class="btn btn-danger btn-xs remove-day"><i class="fa fa-times"></i></button>'
+            +       '</div>'
+            +     '</div>'
+            +     '<div class="day-warning text-muted tw-text-xs" style="display:none"></div>'
+            +   '</div>'
+            + '</div>';
+    }
+
     function addDayRow() {
-        var $row = $('#day-row-template .leave-day-row').clone();
         rowIndex++;
-        var i = rowIndex;
-        $row.find('.day-date').attr('name', 'days[' + i + '][date]');
-        $row.find('.day-type').attr('name', 'days[' + i + '][type]');
-        $row.find('.day-half-period').attr('name', 'days[' + i + '][half_period]');
-        $row.find('.day-hour-start').attr('name', 'days[' + i + '][hour_start]');
-        $row.find('.day-hour-end').attr('name', 'days[' + i + '][hour_end]');
+        var $row = $(dayRowHtml(rowIndex));
 
         $('#day-rows').append($row);
         init_datepicker($row.find('.day-date'));
+        init_selectpicker();
+        init_day_hour_timepickers($row);
         refreshRow($row);
     }
 
@@ -405,14 +440,19 @@ if (!isset($weekly_off_json))  $weekly_off_json  = '[5]';
             refreshTotal();
         });
 
-        $(document).on('change dp.change', '#day-rows .day-date, #day-rows .day-type, #day-rows .day-half-period, #day-rows .day-hour-start, #day-rows .day-hour-end', function(){
+        // bootstrap-select fires 'changed.bs.select' alongside its native 'change', so both
+        // are listened for here. The select is scoped as "select.day-type" (not just
+        // ".day-type") because bootstrap-select copies the select's custom classes onto its
+        // generated wrapper <div> too - an unqualified ".day-type" match resolves against
+        // that div first (which has no .value), silently breaking every read of it.
+        $(document).on('change dp.change changed.bs.select', '#day-rows .day-date, #day-rows select.day-type, #day-rows select.day-half-period, #day-rows .day-hour-start, #day-rows .day-hour-end', function(){
             refreshRow($(this).closest('.leave-day-row'));
         });
 
-        $('#leave-employee, #leave-type').on('change', function(){
+        $('#leave-employee, #leave-type').on('change changed.bs.select', function(){
             loadBalance();
         });
-        $('#leave-type').on('change', function(){
+        $('#leave-type').on('change changed.bs.select', function(){
             updateModeVisibility();
             // Re-check every row's warnings (half-day support, holiday notes) against
             // the newly selected leave type, without touching what the user picked.

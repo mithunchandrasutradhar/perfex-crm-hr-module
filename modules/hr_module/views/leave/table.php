@@ -38,12 +38,24 @@ $badge_map = [
     'cancelled' => 'label-default',
 ];
 
+$can_approve = is_admin() || staff_can('approve', 'hr_leave');
+
 foreach ($rows as $r) {
-    $badge   = '<span class="label ' . ($badge_map[$r->status] ?? 'label-default') . '">' . ucfirst($r->status) . '</span>';
-    $actions = '<a href="' . admin_url('hr_module/leave/view/' . $r->id) . '" class="btn btn-default btn-xs"><i class="fa fa-eye"></i></a>';
-    if (staff_can('delete', 'hr_leave') && in_array($r->status, ['rejected', 'cancelled'])) {
-        $actions .= ' <a href="' . admin_url('hr_module/leave/delete/' . $r->id) . '" class="btn btn-danger btn-xs _delete"><i class="fa fa-times"></i></a>';
+    $badge = '<span class="label ' . ($badge_map[$r->status] ?? 'label-default') . '">' . ucfirst($r->status) . '</span>';
+
+    $view_url = admin_url('hr_module/leave/view/' . $r->id);
+    $options  = [];
+    $options[] = '<a href="' . $view_url . '">' . _l('hr_view') . '</a>';
+    if ($can_approve && $r->status === 'pending') {
+        $options[] = '<a href="#" class="hr-leave-approve" data-id="' . $r->id . '">' . _l('hr_leave_approve') . '</a>';
+        $options[] = '<a href="#" class="hr-leave-reject" data-id="' . $r->id . '">' . _l('hr_leave_reject') . '</a>';
     }
+    if (staff_can('delete', 'hr_leave') && in_array($r->status, ['rejected', 'cancelled'])) {
+        $options[] = '<a href="' . admin_url('hr_module/leave/delete/' . $r->id) . '" class="_delete text-danger">' . _l('hr_delete') . '</a>';
+    }
+    $employee_cell = '<a href="' . admin_url('hr_module/employees/view/' . $r->employee_id) . '">' . htmlspecialchars($r->employee_name) . '</a><br><small class="text-muted">' . $r->employee_code . '</small>';
+    $employee_cell .= '<div class="row-options">' . implode(' | ', $options) . '</div>';
+
     $types = $day_types_by_request[$r->id] ?? [];
     // For a single-day request, show exactly which half/type it is. For multi-day
     // requests, only call out the non-obvious types (half/hourly) - "Full" alone
@@ -59,15 +71,16 @@ foreach ($rows as $r) {
         }
     }
 
-    $output['aaData'][] = [
+    $row = [
         $r->id,
-        '<a href="' . admin_url('hr_module/employees/view/' . $r->employee_id) . '">' . htmlspecialchars($r->employee_name) . '</a><br><small class="text-muted">' . $r->employee_code . '</small>',
+        $employee_cell,
         htmlspecialchars($r->leave_type_name),
         _d($r->from_date),
         _d($r->to_date),
         $days_cell,
         $badge,
         _d($r->created_at),
-        $actions,
     ];
+    $row['DT_RowClass'] = 'has-row-options';
+    $output['aaData'][] = $row;
 }

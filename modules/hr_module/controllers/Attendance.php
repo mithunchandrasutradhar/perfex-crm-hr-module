@@ -51,7 +51,18 @@ class Attendance extends AdminController
     public function edit($id)
     {
         if ($this->input->is_ajax_request() && !$this->input->post()) {
-            echo json_encode($this->Attendance_model->get($id));
+            $row = $this->Attendance_model->get($id);
+            if (!$row) { echo json_encode(null); return; }
+            $time_fmt = (get_option('time_format') == 24) ? 'H:i' : 'g:i A';
+            echo json_encode([
+                'id'              => $row->id,
+                'employee_id'     => $row->employee_id,
+                'attendance_date' => _d($row->attendance_date),
+                'in_time'         => $row->in_time  ? date($time_fmt, strtotime($row->in_time))  : '',
+                'out_time'        => $row->out_time ? date($time_fmt, strtotime($row->out_time)) : '',
+                'status'          => $row->status,
+                'notes'           => $row->notes,
+            ]);
             return;
         }
         if (!$this->input->is_ajax_request()) show_404();
@@ -106,8 +117,8 @@ class Attendance extends AdminController
             access_denied('hr_attendance');
         }
         $filters = [
-            'from_date'     => $this->input->get('from_date') ?: date('Y-m-01'),
-            'to_date'       => $this->input->get('to_date')   ?: date('Y-m-d'),
+            'from_date'     => $this->input->get('from_date') ? to_sql_date($this->input->get('from_date')) : date('Y-m-01'),
+            'to_date'       => $this->input->get('to_date')   ? to_sql_date($this->input->get('to_date'))   : date('Y-m-d'),
             'department_id' => $this->input->get('department_id'),
             'employee_id'   => $this->input->get('employee_id'),
             'status'        => $this->input->get('status'),
@@ -161,11 +172,13 @@ class Attendance extends AdminController
 
     private function _post_data()
     {
+        $in  = $this->input->post('in_time');
+        $out = $this->input->post('out_time');
         return [
             'employee_id'     => (int) $this->input->post('employee_id'),
-            'attendance_date' => $this->input->post('attendance_date'),
-            'in_time'         => $this->input->post('in_time') ?: null,
-            'out_time'        => $this->input->post('out_time') ?: null,
+            'attendance_date' => to_sql_date($this->input->post('attendance_date')),
+            'in_time'         => $in  ? date('H:i:s', strtotime($in))  : null,
+            'out_time'        => $out ? date('H:i:s', strtotime($out)) : null,
             'status'          => $this->input->post('status'),
             'source'          => 'manual',
             'notes'           => $this->input->post('notes', true),

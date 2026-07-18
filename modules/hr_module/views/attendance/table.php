@@ -9,6 +9,8 @@ foreach (['department_id', 'employee_id', 'status', 'from_date', 'to_date'] as $
     $v = $CI->input->get($key);
     if ($v !== null && $v !== '') $filters[$key] = $v;
 }
+if (!empty($filters['from_date'])) $filters['from_date'] = to_sql_date($filters['from_date']);
+if (!empty($filters['to_date']))   $filters['to_date']   = to_sql_date($filters['to_date']);
 
 if (!is_admin() && !staff_can('view', 'hr_attendance')) {
     $filters['employee_id'] = hr_get_own_employee_id();

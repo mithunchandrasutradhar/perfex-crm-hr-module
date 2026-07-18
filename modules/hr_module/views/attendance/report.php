@@ -21,15 +21,23 @@ foreach ($records as $r) {
             <div class="row">
               <div class="col-md-2">
                 <div class="form-group"><label>From Date</label>
-                  <input type="date" name="from_date" class="form-control" value="<?php echo $filters['from_date']; ?>"></div>
+                  <div class="input-group date">
+                    <input type="text" name="from_date" class="form-control datepicker" autocomplete="off" value="<?php echo _d($filters['from_date']); ?>">
+                    <div class="input-group-addon"><i class="fa-regular fa-calendar calendar-icon"></i></div>
+                  </div>
+                </div>
               </div>
               <div class="col-md-2">
                 <div class="form-group"><label>To Date</label>
-                  <input type="date" name="to_date" class="form-control" value="<?php echo $filters['to_date']; ?>"></div>
+                  <div class="input-group date">
+                    <input type="text" name="to_date" class="form-control datepicker" autocomplete="off" value="<?php echo _d($filters['to_date']); ?>">
+                    <div class="input-group-addon"><i class="fa-regular fa-calendar calendar-icon"></i></div>
+                  </div>
+                </div>
               </div>
               <div class="col-md-3">
-                <div class="form-group"><label><?php echo _l('hr_department'); ?></label>
-                  <select name="department_id" class="form-control">
+                <div class="form-group select-placeholder"><label><?php echo _l('hr_department'); ?></label>
+                  <select name="department_id" class="selectpicker" data-width="100%">
                     <option value=""><?php echo _l('hr_all'); ?></option>
                     <?php foreach ($departments as $d): ?>
                     <option value="<?php echo $d->id; ?>" <?php if($filters['department_id']==$d->id) echo 'selected'; ?>><?php echo htmlspecialchars($d->name); ?></option>
@@ -37,8 +45,8 @@ foreach ($records as $r) {
                   </select></div>
               </div>
               <div class="col-md-3">
-                <div class="form-group"><label><?php echo _l('hr_employee'); ?></label>
-                  <select name="employee_id" class="form-control">
+                <div class="form-group select-placeholder"><label><?php echo _l('hr_employee'); ?></label>
+                  <select name="employee_id" class="selectpicker" data-width="100%" data-live-search="true">
                     <option value=""><?php echo _l('hr_all'); ?></option>
                     <?php foreach ($employees as $id => $name): ?>
                     <option value="<?php echo $id; ?>" <?php if($filters['employee_id']==$id) echo 'selected'; ?>><?php echo htmlspecialchars($name); ?></option>

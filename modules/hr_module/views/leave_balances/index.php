@@ -12,7 +12,7 @@
           <div class="tw-flex tw-gap-2">
             <!-- Year filter -->
             <form method="get" class="tw-flex tw-gap-2">
-              <select name="dept_id" class="form-control input-sm" style="width:160px">
+              <select name="dept_id" class="selectpicker" data-width="160px">
                 <option value=""><?php echo _l('hr_all') . ' Dept'; ?></option>
                 <?php foreach ($departments as $d): ?>
                 <option value="<?php echo $d->id; ?>" <?php if($this->input->get('dept_id') == $d->id) echo 'selected'; ?>>
@@ -20,7 +20,7 @@
                 </option>
                 <?php endforeach; ?>
               </select>
-              <select name="year" class="form-control input-sm" style="width:90px">
+              <select name="year" class="selectpicker" data-width="90px">
                 <?php for($y = date('Y'); $y >= date('Y')-3; $y--): ?>
                 <option value="<?php echo $y; ?>" <?php if($year == $y) echo 'selected'; ?>><?php echo $y; ?></option>
                 <?php endfor; ?>
@@ -69,8 +69,10 @@
                     <td><?php echo $b->used_days; ?></td>
                     <td>
                       <strong class="text-<?php echo $color; ?>"><?php echo $remaining; ?></strong>
-                      <div class="progress tw-mt-1" style="height:4px;margin:0">
-                        <div class="progress-bar progress-bar-<?php echo $color; ?>" style="width:<?php echo $pct; ?>%"></div>
+                      <div class="progress tw-my-0 progress-bar-mini">
+                        <div class="progress-bar progress-bar-<?php echo $color; ?> no-percent-text not-dynamic" role="progressbar"
+                             aria-valuenow="<?php echo $pct; ?>" aria-valuemin="0" aria-valuemax="100"
+                             style="width: <?php echo $pct; ?>%" data-percent="<?php echo $pct; ?>"></div>
                       </div>
                     </td>
                   </tr>

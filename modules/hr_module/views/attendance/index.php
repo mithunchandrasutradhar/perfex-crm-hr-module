@@ -17,16 +17,22 @@ if (!isset($is_global))   $is_global   = is_admin() || staff_can('view', 'hr_att
           <div class="tw-flex tw-flex-wrap tw-gap-2">
             <!-- Filters -->
             <?php if ($is_global): ?>
-            <select id="f-dept" class="form-control input-sm" style="width:150px">
+            <select id="f-dept" class="selectpicker" data-width="150px">
               <option value=""><?php echo _l('hr_all') . ' Dept'; ?></option>
               <?php foreach ($departments as $d): ?>
               <option value="<?php echo $d->id; ?>"><?php echo htmlspecialchars($d->name); ?></option>
               <?php endforeach; ?>
             </select>
             <?php endif; ?>
-            <input type="date" id="f-from" class="form-control input-sm" style="width:135px" placeholder="From date">
-            <input type="date" id="f-to"   class="form-control input-sm" style="width:135px" placeholder="To date">
-            <select id="f-status" class="form-control input-sm" style="width:120px">
+            <div class="input-group date" style="width:150px">
+              <input type="text" id="f-from" class="form-control datepicker" autocomplete="off" placeholder="From date">
+              <div class="input-group-addon"><i class="fa-regular fa-calendar calendar-icon"></i></div>
+            </div>
+            <div class="input-group date" style="width:150px">
+              <input type="text" id="f-to" class="form-control datepicker" autocomplete="off" placeholder="To date">
+              <div class="input-group-addon"><i class="fa-regular fa-calendar calendar-icon"></i></div>
+            </div>
+            <select id="f-status" class="selectpicker" data-width="130px">
               <option value=""><?php echo _l('hr_all'); ?> Status</option>
               <option value="present">Present</option>
               <option value="late">Late</option>
@@ -39,11 +45,11 @@ if (!isset($is_global))   $is_global   = is_admin() || staff_can('view', 'hr_att
             </button>
             <?php endif; ?>
             <a href="<?php echo admin_url('hr_module/attendance/monthly'); ?>" class="btn btn-default btn-sm">
-              <i class="fa fa-calendar tw-mr-1"></i><?php echo _l('hr_attendance_monthly'); ?>
+              <i class="fa-regular fa-calendar tw-mr-1"></i><?php echo _l('hr_attendance_monthly'); ?>
             </a>
             <?php if ($is_global): ?>
             <a href="<?php echo admin_url('hr_module/attendance/import'); ?>" class="btn btn-default btn-sm">
-              <i class="fa fa-upload tw-mr-1"></i><?php echo _l('hr_attendance_import'); ?>
+              <i class="fa-solid fa-upload tw-mr-1"></i><?php echo _l('hr_attendance_import'); ?>
             </a>
             <?php endif; ?>
           </div>
@@ -75,9 +81,10 @@ if (!isset($is_global))   $is_global   = is_admin() || staff_can('view', 'hr_att
         <input type="hidden" id="att_id">
         <div class="row">
           <div class="col-md-8">
-            <div class="form-group">
+            <div class="form-group select-placeholder">
               <label><?php echo _l('hr_employee'); ?> <span class="text-danger">*</span></label>
-              <select name="employee_id" id="att_emp" class="form-control" required>
+              <select name="employee_id" id="att_emp" class="selectpicker" data-width="100%" data-live-search="true"
+                      data-none-selected-text="<?php echo _l('hr_select'); ?>" required>
                 <option value=""><?php echo _l('hr_select'); ?></option>
                 <?php foreach ($employees as $id => $name): ?>
                 <option value="<?php echo $id; ?>"><?php echo htmlspecialchars($name); ?></option>
@@ -88,7 +95,10 @@ if (!isset($is_global))   $is_global   = is_admin() || staff_can('view', 'hr_att
           <div class="col-md-4">
             <div class="form-group">
               <label><?php echo _l('hr_attendance_date'); ?> <span class="text-danger">*</span></label>
-              <input type="date" name="attendance_date" id="att_date" class="form-control" required value="<?php echo date('Y-m-d'); ?>">
+              <div class="input-group date">
+                <input type="text" name="attendance_date" id="att_date" class="form-control datepicker" autocomplete="off" required value="<?php echo _d(date('Y-m-d')); ?>">
+                <div class="input-group-addon"><i class="fa-regular fa-calendar calendar-icon"></i></div>
+              </div>
             </div>
           </div>
         </div>
@@ -96,19 +106,25 @@ if (!isset($is_global))   $is_global   = is_admin() || staff_can('view', 'hr_att
           <div class="col-md-4">
             <div class="form-group">
               <label><?php echo _l('hr_attendance_in_time'); ?></label>
-              <input type="time" name="in_time" id="att_in" class="form-control">
+              <div class="input-group">
+                <input type="text" name="in_time" id="att_in" class="form-control att-timepicker" autocomplete="off">
+                <div class="input-group-addon"><i class="fa-regular fa-clock clock-icon"></i></div>
+              </div>
             </div>
           </div>
           <div class="col-md-4">
             <div class="form-group">
               <label><?php echo _l('hr_attendance_out_time'); ?></label>
-              <input type="time" name="out_time" id="att_out" class="form-control">
+              <div class="input-group">
+                <input type="text" name="out_time" id="att_out" class="form-control att-timepicker" autocomplete="off">
+                <div class="input-group-addon"><i class="fa-regular fa-clock clock-icon"></i></div>
+              </div>
             </div>
           </div>
           <div class="col-md-4">
-            <div class="form-group">
+            <div class="form-group select-placeholder">
               <label><?php echo _l('hr_attendance_status'); ?></label>
-              <select name="status" id="att_status" class="form-control">
+              <select name="status" id="att_status" class="selectpicker" data-width="100%">
                 <option value="present">Present</option>
                 <option value="late">Late</option>
                 <option value="absent">Absent</option>
@@ -138,20 +154,38 @@ if (!isset($is_global))   $is_global   = is_admin() || staff_can('view', 'hr_att
 $(function(){
     initDataTable('.table-hr-attendance', window.location.href, [], [2, 'desc']);
 
+    function init_att_timepickers() {
+        var fmt = app.options.time_format == 24 ? 'H:i' : 'g:i A';
+        $('.att-timepicker').each(function(){
+            var that = $(this);
+            if (that.data('xdsoft_datetimepicker')) return;
+            that.datetimepicker({
+                datepicker: false,
+                format: fmt,
+                formatTime: fmt,
+                step: 15,
+                scrollInput: false,
+                lazyInit: true,
+            });
+        });
+    }
+    init_att_timepickers();
+
     function reload() {
         var url = window.location.href.split('?')[0]
             + '?department_id=' + $('#f-dept').val()
             + '&status=' + $('#f-status').val()
-            + '&from_date=' + $('#f-from').val()
-            + '&to_date=' + $('#f-to').val();
+            + '&from_date=' + encodeURIComponent($('#f-from').val())
+            + '&to_date=' + encodeURIComponent($('#f-to').val());
         $('.table-hr-attendance').DataTable().ajax.url(url).load();
     }
-    $('#f-dept, #f-status, #f-from, #f-to').on('change', reload);
+    $('#f-dept, #f-status, #f-from, #f-to').on('change changed.bs.select', reload);
 
     // Add
     $('#btn-add-att').on('click', function(){
         $('#attForm')[0].reset(); $('#att_id').val('');
-        $('#att_date').val('<?php echo date('Y-m-d'); ?>');
+        $('#att_date').val('<?php echo _d(date('Y-m-d')); ?>');
+        $('#att_emp').selectpicker('refresh'); $('#att_status').selectpicker('refresh');
         $('#att-modal-title').text('<?php echo _l('hr_attendance_add'); ?>');
         $('#attModal').modal('show');
     });
@@ -160,9 +194,9 @@ $(function(){
     $(document).on('click', '.hr-edit-att', function(e){
         e.preventDefault();
         $.getJSON('<?php echo admin_url('hr_module/attendance/edit/'); ?>'+$(this).data('id'), function(d){
-            $('#att_id').val(d.id); $('#att_emp').val(d.employee_id);
-            $('#att_date').val(d.attendance_date); $('#att_in').val(d.in_time ? d.in_time.substr(0,5) : '');
-            $('#att_out').val(d.out_time ? d.out_time.substr(0,5) : ''); $('#att_status').val(d.status);
+            $('#att_id').val(d.id); $('#att_emp').val(d.employee_id).selectpicker('refresh');
+            $('#att_date').val(d.attendance_date); $('#att_in').val(d.in_time || '');
+            $('#att_out').val(d.out_time || ''); $('#att_status').val(d.status).selectpicker('refresh');
             $('#att_notes').val(d.notes);
             $('#att-modal-title').text('<?php echo _l('hr_attendance_edit'); ?>');
             $('#attModal').modal('show');

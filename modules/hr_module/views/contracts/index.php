@@ -94,7 +94,7 @@ $(function(){
         $('.table-hr-contracts').DataTable().ajax.url(url).load();
     }
 
-    $('#f-emp,#f-dept,#f-type,#f-status').on('change', reload);
+    $('#f-emp,#f-dept,#f-type,#f-status').on('change changed.bs.select', reload);
 
     $('#f-expiring').on('click', function(){
         expiringSoonFilter = !expiringSoonFilter;

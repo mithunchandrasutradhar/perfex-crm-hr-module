@@ -207,11 +207,14 @@ class Leave extends AdminController
                 $day_type = $type;
             }
 
+            $hour_start = $row['hour_start'] ?? null;
+            $hour_end   = $row['hour_end'] ?? null;
+
             $days[] = [
                 'date'       => to_sql_date($row['date']),
                 'type'       => $day_type,
-                'hour_start' => $row['hour_start'] ?? null,
-                'hour_end'   => $row['hour_end'] ?? null,
+                'hour_start' => $hour_start ? date('H:i:s', strtotime($hour_start)) : null,
+                'hour_end'   => $hour_end   ? date('H:i:s', strtotime($hour_end))   : null,
             ];
         }
 

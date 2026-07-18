@@ -22,9 +22,9 @@ $status_labels = ['present'=>'P','late'=>'L','absent'=>'A','half_day'=>'H'];
     <!-- Controls -->
     <form method="get" class="row tw-mb-4">
       <div class="col-md-4">
-        <div class="form-group">
+        <div class="form-group select-placeholder">
           <label><?php echo _l('hr_employee'); ?></label>
-          <select name="employee_id" class="form-control">
+          <select name="employee_id" class="selectpicker" data-width="100%" data-live-search="true">
             <option value=""><?php echo _l('hr_select'); ?></option>
             <?php foreach ($employees as $id => $name): ?>
             <option value="<?php echo $id; ?>" <?php if($employee_id == $id) echo 'selected'; ?>><?php echo htmlspecialchars($name); ?></option>
@@ -33,9 +33,9 @@ $status_labels = ['present'=>'P','late'=>'L','absent'=>'A','half_day'=>'H'];
         </div>
       </div>
       <div class="col-md-2">
-        <div class="form-group">
+        <div class="form-group select-placeholder">
           <label><?php echo _l('hr_attendance_monthly'); ?></label>
-          <select name="month" class="form-control">
+          <select name="month" class="selectpicker" data-width="100%">
             <?php for($m=1;$m<=12;$m++): ?>
             <option value="<?php echo $m; ?>" <?php if($month==$m) echo 'selected'; ?>><?php echo date('F', mktime(0,0,0,$m,1)); ?></option>
             <?php endfor; ?>
@@ -43,9 +43,9 @@ $status_labels = ['present'=>'P','late'=>'L','absent'=>'A','half_day'=>'H'];
         </div>
       </div>
       <div class="col-md-2">
-        <div class="form-group">
+        <div class="form-group select-placeholder">
           <label><?php echo _l('hr_leave_year'); ?></label>
-          <select name="year" class="form-control">
+          <select name="year" class="selectpicker" data-width="100%">
             <?php for($y=date('Y');$y>=date('Y')-3;$y--): ?>
             <option value="<?php echo $y; ?>" <?php if($year==$y) echo 'selected'; ?>><?php echo $y; ?></option>
             <?php endfor; ?>

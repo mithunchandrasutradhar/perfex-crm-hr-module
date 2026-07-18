@@ -48,6 +48,6 @@ $(function(){
             + '&to_date='   + $('#f-to').val();
         $('.table-hr-training').DataTable().ajax.url(url).load();
     }
-    $('#f-status,#f-from,#f-to').on('change', reload);
+    $('#f-status,#f-from,#f-to').on('change changed.bs.select', reload);
 });
 </script>
