@@ -18,9 +18,9 @@ if (!isset($own_emp_id)) $own_emp_id = 0;
             <h4 class="tw-font-semibold tw-mb-4"><?php echo _l('hr_loan_add'); ?></h4>
             <?php echo form_open_multipart(admin_url('hr_module/loans/apply'), ['id'=>'loanForm']); ?>
 
-              <div class="form-group">
+              <div class="form-group select-placeholder">
                 <label><?php echo _l('hr_employee'); ?> <span class="text-danger">*</span></label>
-                <select name="employee_id" class="form-control" required
+                <select name="employee_id" class="selectpicker" data-width="100%" data-live-search="true" required
                   <?php if ($own_only) echo 'disabled'; ?>>
                   <option value=""><?php echo _l('hr_select'); ?></option>
                   <?php foreach ($employees as $id => $name): ?>
@@ -48,14 +48,14 @@ if (!isset($own_emp_id)) $own_emp_id = 0;
                       </div>
                     </div>
                     <div class="col-md-4">
-                      <div class="form-group">
+                      <div class="form-group select-placeholder">
                         <label>
                           <?php echo _l('hr_loan_monthly_installment'); ?>
                           <span class="text-danger">*</span>
                         </label>
                         <div class="input-group">
                           <span class="input-group-addon"><?php echo get_option('currency_symbol') ?: 'BDT'; ?></span>
-                          <select name="monthly_installment" id="loan_installment" class="form-control" required disabled>
+                          <select name="monthly_installment" id="loan_installment" class="selectpicker" data-width="100%" required disabled>
                             <option value="">Enter amount first</option>
                           </select>
                         </div>
@@ -94,9 +94,7 @@ if (!isset($own_emp_id)) $own_emp_id = 0;
                 <textarea name="notes" class="form-control" rows="2"></textarea>
               </div>
               <div class="tw-flex tw-gap-2">
-                <button type="submit" class="btn btn-primary">
-                  <i class="fa fa-paper-plane tw-mr-1"></i>Submit Application
-                </button>
+                <button type="submit" class="btn btn-primary">Submit Application</button>
                 <a href="<?php echo admin_url('hr_module/loans'); ?>" class="btn btn-default">Cancel</a>
               </div>
             <?php echo form_close(); ?>
@@ -152,6 +150,7 @@ $(function () {
         if (amount <= 0) {
             $installment.append($('<option></option>').val('').text('Enter amount first'));
             $installment.prop('disabled', true);
+            $installment.selectpicker('refresh');
             $months.val('');
             $summary.hide();
             return;
@@ -181,11 +180,12 @@ $(function () {
             if (steps[k] === defaultVal) opt.prop('selected', true);
             $installment.append(opt);
         }
+        $installment.selectpicker('refresh');
         updateMonths();
     }
 
     $amount.on('input', rebuildInstallmentOptions);
-    $installment.on('change', updateMonths);
+    $installment.on('change changed.bs.select', updateMonths);
 
     // Client-side validation before submit
     $('#loanForm').on('submit', function (e) {
