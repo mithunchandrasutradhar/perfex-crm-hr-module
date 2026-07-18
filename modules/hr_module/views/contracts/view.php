@@ -21,7 +21,7 @@ if ($contract->end_date && $contract->status === 'active') {
 
     <?php if ($days_left !== null && $days_left >= 0 && $days_left <= 30): ?>
     <div class="alert alert-warning">
-      <i class="fa fa-clock-o tw-mr-1"></i>
+      <i class="fa-regular fa-clock tw-mr-1"></i>
       This contract expires in <strong><?php echo round($days_left); ?> day(s)</strong>
       (<?php echo date('d M Y', strtotime($contract->end_date)); ?>).
     </div>
@@ -187,7 +187,10 @@ if ($contract->end_date && $contract->status === 'active') {
       <div class="modal-body">
         <div class="form-group">
           <label>Signing Date</label>
-          <input type="date" name="signed_date" class="form-control" value="<?php echo date('Y-m-d'); ?>">
+          <div class="input-group date">
+            <input type="text" name="signed_date" class="form-control datepicker" autocomplete="off" value="<?php echo _d(date('Y-m-d')); ?>">
+            <div class="input-group-addon"><i class="fa-regular fa-calendar calendar-icon"></i></div>
+          </div>
         </div>
       </div>
       <div class="modal-footer">
@@ -209,9 +212,9 @@ if ($contract->end_date && $contract->status === 'active') {
       </div>
       <?php echo form_open(admin_url('hr_module/hr_contracts/set_status/'.$contract->id)); ?>
       <div class="modal-body">
-        <div class="form-group">
+        <div class="form-group select-placeholder">
           <label>New Status</label>
-          <select name="status" class="form-control">
+          <select name="status" class="selectpicker" data-width="100%">
             <?php
             $statuses = ['active'=>'Active','pending'=>'Pending','expired'=>'Expired','terminated'=>'Terminated'];
             foreach ($statuses as $val => $label):

@@ -79,7 +79,8 @@ class Hr_contracts extends AdminController
     public function sign($id)
     {
         if (staff_cant('edit', 'hr_contracts')) access_denied('hr_contracts');
-        $date   = $this->input->post('signed_date') ?: date('Y-m-d');
+        $posted = $this->input->post('signed_date');
+        $date   = $posted ? to_sql_date($posted) : date('Y-m-d');
         $result = $this->Hr_contracts_model->mark_signed($id, $date);
         set_alert($result['success'] ? 'success' : 'danger', $result['message']);
         redirect(admin_url('hr_module/hr_contracts/view/' . $id));
@@ -107,13 +108,13 @@ class Hr_contracts extends AdminController
             'employee_id'   => $this->input->post('employee_id'),
             'title'         => $this->input->post('title', true),
             'contract_type' => $this->input->post('contract_type'),
-            'start_date'    => $this->input->post('start_date'),
-            'end_date'      => $this->input->post('end_date'),
+            'start_date'    => to_sql_date($this->input->post('start_date')),
+            'end_date'      => to_sql_date($this->input->post('end_date')),
             'value'         => $this->input->post('value'),
             'content'       => $this->input->post('content', true),
             'status'        => $this->input->post('status'),
             'signed'        => $this->input->post('signed'),
-            'signed_date'   => $this->input->post('signed_date'),
+            'signed_date'   => to_sql_date($this->input->post('signed_date')),
             'notes'         => $this->input->post('notes', true),
         ];
     }

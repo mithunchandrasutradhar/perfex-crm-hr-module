@@ -36,9 +36,10 @@ $v = function($field) use ($contract) {
                   </div>
                 </div>
                 <div class="col-md-4">
-                  <div class="form-group">
+                  <div class="form-group select-placeholder">
                     <label><?php echo _l('hr_employee'); ?> <span class="text-danger">*</span></label>
-                    <select name="employee_id" class="form-control" required>
+                    <select name="employee_id" class="selectpicker" data-width="100%" data-live-search="true"
+                            data-none-selected-text="<?php echo _l('hr_select'); ?>" required>
                       <option value=""><?php echo _l('hr_select'); ?></option>
                       <?php foreach ($employees as $id => $name): ?>
                       <option value="<?php echo $id; ?>" <?php if($editing && $contract->employee_id==$id) echo 'selected'; ?>>
@@ -53,9 +54,9 @@ $v = function($field) use ($contract) {
               <!-- Row 2 -->
               <div class="row">
                 <div class="col-md-3">
-                  <div class="form-group">
+                  <div class="form-group select-placeholder">
                     <label><?php echo _l('hr_contract_type'); ?> <span class="text-danger">*</span></label>
-                    <select name="contract_type" class="form-control" required>
+                    <select name="contract_type" class="selectpicker" data-width="100%" required>
                       <?php
                       $types = ['permanent'=>'Permanent','fixed'=>'Fixed Term','probation'=>'Probation','internship'=>'Internship','casual'=>'Casual'];
                       foreach ($types as $val => $label):
@@ -68,9 +69,9 @@ $v = function($field) use ($contract) {
                   </div>
                 </div>
                 <div class="col-md-3">
-                  <div class="form-group">
+                  <div class="form-group select-placeholder">
                     <label><?php echo _l('hr_status'); ?></label>
-                    <select name="status" class="form-control">
+                    <select name="status" class="selectpicker" data-width="100%">
                       <?php
                       $statuses = ['active'=>'Active','pending'=>'Pending','expired'=>'Expired','terminated'=>'Terminated'];
                       foreach ($statuses as $val => $label):
@@ -85,15 +86,21 @@ $v = function($field) use ($contract) {
                 <div class="col-md-3">
                   <div class="form-group">
                     <label><?php echo _l('hr_start_date'); ?> <span class="text-danger">*</span></label>
-                    <input type="date" name="start_date" class="form-control" required
-                           value="<?php echo $v('start_date'); ?>">
+                    <div class="input-group date">
+                      <input type="text" name="start_date" class="form-control datepicker" autocomplete="off" required
+                             value="<?php echo $editing ? _d($contract->start_date) : ''; ?>">
+                      <div class="input-group-addon"><i class="fa-regular fa-calendar calendar-icon"></i></div>
+                    </div>
                   </div>
                 </div>
                 <div class="col-md-3">
                   <div class="form-group">
                     <label><?php echo _l('hr_end_date'); ?> <small class="text-muted">(leave blank = open-ended)</small></label>
-                    <input type="date" name="end_date" class="form-control"
-                           value="<?php echo $v('end_date'); ?>">
+                    <div class="input-group date">
+                      <input type="text" name="end_date" class="form-control datepicker" autocomplete="off"
+                             value="<?php echo ($editing && $contract->end_date) ? _d($contract->end_date) : ''; ?>">
+                      <div class="input-group-addon"><i class="fa-regular fa-calendar calendar-icon"></i></div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -121,8 +128,11 @@ $v = function($field) use ($contract) {
                 <div class="col-md-4">
                   <div class="form-group" id="signed-date-group" <?php if(!$editing || !$contract->signed) echo 'style="display:none"'; ?>>
                     <label><?php echo _l('hr_contract_sign_date'); ?></label>
-                    <input type="date" name="signed_date" class="form-control"
-                           value="<?php echo $v('signed_date'); ?>">
+                    <div class="input-group date">
+                      <input type="text" name="signed_date" class="form-control datepicker" autocomplete="off"
+                             value="<?php echo ($editing && $contract->signed_date) ? _d($contract->signed_date) : ''; ?>">
+                      <div class="input-group-addon"><i class="fa-regular fa-calendar calendar-icon"></i></div>
+                    </div>
                   </div>
                 </div>
               </div>

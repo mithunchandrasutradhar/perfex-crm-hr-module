@@ -7,7 +7,7 @@
 
         <?php if (!empty($expiring_soon)): ?>
         <div class="alert alert-warning">
-          <i class="fa fa-clock-o tw-mr-1"></i>
+          <i class="fa-regular fa-clock tw-mr-1"></i>
           <strong><?php echo count($expiring_soon); ?> contract(s)</strong> expiring within 30 days:
           <?php foreach ($expiring_soon as $ec): ?>
             <a href="<?php echo admin_url('hr_module/hr_contracts/view/'.$ec->id); ?>">
@@ -20,19 +20,19 @@
         <div class="tw-mb-2 tw-flex tw-flex-wrap tw-items-center tw-justify-between tw-gap-2">
           <h4 class="tw-font-semibold tw-text-lg tw-text-neutral-700"><?php echo $title; ?></h4>
           <div class="tw-flex tw-flex-wrap tw-gap-2">
-            <select id="f-emp" class="form-control input-sm" style="width:160px">
+            <select id="f-emp" class="selectpicker" data-width="160px" data-live-search="true">
               <option value="">All Employees</option>
               <?php foreach ($employees as $id => $name): ?>
               <option value="<?php echo $id; ?>"><?php echo htmlspecialchars($name); ?></option>
               <?php endforeach; ?>
             </select>
-            <select id="f-dept" class="form-control input-sm" style="width:140px">
+            <select id="f-dept" class="selectpicker" data-width="150px" data-live-search="true">
               <option value="">All Departments</option>
               <?php foreach ($departments as $d): ?>
               <option value="<?php echo $d->id; ?>"><?php echo htmlspecialchars($d->name); ?></option>
               <?php endforeach; ?>
             </select>
-            <select id="f-type" class="form-control input-sm" style="width:130px">
+            <select id="f-type" class="selectpicker" data-width="140px">
               <option value="">All Types</option>
               <option value="permanent">Permanent</option>
               <option value="fixed">Fixed Term</option>
@@ -40,7 +40,7 @@
               <option value="internship">Internship</option>
               <option value="casual">Casual</option>
             </select>
-            <select id="f-status" class="form-control input-sm" style="width:120px">
+            <select id="f-status" class="selectpicker" data-width="130px">
               <option value="">All Status</option>
               <option value="active">Active</option>
               <option value="pending">Pending</option>
@@ -48,7 +48,7 @@
               <option value="terminated">Terminated</option>
             </select>
             <button id="f-expiring" class="btn btn-warning btn-sm" type="button">
-              <i class="fa fa-clock-o tw-mr-1"></i>Expiring Soon
+              <i class="fa-regular fa-clock tw-mr-1"></i>Expiring Soon
             </button>
             <?php if (staff_can('create', 'hr_contracts')): ?>
             <a href="<?php echo admin_url('hr_module/hr_contracts/add'); ?>" class="btn btn-primary">
@@ -70,7 +70,6 @@
               _l('hr_contract_value'),
               _l('hr_status'),
               _l('hr_contract_signed'),
-              _l('hr_actions'),
             ], 'hr-contracts'); ?>
           </div>
         </div>

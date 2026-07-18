@@ -34,15 +34,20 @@ foreach ($rows as $r) {
             $expiry_warning = ' <span class="label label-warning" title="Expiring soon">' . round($days_left) . 'd</span>';
         }
     }
-    $actions = '<a href="' . admin_url('hr_module/hr_contracts/view/' . $r->id) . '" class="btn btn-default btn-xs"><i class="fa fa-eye"></i></a> ';
-    if (staff_can('edit',   'hr_contracts')) {
-        $actions .= '<a href="' . admin_url('hr_module/hr_contracts/edit/' . $r->id) . '" class="btn btn-default btn-xs"><i class="fa fa-edit"></i></a> ';
+    $view_url = admin_url('hr_module/hr_contracts/view/' . $r->id);
+    $title_cell = '<a href="' . $view_url . '">' . htmlspecialchars($r->title) . '</a>';
+    $options = [];
+    $options[] = '<a href="' . $view_url . '">' . _l('hr_view') . '</a>';
+    if (staff_can('edit', 'hr_contracts')) {
+        $options[] = '<a href="' . admin_url('hr_module/hr_contracts/edit/' . $r->id) . '">' . _l('hr_edit') . '</a>';
     }
     if (staff_can('delete', 'hr_contracts')) {
-        $actions .= '<a href="' . admin_url('hr_module/hr_contracts/delete/' . $r->id) . '" class="btn btn-default btn-xs _delete"><i class="fa fa-trash"></i></a>';
+        $options[] = '<a href="' . admin_url('hr_module/hr_contracts/delete/' . $r->id) . '" class="_delete text-danger">' . _l('hr_delete') . '</a>';
     }
-    $output['aaData'][] = [
-        '<a href="' . admin_url('hr_module/hr_contracts/view/' . $r->id) . '">' . htmlspecialchars($r->title) . '</a>',
+    $title_cell .= '<div class="row-options">' . implode(' | ', $options) . '</div>';
+
+    $row = [
+        $title_cell,
         htmlspecialchars($r->first_name . ' ' . $r->last_name) . '<br><small class="text-muted">' . $r->employee_code . '</small>',
         htmlspecialchars($r->department_name ?? '-'),
         '<span class="label label-' . ($type_badge[$r->contract_type] ?? 'default') . '">' . ucfirst($r->contract_type) . '</span>',
@@ -51,6 +56,7 @@ foreach ($rows as $r) {
         $r->value ? number_format($r->value, 2) : '-',
         '<span class="label label-' . ($status_badge[$r->status] ?? 'default') . '">' . ucfirst($r->status) . '</span>',
         $r->signed ? '<i class="fa fa-check-circle text-success"></i> ' . ($r->signed_date ? date('d M Y', strtotime($r->signed_date)) : 'Yes') : '<span class="text-muted">Unsigned</span>',
-        $actions,
     ];
+    $row['DT_RowClass'] = 'has-row-options';
+    $output['aaData'][] = $row;
 }
