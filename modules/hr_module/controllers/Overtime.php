@@ -116,7 +116,7 @@ class Overtime extends AdminController
     {
         if (staff_cant('create', 'hr_overtime') && staff_cant('edit', 'hr_overtime')) access_denied('hr_overtime');
         $employee_id = (int) $this->input->get('employee_id');
-        $date        = $this->input->get('overtime_date');
+        $date        = to_sql_date($this->input->get('overtime_date'));
         if (!$employee_id || !$date) {
             echo json_encode(['eligible' => false, 'message' => _l('hr_overtime_not_eligible_date')]);
             return;
@@ -168,6 +168,7 @@ class Overtime extends AdminController
         if (!is_array($dates)) {
             $dates = $dates ? [$dates] : [];
         }
+        $dates = array_map('to_sql_date', array_filter($dates));
         return array_values(array_unique(array_filter($dates)));
     }
 }

@@ -34,9 +34,9 @@ $existing_dates = $is_edit ? array_column($dates, 'overtime_date') : [];
             <?php echo form_open($form_url, ['id' => 'overtimeForm']); ?>
               <div class="row">
                 <div class="col-md-6">
-                  <div class="form-group">
+                  <div class="form-group select-placeholder">
                     <label><?php echo _l('hr_employee'); ?> <span class="text-danger">*</span></label>
-                    <select name="employee_id" id="ot_emp" class="form-control" required
+                    <select name="employee_id" id="ot_emp" class="selectpicker" data-width="100%" data-live-search="true" required
                       <?php if ($own_only) echo 'disabled'; ?>>
                       <option value=""><?php echo _l('hr_select'); ?></option>
                       <?php foreach ($employees as $id => $name): ?>
@@ -59,7 +59,10 @@ $existing_dates = $is_edit ? array_column($dates, 'overtime_date') : [];
                         <?php foreach ($existing_dates as $d): ?>
                         <div class="ot-date-row tw-mb-2">
                           <div class="tw-flex tw-gap-2">
-                            <input type="date" name="overtime_date[]" class="form-control ot-date-input" required value="<?php echo $d; ?>">
+                            <div class="input-group date">
+                              <input type="text" name="overtime_date[]" class="form-control datepicker ot-date-input" autocomplete="off" required value="<?php echo _d($d); ?>">
+                              <div class="input-group-addon"><i class="fa-regular fa-calendar calendar-icon"></i></div>
+                            </div>
                             <button type="button" class="btn btn-default btn-sm ot-remove-date" style="display:none">
                               <i class="fa fa-times"></i>
                             </button>
@@ -70,7 +73,10 @@ $existing_dates = $is_edit ? array_column($dates, 'overtime_date') : [];
                       <?php else: ?>
                       <div class="ot-date-row tw-mb-2">
                         <div class="tw-flex tw-gap-2">
-                          <input type="date" name="overtime_date[]" class="form-control ot-date-input" required>
+                          <div class="input-group date">
+                            <input type="text" name="overtime_date[]" class="form-control datepicker ot-date-input" autocomplete="off" required>
+                            <div class="input-group-addon"><i class="fa-regular fa-calendar calendar-icon"></i></div>
+                          </div>
                           <button type="button" class="btn btn-default btn-sm ot-remove-date" style="display:none">
                             <i class="fa fa-times"></i>
                           </button>
@@ -147,15 +153,19 @@ $(function(){
         $rows.find('.ot-remove-date').toggle($rows.length > 1);
     }
 
-    $(document).on('change', '#ot_emp', updateAllPreviews);
+    $(document).on('change changed.bs.select', '#ot_emp', updateAllPreviews);
     $(document).on('change', '.ot-date-input', function(){ updateRowPreview($(this).closest('.ot-date-row')); });
 
     $('#ot_add_date').on('click', function(){
         var $row = $('<div class="ot-date-row tw-mb-2"><div class="tw-flex tw-gap-2">'
-            + '<input type="date" name="overtime_date[]" class="form-control ot-date-input" required>'
+            + '<div class="input-group date">'
+            + '<input type="text" name="overtime_date[]" class="form-control datepicker ot-date-input" autocomplete="off" required>'
+            + '<div class="input-group-addon"><i class="fa-regular fa-calendar calendar-icon"></i></div>'
+            + '</div>'
             + '<button type="button" class="btn btn-default btn-sm ot-remove-date"><i class="fa fa-times"></i></button>'
             + '</div><div class="ot-date-status tw-text-xs tw-mt-1"></div></div>');
         $('#ot_dates_wrap').append($row);
+        init_datepicker($row.find('.ot-date-input'));
         updateRowPreview($row);
         refreshRemoveButtons();
     });

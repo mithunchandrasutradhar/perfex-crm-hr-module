@@ -30,7 +30,7 @@ $sbadge = ['pending'=>'warning','approved'=>'info','active'=>'primary','closed'=
 
   <div class="panel_s"><div class="panel-body panel-table-full">
     <table class="table table-hover">
-      <thead><tr><th>Employee</th><th>Department</th><th class="text-right">Amount</th><th class="text-right">Installment/mo</th><th class="text-right">Outstanding</th><th class="text-right">Repaid</th><th>Status</th><th>Approved</th></tr></thead>
+      <thead><tr><th>Employee</th><th>Department</th><th class="text-right">Amount</th><th class="text-right">Installment/mo</th><th class="text-right">Outstanding</th><th class="text-right">Repaid</th><th>Status</th><th>Approved On</th></tr></thead>
       <tbody>
       <?php if(empty($rows)): ?><tr><td colspan="8" class="text-center text-muted" style="padding:30px">No records.</td></tr>
       <?php else: foreach($rows as $r): ?>
@@ -42,7 +42,7 @@ $sbadge = ['pending'=>'warning','approved'=>'info','active'=>'primary','closed'=
         <td class="text-right text-danger"><?php echo number_format($r->outstanding,2); ?></td>
         <td class="text-right text-success"><?php echo number_format($r->total_repaid,2); ?></td>
         <td><span class="label label-<?php echo $sbadge[$r->status] ?? 'default'; ?>"><?php echo ucfirst($r->status); ?></span></td>
-        <td><?php echo $r->approved_date ? date('d M Y', strtotime($r->approved_date)) : '-'; ?></td>
+        <td><?php echo $r->approved_at ? _d($r->approved_at) : '-'; ?></td>
       </tr>
       <?php endforeach; endif; ?>
       </tbody>

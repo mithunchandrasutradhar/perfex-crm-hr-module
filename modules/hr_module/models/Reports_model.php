@@ -226,101 +226,131 @@ class Reports_model extends App_Model
     }
 
     // ── Department Summary ────────────────────────────────────────────────────
+    // Returns one flat row per employee in the given department (empty until a
+    // department is actually selected, matching the view's "select a department"
+    // prompt), with that year's approved leave days and payroll net-salary total
+    // merged in directly - the view reads these off each row, not as separate maps.
     public function department($f = [])
     {
         $dept_id = $f['department_id'] ?? null;
-        $year    = $f['year'] ?? date('Y');
+        $year    = (int) ($f['year'] ?? date('Y'));
+        if (empty($dept_id)) return [];
 
-        $this->db->select('e.*, d.name as department_name, ds.name as designation_name')
+        $leave_table   = db_prefix() . 'hr_leave_requests';
+        $payroll_table = db_prefix() . 'hr_payroll';
+
+        $this->db->select("e.id, e.first_name, e.last_name, e.employee_code, e.joining_date as hire_date,
+                d.name as department_name, ds.name as designation_name,
+                COALESCE(lv.total_leave_days, 0) as total_leave_days,
+                COALESCE(pr.total_salary, 0) as total_salary", false)
             ->from(db_prefix() . 'hr_employees e')
             ->join(db_prefix() . 'departments d', 'd.departmentid = e.department_id', 'left')
             ->join(db_prefix() . 'hr_designations ds', 'ds.id = e.designation_id', 'left')
-            ->where('e.status', 1);
-        if ($dept_id) $this->db->where('e.department_id', $dept_id);
-        $employees = $this->db->order_by('e.first_name')->get()->result();
+            ->join("(SELECT employee_id, SUM(total_days) as total_leave_days FROM {$leave_table}
+                    WHERE status = 'approved' AND YEAR(from_date) = {$year} GROUP BY employee_id) lv",
+                    'lv.employee_id = e.id', 'left', false)
+            ->join("(SELECT employee_id, SUM(net_salary) as total_salary FROM {$payroll_table}
+                    WHERE pay_year = {$year} GROUP BY employee_id) pr",
+                    'pr.employee_id = e.id', 'left', false)
+            ->where('e.status', 1)
+            ->where('e.department_id', $dept_id);
 
-        // Leave taken this year
-        $leave = $this->db->select('l.employee_id, SUM(l.total_days) as total_days')
-            ->from(db_prefix() . 'hr_leave_requests l')
-            ->join(db_prefix() . 'hr_employees e', 'e.id = l.employee_id', 'left')
-            ->where('l.status', 'approved')
-            ->where('YEAR(l.from_date)', $year);
-        if ($dept_id) $leave->where('e.department_id', $dept_id);
-        $leave_data = $leave->group_by('l.employee_id')->get()->result_array();
-        $leave_map = [];
-        foreach ($leave_data as $row) $leave_map[$row['employee_id']] = $row['total_days'];
-
-        // Payroll for this year
-        $payroll = $this->db->select('p.employee_id, SUM(p.net_salary) as total_net')
-            ->from(db_prefix() . 'hr_payroll p')
-            ->join(db_prefix() . 'hr_employees e', 'e.id = p.employee_id', 'left')
-            ->where('p.pay_year', $year);
-        if ($dept_id) $payroll->where('e.department_id', $dept_id);
-        $payroll_data = $payroll->group_by('p.employee_id')->get()->result_array();
-        $payroll_map = [];
-        foreach ($payroll_data as $row) $payroll_map[$row['employee_id']] = $row['total_net'];
-
-        return ['employees' => $employees, 'leave_map' => $leave_map, 'payroll_map' => $payroll_map];
+        return $this->db->order_by('e.first_name')->get()->result();
     }
 
     // ── Salary ────────────────────────────────────────────────────────────────
+    // Shared by salary() and salary_summary_by_dept() so both the detail table and
+    // the department summary always reflect the same filtered employee set.
+    private function _apply_salary_filters($f)
+    {
+        if (!empty($f['department_id'])) $this->db->where('e.department_id', $f['department_id']);
+        if (($f['status'] ?? '') === 'active')   $this->db->where('e.status', 1);
+        if (($f['status'] ?? '') === 'inactive') $this->db->where('e.status', 0);
+    }
+
+    // gross_salary/total_allowances/total_deductions come from the employee's most
+    // recently generated payroll run (there's no employment_type column on
+    // hr_employees - basic_salary is the only reliable per-employee figure outside
+    // of an actual payroll, so gross_salary falls back to it when none exists yet).
     public function salary($f = [])
     {
-        $this->db->select('e.first_name, e.last_name, e.employee_code, e.basic_salary, e.employment_type,
-                           d.name as department_name, ds.name as designation_name')
+        $payroll_table = db_prefix() . 'hr_payroll';
+        $this->db->select("e.first_name, e.last_name, e.employee_code, e.basic_salary,
+                d.name as department_name, ds.name as designation_name,
+                COALESCE(p.total_allowances, 0) as total_allowances,
+                COALESCE(p.total_deductions, 0) as total_deductions,
+                COALESCE(p.gross_salary, e.basic_salary) as gross_salary", false)
             ->from(db_prefix() . 'hr_employees e')
             ->join(db_prefix() . 'departments d', 'd.departmentid = e.department_id', 'left')
             ->join(db_prefix() . 'hr_designations ds', 'ds.id = e.designation_id', 'left')
-            ->where('e.status', 1);
-        if (!empty($f['department_id'])) $this->db->where('e.department_id', $f['department_id']);
+            ->join($payroll_table . ' p', 'p.id = (SELECT p2.id FROM ' . $payroll_table . ' p2
+                WHERE p2.employee_id = e.id ORDER BY p2.pay_year DESC, p2.pay_month DESC LIMIT 1)', 'left', false);
+        $this->_apply_salary_filters($f);
         return $this->db->order_by('e.basic_salary DESC')->get()->result();
     }
 
     public function salary_summary_by_dept($f = [])
     {
         $this->db->select('d.name as department_name,
-            COUNT(e.id) as headcount,
+            COUNT(e.id) as emp_count,
             AVG(e.basic_salary) as avg_salary,
             MIN(e.basic_salary) as min_salary,
             MAX(e.basic_salary) as max_salary,
             SUM(e.basic_salary) as total_salary')
             ->from(db_prefix() . 'hr_employees e')
-            ->join(db_prefix() . 'departments d', 'd.departmentid = e.department_id', 'left')
-            ->where('e.status', 1)
-            ->group_by('e.department_id');
+            ->join(db_prefix() . 'departments d', 'd.departmentid = e.department_id', 'left');
+        $this->_apply_salary_filters($f);
+        $this->db->group_by('e.department_id');
         return $this->db->get()->result();
     }
 
     // ── Turnover ──────────────────────────────────────────────────────────────
+    // Returns one row per month of $f['year'] (optionally scoped to $f['department_id']):
+    // how many employees joined, how many were deactivated ('left', using status=0 +
+    // updated_at as the leave-date proxy - there's no dedicated termination_date column),
+    // the reconstructed active headcount as of that month's end, and that month's
+    // turnover rate (left / headcount_end).
     public function turnover($f = [])
     {
-        $year = $f['year'] ?? date('Y');
-        $months = [];
-        for ($m = 1; $m <= 12; $m++) {
-            $joined = $this->db->select('COUNT(*) as cnt')
-                ->from(db_prefix() . 'hr_employees')
-                ->where('YEAR(joining_date)', $year)
-                ->where('MONTH(joining_date)', $m)
-                ->get()->row()->cnt;
+        $year    = $f['year'] ?? date('Y');
+        $dept_id = $f['department_id'] ?? null;
+        $table   = db_prefix() . 'hr_employees';
 
-            $left = $this->db->select('COUNT(*) as cnt')
-                ->from(db_prefix() . 'hr_employees')
+        $rows = [];
+        for ($m = 1; $m <= 12; $m++) {
+            $month_end = date('Y-m-t', mktime(0, 0, 0, $m, 1, $year));
+
+            $joined_q = $this->db->select('COUNT(*) as cnt')->from($table)
+                ->where('YEAR(joining_date)', $year)
+                ->where('MONTH(joining_date)', $m);
+            if (!empty($dept_id)) $joined_q->where('department_id', $dept_id);
+            $joined = (int) $joined_q->get()->row()->cnt;
+
+            $left_q = $this->db->select('COUNT(*) as cnt')->from($table)
                 ->where('status', 0)
                 ->where('YEAR(updated_at)', $year)
-                ->where('MONTH(updated_at)', $m)
-                ->get()->row()->cnt;
+                ->where('MONTH(updated_at)', $m);
+            if (!empty($dept_id)) $left_q->where('department_id', $dept_id);
+            $left_count = (int) $left_q->get()->row()->cnt;
 
-            $months[] = ['month' => $m, 'joined' => (int)$joined, 'left' => (int)$left];
+            $headcount_q = $this->db->select('COUNT(*) as cnt')->from($table)
+                ->where('joining_date <=', $month_end)
+                ->group_start()
+                    ->where('status', 1)
+                    ->or_where('updated_at >', $month_end . ' 23:59:59')
+                ->group_end();
+            if (!empty($dept_id)) $headcount_q->where('department_id', $dept_id);
+            $headcount_end = (int) $headcount_q->get()->row()->cnt;
+
+            $rows[] = (object) [
+                'month'         => $m,
+                'year'          => (int) $year,
+                'joined'        => $joined,
+                'left_count'    => $left_count,
+                'headcount_end' => $headcount_end,
+                'turnover_rate' => $headcount_end > 0 ? round(($left_count / $headcount_end) * 100, 1) : 0,
+            ];
         }
-        $total_active = $this->db->where('status', 1)->count_all_results(db_prefix() . 'hr_employees');
-        $total_left   = $this->db->where('status', 0)->where('YEAR(updated_at)', $year)->count_all_results(db_prefix() . 'hr_employees');
-        $total_joined = $this->db->where('YEAR(joining_date)', $year)->count_all_results(db_prefix() . 'hr_employees');
-        return [
-            'months'       => $months,
-            'total_active' => $total_active,
-            'total_left'   => $total_left,
-            'total_joined' => $total_joined,
-            'turnover_rate'=> $total_active > 0 ? round(($total_left / ($total_active + $total_left)) * 100, 1) : 0,
-        ];
+        return $rows;
     }
 }

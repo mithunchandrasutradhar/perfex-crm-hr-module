@@ -94,7 +94,10 @@
 </div></div>
 <?php if(!empty($rows)): ?>
 <script>
-(function(){
+document.addEventListener('DOMContentLoaded', function(){
+  // Deferred to DOMContentLoaded: the vendor bundle (Chart.js, jQuery) is appended
+  // to the page after this view's own inline scripts, so building the chart (or
+  // even referencing $) immediately here would fail or silently no-op.
   var labels  = <?php echo json_encode($months_labels); ?>;
   var joined  = <?php echo json_encode($joined_data); ?>;
   var left    = <?php echo json_encode($left_data); ?>;
@@ -111,11 +114,14 @@
     },
     options: {
       responsive: true,
-      plugins: { legend: { position:'top' } },
-      scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+      maintainAspectRatio: false,
+      legend: { position: 'top' },
+      scales: {
+        yAxes: [{ ticks: { beginAtZero: true, stepSize: 1 } }]
+      }
     }
   });
-})();
+});
 </script>
 <?php endif; ?>
 <?php init_tail(); ?>

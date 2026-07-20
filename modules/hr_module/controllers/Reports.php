@@ -96,7 +96,7 @@ class Reports extends AdminController
         $rows = $this->Reports_model->loans($f);
 
         if ($this->input->get('export') === 'csv') {
-            $this->_export_csv($rows, ['employee_code','first_name','last_name','department_name','loan_amount','monthly_installment','outstanding','total_repaid','status','approved_date'], 'loan_report');
+            $this->_export_csv($rows, ['employee_code','first_name','last_name','department_name','loan_amount','monthly_installment','outstanding','total_repaid','status','approved_at'], 'loan_report');
             return;
         }
         $total_amount      = array_sum(array_column((array) $rows, 'loan_amount'));
@@ -203,12 +203,15 @@ class Reports extends AdminController
         $f = $this->_get_filters(['department_id','year']);
         if (empty($f['year'])) $f['year'] = date('Y');
 
-        $result = $this->Reports_model->department($f);
+        $rows = $this->Reports_model->department($f);
+
+        if ($this->input->get('export') === 'csv') {
+            $this->_export_csv($rows, ['employee_code','first_name','last_name','department_name','designation_name','hire_date','total_leave_days','total_salary'], 'department_report');
+            return;
+        }
 
         $data['title']       = 'Department Report';
-        $data['employees']   = $result['employees'];
-        $data['leave_map']   = $result['leave_map'];
-        $data['payroll_map'] = $result['payroll_map'];
+        $data['rows']        = $rows;
         $data['filters']     = $f;
         $data['departments'] = $this->Departments_model->get_active();
         $this->load->view('hr_module/reports/department', $data);
@@ -217,12 +220,12 @@ class Reports extends AdminController
     public function salary()
     {
         if (staff_cant('view', 'hr_reports')) access_denied('hr_reports');
-        $f    = $this->_get_filters(['department_id']);
+        $f    = $this->_get_filters(['department_id', 'status']);
         $rows = $this->Reports_model->salary($f);
         $dept_summary = $this->Reports_model->salary_summary_by_dept($f);
 
         if ($this->input->get('export') === 'csv') {
-            $this->_export_csv($rows, ['employee_code','first_name','last_name','department_name','designation_name','basic_salary','employment_type'], 'salary_report');
+            $this->_export_csv($rows, ['employee_code','first_name','last_name','department_name','designation_name','basic_salary','total_allowances','total_deductions','gross_salary'], 'salary_report');
             return;
         }
         $data['title']        = 'Salary Report';
@@ -236,14 +239,20 @@ class Reports extends AdminController
     public function turnover()
     {
         if (staff_cant('view', 'hr_reports')) access_denied('hr_reports');
-        $f = $this->_get_filters(['year']);
+        $f = $this->_get_filters(['year', 'department_id']);
         if (empty($f['year'])) $f['year'] = date('Y');
 
-        $result = $this->Reports_model->turnover($f);
+        $rows = $this->Reports_model->turnover($f);
 
-        $data['title']   = 'Employee Turnover Report';
-        $data['result']  = $result;
-        $data['filters'] = $f;
+        if ($this->input->get('export') === 'csv') {
+            $this->_export_csv($rows, ['year', 'month', 'joined', 'left_count', 'headcount_end', 'turnover_rate'], 'turnover_report');
+            return;
+        }
+
+        $data['title']       = 'Employee Turnover Report';
+        $data['rows']        = $rows;
+        $data['filters']     = $f;
+        $data['departments'] = $this->Departments_model->get_active();
         $this->load->view('hr_module/reports/turnover', $data);
     }
 
