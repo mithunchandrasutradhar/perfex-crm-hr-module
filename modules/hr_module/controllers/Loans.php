@@ -66,6 +66,8 @@ class Loans extends AdminController
                 $message = '<p>A new loan request has been submitted and is awaiting review.</p>'
                     . $this->Hr_module_model->format_notification_details([
                         'Employee'            => htmlspecialchars($emp ? $emp->first_name . ' ' . $emp->last_name . ' (' . $emp->employee_code . ')' : 'Unknown'),
+                        'Department'          => htmlspecialchars($emp && $emp->department_name ? $emp->department_name : '-'),
+                        'Designation'         => htmlspecialchars($emp && $emp->designation_name ? $emp->designation_name : '-'),
                         'Amount'              => number_format($data['amount'], 2),
                         'Monthly Installment' => number_format($data['monthly_installment'], 2),
                         'Repayment Months'    => $data['repayment_months'],
@@ -155,6 +157,8 @@ class Loans extends AdminController
         }
 
         $details = [
+            'Department'          => htmlspecialchars($loan->department_name ?: '-'),
+            'Designation'         => htmlspecialchars($loan->designation_name ?: '-'),
             'Amount'              => number_format($loan->amount, 2),
             'Monthly Installment' => number_format($loan->monthly_installment, 2),
             'Repayment Months'    => $loan->repayment_months,
@@ -255,6 +259,8 @@ class Loans extends AdminController
         $message = '<p>A new loan deduction request has been submitted and is awaiting review.</p>'
             . $this->Hr_module_model->format_notification_details([
                 'Employee'   => htmlspecialchars($loan ? $loan->first_name . ' ' . $loan->last_name . ' (' . $loan->employee_code . ')' : 'Unknown'),
+                'Department' => htmlspecialchars($loan && $loan->department_name ? $loan->department_name : '-'),
+                'Designation'=> htmlspecialchars($loan && $loan->designation_name ? $loan->designation_name : '-'),
                 'Loan'       => $loan ? number_format($loan->amount, 2) . ' (Outstanding: ' . number_format($loan->outstanding, 2) . ')' : '-',
                 'Pay Period' => $month_name . ' ' . $pay_year,
                 'Amount'     => number_format($amount, 2),
@@ -315,6 +321,8 @@ class Loans extends AdminController
 
         $month_name = date('F', mktime(0, 0, 0, (int) $req->pay_month, 1));
         $details = [
+            'Department' => htmlspecialchars($req->department_name ?: '-'),
+            'Designation'=> htmlspecialchars($req->designation_name ?: '-'),
             'Pay Period' => $month_name . ' ' . $req->pay_year,
             'Amount'     => number_format($req->amount, 2),
             'Type'       => $req->is_skip ? 'Skip this installment' : 'Adjusted deduction amount',

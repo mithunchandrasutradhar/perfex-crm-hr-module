@@ -87,6 +87,8 @@ class Leave extends AdminController
                 $message = '<p>A new leave request has been submitted and is awaiting review.</p>'
                     . $this->Hr_module_model->format_notification_details([
                         'Employee'    => htmlspecialchars($req->employee_name . ' (' . $req->employee_code . ')'),
+                        'Department'  => htmlspecialchars($req->department_name ?: '-'),
+                        'Designation' => htmlspecialchars($req->designation_name ?: '-'),
                         'Leave Type'  => htmlspecialchars($req->leave_type_name ?? ''),
                         'Leave Dates' => $dates_html,
                         'Total Days'  => $req->total_days,
@@ -188,6 +190,8 @@ class Leave extends AdminController
         }, $req_days));
 
         $details = [
+            'Department'  => htmlspecialchars($req->department_name ?: '-'),
+            'Designation' => htmlspecialchars($req->designation_name ?: '-'),
             'Leave Type'  => htmlspecialchars($req->leave_type_name ?? ''),
             'Leave Dates' => $dates_html,
             'Total Days'  => $req->total_days,

@@ -382,9 +382,12 @@ class Loans_model extends App_Model
     public function get_deduction_request($id)
     {
         return $this->db->select('r.*, e.first_name, e.last_name, e.employee_code, e.email as employee_email,
+                    d.name as department_name, ds.name as designation_name,
                     l.amount as loan_amount, l.monthly_installment', false)
             ->from(db_prefix() . $this->deduct_table . ' r')
             ->join(db_prefix() . 'hr_employees e', 'e.id = r.employee_id', 'left')
+            ->join(db_prefix() . 'departments d', 'd.departmentid = e.department_id', 'left')
+            ->join(db_prefix() . 'hr_designations ds', 'ds.id = e.designation_id', 'left')
             ->join(db_prefix() . $this->table . ' l', 'l.id = r.loan_id', 'left')
             ->where('r.id', $id)
             ->get()->row();

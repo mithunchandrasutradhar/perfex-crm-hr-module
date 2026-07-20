@@ -65,10 +65,13 @@ class Leave_model extends App_Model
     {
         $this->db->select('r.*, lt.name as leave_type_name,
             CONCAT(e.first_name," ",e.last_name) as employee_name, e.employee_code, e.email as employee_email,
+            d.name as department_name, ds.name as designation_name,
             CONCAT(sa.firstname," ",sa.lastname) as approved_by_name', false)
             ->from($this->tbl_requests . ' r')
             ->join(db_prefix() . 'hr_leave_types lt', 'lt.id = r.leave_type_id', 'left')
             ->join(db_prefix() . 'hr_employees e', 'e.id = r.employee_id', 'left')
+            ->join(db_prefix() . 'departments d', 'd.departmentid = e.department_id', 'left')
+            ->join(db_prefix() . 'hr_designations ds', 'ds.id = e.designation_id', 'left')
             ->join(db_prefix() . 'staff sa', 'sa.staffid = r.approved_by', 'left');
 
         if ($id) {
