@@ -53,6 +53,126 @@ class Hr_module_model extends App_Model
         return true;
     }
 
+    // ─── Notifications ────────────────────────────────────────────────────
+
+    // Sends a plain HTML notification email (with a direct link back to the
+    // record) to the address configured on the module's Settings page whenever
+    // a leave/loan/helpdesk/overtime request is submitted. No-op if that setting
+    // is empty or invalid. Never throws - a failed send must never break the
+    // request-creation flow that triggered it. $message is caller-built HTML
+    // (see format_notification_details()) describing that specific request, so
+    // it is not re-wrapped here.
+    public function send_notification_email($subject, $message, $link_url)
+    {
+        $to = trim($this->get_setting('hr_notification_email'));
+        if ($to === '' || !filter_var($to, FILTER_VALIDATE_EMAIL)) {
+            return false;
+        }
+        return $this->_send_hr_email($to, $subject, $message . $this->_notification_link_block($link_url));
+    }
+
+    // Sends a plain HTML status-update email directly to an arbitrary address
+    // (e.g. an employee's own email, when their leave/loan/etc request is
+    // approved/rejected) - independent of the hr_notification_email admin-inbox
+    // setting used by send_notification_email(). No-op on an empty/invalid
+    // address; never throws, for the same reason as above. $link_url is optional.
+    public function send_employee_email($to, $subject, $message, $link_url = null)
+    {
+        $to = trim($to);
+        if ($to === '' || !filter_var($to, FILTER_VALIDATE_EMAIL)) {
+            return false;
+        }
+        return $this->_send_hr_email($to, $subject, $message . ($link_url ? $this->_notification_link_block($link_url) : ''));
+    }
+
+    private function _notification_link_block($link_url)
+    {
+        return '<p><a href="' . htmlspecialchars($link_url) . '" style="display:inline-block;padding:8px 16px;background:#4f46e5;color:#fff;text-decoration:none;border-radius:4px">View Details</a></p>'
+            . '<p style="color:#888;font-size:12px">' . htmlspecialchars($link_url) . '</p>';
+    }
+
+    // Broadcasts a formal announcement to every active hr_module employee who is
+    // mapped to a staff account (BCC'd, so recipients don't see each other's
+    // addresses) - used when a leave request is approved, to let colleagues know
+    // the employee will be out. $message is caller-built HTML (see
+    // format_notification_details()). No-op if there's no one to notify; never
+    // throws, for the same reason as the other senders here.
+    public function send_leave_announcement($subject, $message)
+    {
+        $emails = array_filter(array_column(
+            $this->db->select('email')
+                ->where('status', 1)
+                ->where('email !=', '')
+                ->where('staff_id IS NOT NULL')
+                ->where('staff_id !=', 0)
+                ->get(db_prefix() . 'hr_employees')->result_array(),
+            'email'
+        ));
+        if (empty($emails)) {
+            return false;
+        }
+
+        $company_name = get_option('companyname');
+        $body = $message
+            . '<hr style="border:none;border-top:1px solid #e5e5e5;margin:20px 0">'
+            . '<p style="color:#999;font-size:12px;margin:0">This is an automated announcement from the '
+                . htmlspecialchars($company_name) . ' HR Department. Please do not reply to this email.</p>';
+
+        try {
+            $CI = &get_instance();
+            $CI->email->clear(true);
+            $CI->email->from(get_option('smtp_email'), get_option('companyname'));
+            $CI->email->to(get_option('smtp_email'));
+            $CI->email->bcc(implode(',', $emails));
+            $CI->email->subject($subject);
+            $CI->email->message($body);
+            return (bool) $CI->email->send();
+        } catch (Exception $e) {
+            log_activity('HR Module leave announcement email failed: ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    private function _send_hr_email($to, $subject, $message)
+    {
+        $company_name = get_option('companyname');
+        $body = $message
+            . '<hr style="border:none;border-top:1px solid #e5e5e5;margin:20px 0">'
+            . '<p style="color:#999;font-size:12px;margin:0">This is an automated notification from the '
+                . htmlspecialchars($company_name) . ' HR Module. Please do not reply to this email.</p>';
+
+        try {
+            $CI = &get_instance();
+            $CI->email->clear(true);
+            $CI->email->from(get_option('smtp_email'), get_option('companyname'));
+            $CI->email->to($to);
+            $CI->email->subject($subject);
+            $CI->email->message($body);
+            return (bool) $CI->email->send();
+        } catch (Exception $e) {
+            log_activity('HR Module email failed: ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    // Renders a caller-supplied [label => value] array as a simple HTML detail
+    // table for send_notification_email() - keeps every request type's email body
+    // (leave/loan/helpdesk/overtime) laid out consistently. Values are trusted
+    // HTML (the caller escapes/formats them first, since some legitimately need
+    // markup such as nl2br()); labels are always escaped here.
+    public function format_notification_details($rows)
+    {
+        $html = '<table style="border-collapse:collapse;margin:12px 0;font-size:14px">';
+        foreach ($rows as $label => $value) {
+            $html .= '<tr>'
+                . '<td style="padding:4px 16px 4px 0;color:#666;vertical-align:top;white-space:nowrap">' . htmlspecialchars($label) . '</td>'
+                . '<td style="padding:4px 0;vertical-align:top">' . $value . '</td>'
+                . '</tr>';
+        }
+        $html .= '</table>';
+        return $html;
+    }
+
     // ─── Dashboard stats ──────────────────────────────────────────────────
 
     public function get_dashboard_stats()

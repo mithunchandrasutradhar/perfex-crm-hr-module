@@ -178,6 +178,18 @@ $can_edit = staff_can('edit', 'hr_settings') || is_admin();
                                 <i class="fa fa-bell tw-mr-2"></i><?php echo _l('hr_settings_notifications'); ?>
                             </h5>
                             <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label><?php echo _l('hr_settings_notification_email'); ?></label>
+                                        <input type="email" name="hr_notification_email" class="form-control"
+                                            value="<?php echo isset($settings['hr_notification_email']) ? htmlspecialchars($settings['hr_notification_email']) : ''; ?>"
+                                            placeholder="hr@example.com"
+                                            <?php echo !$can_edit ? 'readonly' : ''; ?>>
+                                        <p class="text-muted tw-mt-1 tw-mb-0"><?php echo _l('hr_settings_notification_email_hint'); ?></p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
                                 <?php
                                 $notif_settings = [
                                     'notify_leave_apply'   => _l('hr_settings_notify_leave_apply'),

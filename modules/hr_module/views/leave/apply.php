@@ -295,22 +295,6 @@ if (!isset($weekly_off_json))  $weekly_off_json  = '[5]';
         }
     }
 
-    function init_day_hour_timepickers($row) {
-        var fmt = app.options.time_format == 24 ? 'H:i' : 'g:i A';
-        $row.find('.day-hour-timepicker').each(function(){
-            var that = $(this);
-            if (that.data('xdsoft_datetimepicker')) return;
-            that.datetimepicker({
-                datepicker: false,
-                format: fmt,
-                formatTime: fmt,
-                step: 15,
-                scrollInput: false,
-                lazyInit: true,
-            });
-        });
-    }
-
     // Built as a plain HTML string (not cloned from a hidden template) - Perfex's
     // global.js bootstrap-selects *every* <select> on the page on document ready,
     // so a hidden template select would already be widget-rendered by the time we
@@ -348,17 +332,11 @@ if (!isset($weekly_off_json))  $weekly_off_json  = '[5]';
             +           '<div class="row">'
             +             '<div class="col-xs-6">'
             +               '<label class="tw-text-xs"><?php echo _l('hr_leave_hour_start'); ?></label>'
-            +               '<div class="input-group">'
-            +                 '<input type="text" name="days[' + i + '][hour_start]" class="form-control input-sm day-hour-timepicker day-hour-start" autocomplete="off">'
-            +                 '<span class="input-group-addon"><i class="fa-regular fa-clock clock-icon"></i></span>'
-            +               '</div>'
+            +               '<input type="time" name="days[' + i + '][hour_start]" class="form-control input-sm day-hour-start" step="900">'
             +             '</div>'
             +             '<div class="col-xs-6">'
             +               '<label class="tw-text-xs"><?php echo _l('hr_leave_hour_end'); ?></label>'
-            +               '<div class="input-group">'
-            +                 '<input type="text" name="days[' + i + '][hour_end]" class="form-control input-sm day-hour-timepicker day-hour-end" autocomplete="off">'
-            +                 '<span class="input-group-addon"><i class="fa-regular fa-clock clock-icon"></i></span>'
-            +               '</div>'
+            +               '<input type="time" name="days[' + i + '][hour_end]" class="form-control input-sm day-hour-end" step="900">'
             +             '</div>'
             +           '</div>'
             +         '</div>'
@@ -382,7 +360,6 @@ if (!isset($weekly_off_json))  $weekly_off_json  = '[5]';
         $('#day-rows').append($row);
         init_datepicker($row.find('.day-date'));
         init_selectpicker();
-        init_day_hour_timepickers($row);
         refreshRow($row);
     }
 

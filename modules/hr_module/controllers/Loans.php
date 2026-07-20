@@ -61,6 +61,21 @@ class Loans extends AdminController
 
             $result = $this->Loans_model->apply($data);
             if ($result['success']) {
+                $this->load->model('hr_module/Employees_model');
+                $emp = $this->Employees_model->get($data['employee_id']);
+                $message = '<p>A new loan request has been submitted and is awaiting review.</p>'
+                    . $this->Hr_module_model->format_notification_details([
+                        'Employee'            => htmlspecialchars($emp ? $emp->first_name . ' ' . $emp->last_name . ' (' . $emp->employee_code . ')' : 'Unknown'),
+                        'Amount'              => number_format($data['amount'], 2),
+                        'Monthly Installment' => number_format($data['monthly_installment'], 2),
+                        'Repayment Months'    => $data['repayment_months'],
+                        'Reason'              => nl2br(htmlspecialchars($data['reason'] ?: '-')),
+                    ]);
+                $this->Hr_module_model->send_notification_email(
+                    'New Loan Request Submitted',
+                    $message,
+                    admin_url('hr_module/loans/view/' . $result['id'])
+                );
                 set_alert('success', $result['message']);
                 redirect(admin_url('hr_module/loans/view/' . $result['id']));
             } else {
@@ -107,8 +122,12 @@ class Loans extends AdminController
         if (staff_cant('edit', 'hr_loans')) access_denied('hr_loans');
         $date   = $this->input->post('disbursement_date') ?: date('Y-m-d');
         $result = $this->Loans_model->approve($id, $date);
-        if ($result['success']) set_alert('success', $result['message']);
-        else                    set_alert('danger',  $result['message']);
+        if ($result['success']) {
+            $this->_send_loan_status_email($id, 'approved');
+            set_alert('success', $result['message']);
+        } else {
+            set_alert('danger', $result['message']);
+        }
         redirect(admin_url('hr_module/loans/view/' . $id));
     }
 
@@ -117,9 +136,45 @@ class Loans extends AdminController
         if (staff_cant('edit', 'hr_loans')) access_denied('hr_loans');
         $reason = $this->input->post('rejection_reason', true);
         $result = $this->Loans_model->reject($id, $reason);
-        if ($result['success']) set_alert('success', $result['message']);
-        else                    set_alert('danger',  $result['message']);
+        if ($result['success']) {
+            $this->_send_loan_status_email($id, 'rejected', $reason);
+            set_alert('success', $result['message']);
+        } else {
+            set_alert('danger', $result['message']);
+        }
         redirect(admin_url('hr_module/loans/view/' . $id));
+    }
+
+    // Emails the requesting employee at their own registered address once their
+    // loan request has been approved/rejected. No-op if no email is on file.
+    private function _send_loan_status_email($id, $status, $reason = null)
+    {
+        $loan = $this->Loans_model->get($id);
+        if (!$loan || empty($loan->employee_email)) {
+            return;
+        }
+
+        $details = [
+            'Amount'              => number_format($loan->amount, 2),
+            'Monthly Installment' => number_format($loan->monthly_installment, 2),
+            'Repayment Months'    => $loan->repayment_months,
+        ];
+        if ($status === 'approved') {
+            $details['Disbursement Date'] = _d($loan->disbursement_date);
+        }
+        if ($reason) {
+            $details['Reason'] = nl2br(htmlspecialchars($reason));
+        }
+
+        $color = $status === 'approved' ? '#059669' : '#dc2626';
+        $this->Hr_module_model->send_employee_email(
+            $loan->employee_email,
+            'Your Loan Request Has Been ' . ucfirst($status),
+            '<p>Hi ' . htmlspecialchars($loan->first_name . ' ' . $loan->last_name) . ',</p>'
+                . '<p>Your loan request has been <strong style="color:' . $color . '">' . htmlspecialchars($status) . '</strong>.</p>'
+                . $this->Hr_module_model->format_notification_details($details),
+            admin_url('hr_module/loans/view/' . $id)
+        );
     }
 
     public function add_repayment($id)
@@ -172,20 +227,45 @@ class Loans extends AdminController
             }
         }
         if ($this->input->post()) {
-            $is_skip = (bool) $this->input->post('is_skip');
+            $is_skip   = (bool) $this->input->post('is_skip');
+            $pay_month = (int)  $this->input->post('pay_month');
+            $pay_year  = (int)  $this->input->post('pay_year');
+            $amount    = (float) $this->input->post('amount');
+            $notes     = $this->input->post('notes', true);
             $result = $this->Loans_model->submit_deduction_request(
-                $loan_id,
-                (int)   $this->input->post('pay_month'),
-                (int)   $this->input->post('pay_year'),
-                (float) $this->input->post('amount'),
-                $this->input->post('notes', true),
-                $is_skip,
+                $loan_id, $pay_month, $pay_year, $amount, $notes, $is_skip,
                 $this->input->post('carry_option')
             );
-            if ($result['success']) set_alert('success', $result['message']);
-            else                    set_alert('danger',  $result['message']);
+            if ($result['success']) {
+                $this->_notify_deduction_request_submitted($loan_id, $pay_month, $pay_year, $amount, $is_skip, $notes);
+                set_alert('success', $result['message']);
+            } else {
+                set_alert('danger', $result['message']);
+            }
         }
         redirect(admin_url('hr_module/loans/view/' . $loan_id));
+    }
+
+    // Notifies the configured HR inbox (hr_notification_email) whenever an
+    // employee submits a loan deduction request, with a link back to the loan.
+    private function _notify_deduction_request_submitted($loan_id, $pay_month, $pay_year, $amount, $is_skip, $notes)
+    {
+        $loan = $this->Loans_model->get($loan_id);
+        $month_name = date('F', mktime(0, 0, 0, $pay_month, 1));
+        $message = '<p>A new loan deduction request has been submitted and is awaiting review.</p>'
+            . $this->Hr_module_model->format_notification_details([
+                'Employee'   => htmlspecialchars($loan ? $loan->first_name . ' ' . $loan->last_name . ' (' . $loan->employee_code . ')' : 'Unknown'),
+                'Loan'       => $loan ? number_format($loan->amount, 2) . ' (Outstanding: ' . number_format($loan->outstanding, 2) . ')' : '-',
+                'Pay Period' => $month_name . ' ' . $pay_year,
+                'Amount'     => number_format($amount, 2),
+                'Type'       => $is_skip ? 'Skip this installment' : 'Adjusted deduction amount',
+                'Notes'      => nl2br(htmlspecialchars($notes ?: '-')),
+            ]);
+        $this->Hr_module_model->send_notification_email(
+            'New Loan Deduction Request Submitted',
+            $message,
+            admin_url('hr_module/loans/view/' . $loan_id)
+        );
     }
 
     public function approve_deduction($id)
@@ -193,6 +273,9 @@ class Loans extends AdminController
         if (staff_cant('edit', 'hr_loans')) access_denied('hr_loans');
         $req    = $this->Loans_model->get_deduction_request($id);
         $result = $this->Loans_model->approve_deduction($id);
+        if ($result['success']) {
+            $this->_send_deduction_status_email($req, 'approved');
+        }
         if ($this->input->is_ajax_request()) {
             echo json_encode($result);
             return;
@@ -208,6 +291,9 @@ class Loans extends AdminController
         if (staff_cant('edit', 'hr_loans')) access_denied('hr_loans');
         $req    = $this->Loans_model->get_deduction_request($id);
         $result = $this->Loans_model->reject_deduction($id);
+        if ($result['success']) {
+            $this->_send_deduction_status_email($req, 'rejected');
+        }
         if ($this->input->is_ajax_request()) {
             echo json_encode($result);
             return;
@@ -216,6 +302,36 @@ class Loans extends AdminController
         else                    set_alert('danger',  $result['message']);
         $back = $this->input->post('back') ?: ($req ? admin_url('hr_module/loans/view/' . $req->loan_id) : admin_url('hr_module/loans/deduction_requests'));
         redirect($back);
+    }
+
+    // Emails the requesting employee at their own registered address once their
+    // loan deduction request (a skip/adjustment for a specific pay period) has
+    // been approved/rejected. No-op if the request wasn't found or has no email.
+    private function _send_deduction_status_email($req, $status)
+    {
+        if (!$req || empty($req->employee_email)) {
+            return;
+        }
+
+        $month_name = date('F', mktime(0, 0, 0, (int) $req->pay_month, 1));
+        $details = [
+            'Pay Period' => $month_name . ' ' . $req->pay_year,
+            'Amount'     => number_format($req->amount, 2),
+            'Type'       => $req->is_skip ? 'Skip this installment' : 'Adjusted deduction amount',
+        ];
+        if ($req->notes) {
+            $details['Notes'] = nl2br(htmlspecialchars($req->notes));
+        }
+
+        $color = $status === 'approved' ? '#059669' : '#dc2626';
+        $this->Hr_module_model->send_employee_email(
+            $req->employee_email,
+            'Your Loan Deduction Request Has Been ' . ucfirst($status),
+            '<p>Hi ' . htmlspecialchars($req->first_name . ' ' . $req->last_name) . ',</p>'
+                . '<p>Your loan deduction request has been <strong style="color:' . $color . '">' . htmlspecialchars($status) . '</strong>.</p>'
+                . $this->Hr_module_model->format_notification_details($details),
+            admin_url('hr_module/loans/view/' . $req->loan_id)
+        );
     }
 
     public function delete_deduction_request($id)

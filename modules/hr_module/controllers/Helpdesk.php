@@ -43,6 +43,25 @@ class Helpdesk extends AdminController
             $this->_handle_attachment($data, 'attachment');
             $result = $this->Helpdesk_model->submit($data);
             if ($result['success']) {
+                $details = [];
+                if (!$data['is_anonymous']) {
+                    $this->load->model('hr_module/Employees_model');
+                    $emp = $this->Employees_model->get($data['employee_id']);
+                    $details['Employee'] = htmlspecialchars($emp ? $emp->first_name . ' ' . $emp->last_name . ' (' . $emp->employee_code . ')' : 'Unknown');
+                }
+                $details['Subject']  = htmlspecialchars($data['subject']);
+                $details['Category'] = htmlspecialchars($data['category'] ?: '-');
+                $details['Priority'] = htmlspecialchars(ucfirst($data['priority'] ?: '-'));
+                $details['Message']  = nl2br(htmlspecialchars(mb_strimwidth($data['message'] ?: '', 0, 300, '...')));
+
+                $message = '<p>A new helpdesk ticket has been submitted'
+                    . ($data['is_anonymous'] ? ' anonymously' : '') . ' and is awaiting review.</p>'
+                    . $this->Hr_module_model->format_notification_details($details);
+                $this->Hr_module_model->send_notification_email(
+                    'New Helpdesk Ticket Submitted',
+                    $message,
+                    admin_url('hr_module/helpdesk/view/' . $result['id'])
+                );
                 set_alert('success', $result['message']);
                 redirect(admin_url('hr_module/helpdesk/view/' . $result['id']));
             }

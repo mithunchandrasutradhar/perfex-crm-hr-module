@@ -67,6 +67,7 @@ class Settings extends AdminController
             'notify_leave_approve',
             'notify_loan_apply',
             'notify_payroll',
+            'hr_notification_email',
             'zkteco_enabled',
             'zkteco_sync_interval',
         ];

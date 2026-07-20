@@ -55,7 +55,7 @@ foreach ($rResult as $aRow) {
         $name .= ' | <a href="' . admin_url('hr_module/employees/edit/' . $aRow['id']) . '">' . _l('hr_edit') . '</a>';
     }
     if (staff_can('delete', 'hr_employees')) {
-        $name .= ' | <a href="' . admin_url('hr_module/employees/delete/' . $aRow['id']) . '" class="_delete text-danger">' . _l('hr_delete') . '</a>';
+        $name .= ' | <a href="' . admin_url('hr_module/employees/delete/' . $aRow['id']) . '" class="_delete text-danger">' . _l('hr_deactivate') . '</a>';
     }
     $name .= '</div>';
     $row[] = $name;

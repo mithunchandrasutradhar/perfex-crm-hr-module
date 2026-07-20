@@ -113,16 +113,17 @@ class Employees_model extends App_Model
         return $this->db->where('id', $id)->count_all_results($this->table) > 0;
     }
 
+    // Deactivates (never hard-deletes) an employee profile - attendance, leave,
+    // payroll, loan, and other historical records all reference this row by id,
+    // so removing it would orphan that history. Setting status = 0 keeps the
+    // record (and the log) intact while dropping them out of active lists.
     public function delete($id)
     {
         $employee = $this->get($id);
         if (!$employee) return false;
-        if ($employee->photo && file_exists(FCPATH . 'uploads/hr_module/employees/' . $employee->photo)) {
-            unlink(FCPATH . 'uploads/hr_module/employees/' . $employee->photo);
-        }
-        $this->db->where('id', $id)->delete($this->table);
+        $this->db->where('id', $id)->update($this->table, ['status' => 0]);
         if ($this->db->affected_rows() > 0) {
-            log_activity('HR Employee Profile Deleted [ID: ' . $id . ']');
+            log_activity('HR Employee Deactivated [ID: ' . $id . ']');
             return true;
         }
         return false;

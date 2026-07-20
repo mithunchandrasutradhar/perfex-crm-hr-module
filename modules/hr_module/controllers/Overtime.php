@@ -34,12 +34,25 @@ class Overtime extends AdminController
 
         if ($this->input->post()) {
             $employee_id = $own_only ? $own_emp_id : (int) $this->input->post('employee_id');
+            $dates       = $this->_post_dates();
             $result = $this->Overtime_model->request([
                 'employee_id' => $employee_id,
-                'dates'       => $this->_post_dates(),
+                'dates'       => $dates,
                 'reason'      => $this->input->post('reason', true),
             ]);
             if ($result['success']) {
+                $emp = $this->Employees_model->get($employee_id);
+                $message = '<p>A new overtime request has been submitted and is awaiting review.</p>'
+                    . $this->Hr_module_model->format_notification_details([
+                        'Employee' => htmlspecialchars($emp ? $emp->first_name . ' ' . $emp->last_name . ' (' . $emp->employee_code . ')' : 'Unknown'),
+                        'Dates'    => htmlspecialchars(implode(', ', array_map('_d', $dates))),
+                        'Reason'   => nl2br(htmlspecialchars($this->input->post('reason', true) ?: '-')),
+                    ]);
+                $this->Hr_module_model->send_notification_email(
+                    'New Overtime Request Submitted',
+                    $message,
+                    admin_url('hr_module/overtime/view/' . $result['id'])
+                );
                 set_alert('success', $result['message']);
                 redirect(admin_url('hr_module/overtime/view/' . $result['id']));
             }

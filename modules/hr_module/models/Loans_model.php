@@ -58,7 +58,7 @@ class Loans_model extends App_Model
     public function get($id)
     {
         return $this->db
-            ->select('l.*, e.first_name, e.last_name, e.employee_code, e.department_id,
+            ->select('l.*, e.first_name, e.last_name, e.employee_code, e.department_id, e.email as employee_email,
                       d.name as department_name, ds.name as designation_name,
                       CONCAT(s.firstname," ",s.lastname) as approved_by_name', false)
             ->from(db_prefix() . $this->table . ' l')
@@ -381,7 +381,13 @@ class Loans_model extends App_Model
 
     public function get_deduction_request($id)
     {
-        return $this->db->where('id', $id)->get(db_prefix() . $this->deduct_table)->row();
+        return $this->db->select('r.*, e.first_name, e.last_name, e.employee_code, e.email as employee_email,
+                    l.amount as loan_amount, l.monthly_installment', false)
+            ->from(db_prefix() . $this->deduct_table . ' r')
+            ->join(db_prefix() . 'hr_employees e', 'e.id = r.employee_id', 'left')
+            ->join(db_prefix() . $this->table . ' l', 'l.id = r.loan_id', 'left')
+            ->where('r.id', $id)
+            ->get()->row();
     }
 
     // A request can only be withdrawn while still pending - once approved/rejected it's

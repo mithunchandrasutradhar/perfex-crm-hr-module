@@ -73,6 +73,30 @@ class Leave extends AdminController
 
             $result = $this->Leave_model->apply($data, $days);
             if ($result['success']) {
+                $req      = $this->Leave_model->get_request($result['id']);
+                $req_days = $this->Leave_model->get_request_days($result['id']);
+                $time_fmt = (get_option('time_format') == 24) ? 'H:i' : 'g:i A';
+                $dates_html = implode('<br>', array_map(function ($d) use ($time_fmt) {
+                    $line = _d($d->leave_date) . ' &mdash; ' . htmlspecialchars(hr_leave_day_type_label($d->day_type));
+                    if ($d->day_type === 'hourly' && $d->hour_start && $d->hour_end) {
+                        $line .= ' (' . date($time_fmt, strtotime($d->hour_start)) . ' - ' . date($time_fmt, strtotime($d->hour_end)) . ')';
+                    }
+                    return $line;
+                }, $req_days));
+
+                $message = '<p>A new leave request has been submitted and is awaiting review.</p>'
+                    . $this->Hr_module_model->format_notification_details([
+                        'Employee'    => htmlspecialchars($req->employee_name . ' (' . $req->employee_code . ')'),
+                        'Leave Type'  => htmlspecialchars($req->leave_type_name ?? ''),
+                        'Leave Dates' => $dates_html,
+                        'Total Days'  => $req->total_days,
+                        'Reason'      => nl2br(htmlspecialchars($req->reason ?: '-')),
+                    ]);
+                $this->Hr_module_model->send_notification_email(
+                    'New Leave Request Submitted',
+                    $message,
+                    admin_url('hr_module/leave/view/' . $result['id'])
+                );
                 set_alert('success', _l('hr_leave_applied_msg'));
                 redirect(admin_url('hr_module/leave/view/' . $result['id']));
             }
@@ -130,6 +154,10 @@ class Leave extends AdminController
         }
         $notes  = $this->input->post('notes', true);
         $result = $this->Leave_model->approve($id, $notes);
+        if ($result['success']) {
+            $this->_send_status_email($id, 'approved', $notes);
+            $this->_broadcast_leave_announcement($id);
+        }
         if ($this->input->is_ajax_request()) {
             echo json_encode($result);
             return;
@@ -137,6 +165,82 @@ class Leave extends AdminController
         set_alert($result['success'] ? 'success' : 'danger',
             $result['success'] ? _l('hr_leave_approved') : $result['message']);
         redirect(admin_url('hr_module/leave/view/' . $id));
+    }
+
+    // Emails the requesting employee at their own registered address once their
+    // leave request has been approved, with the actual leave date(s) and a link
+    // back to their request. No-op if the employee has no email on file.
+    private function _send_status_email($id, $status, $notes = null)
+    {
+        $req = $this->Leave_model->get_request($id);
+        if (!$req || empty($req->employee_email)) {
+            return;
+        }
+
+        $req_days = $this->Leave_model->get_request_days($id);
+        $time_fmt = (get_option('time_format') == 24) ? 'H:i' : 'g:i A';
+        $dates_html = implode('<br>', array_map(function ($d) use ($time_fmt) {
+            $line = _d($d->leave_date) . ' &mdash; ' . htmlspecialchars(hr_leave_day_type_label($d->day_type));
+            if ($d->day_type === 'hourly' && $d->hour_start && $d->hour_end) {
+                $line .= ' (' . date($time_fmt, strtotime($d->hour_start)) . ' - ' . date($time_fmt, strtotime($d->hour_end)) . ')';
+            }
+            return $line;
+        }, $req_days));
+
+        $details = [
+            'Leave Type'  => htmlspecialchars($req->leave_type_name ?? ''),
+            'Leave Dates' => $dates_html,
+            'Total Days'  => $req->total_days,
+        ];
+        if ($notes) {
+            $details['Notes'] = nl2br(htmlspecialchars($notes));
+        }
+
+        $this->Hr_module_model->send_employee_email(
+            $req->employee_email,
+            'Your Leave Request Has Been ' . ucfirst($status),
+            '<p>Hi ' . htmlspecialchars($req->employee_name) . ',</p>'
+                . '<p>Your leave request has been <strong style="color:#059669">' . htmlspecialchars($status) . '</strong>.</p>'
+                . $this->Hr_module_model->format_notification_details($details),
+            admin_url('hr_module/leave/view/' . $id)
+        );
+    }
+
+    // Broadcasts a formal announcement to all active staff once a leave request
+    // is approved, so colleagues know the employee will be out on those dates.
+    private function _broadcast_leave_announcement($id)
+    {
+        $req = $this->Leave_model->get_request($id);
+        if (!$req) {
+            return;
+        }
+
+        $req_days = $this->Leave_model->get_request_days($id);
+        $time_fmt = (get_option('time_format') == 24) ? 'H:i' : 'g:i A';
+        $dates_html = implode('<br>', array_map(function ($d) use ($time_fmt) {
+            $line = _d($d->leave_date) . ' &mdash; ' . htmlspecialchars(hr_leave_day_type_label($d->day_type));
+            if ($d->day_type === 'hourly' && $d->hour_start && $d->hour_end) {
+                $line .= ' (' . date($time_fmt, strtotime($d->hour_start)) . ' - ' . date($time_fmt, strtotime($d->hour_end)) . ')';
+            }
+            return $line;
+        }, $req_days));
+
+        $message = '<p>Dear Team,</p>'
+            . '<p>This is to formally inform you that <strong>' . htmlspecialchars($req->employee_name) . '</strong>'
+            . ' (' . htmlspecialchars($req->employee_code) . ') will be on leave as per the schedule below. '
+            . 'Please plan your work accordingly during this period.</p>'
+            . $this->Hr_module_model->format_notification_details([
+                'Employee'    => htmlspecialchars($req->employee_name . ' (' . $req->employee_code . ')'),
+                'Leave Type'  => htmlspecialchars($req->leave_type_name ?? ''),
+                'Leave Dates' => $dates_html,
+                'Total Days'  => $req->total_days,
+            ])
+            . '<p>Regards,<br>HR Department</p>';
+
+        $this->Hr_module_model->send_leave_announcement(
+            'Leave Announcement: ' . $req->employee_name . ' will be on leave',
+            $message
+        );
     }
 
     public function reject($id)

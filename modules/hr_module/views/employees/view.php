@@ -44,7 +44,7 @@ function ef($v, $d = '-') { return !empty($v) ? htmlspecialchars($v) : $d; }
             <?php if (staff_can('delete', 'hr_employees')): ?>
             <a href="<?php echo admin_url('hr_module/employees/delete/' . $e->id); ?>"
               class="btn btn-danger btn-block btn-sm _delete tw-mt-2">
-              <i class="fa fa-times tw-mr-1"></i><?php echo _l('hr_delete'); ?>
+              <i class="fa fa-times tw-mr-1"></i><?php echo _l('hr_deactivate'); ?>
             </a>
             <?php endif; ?>
           </div>

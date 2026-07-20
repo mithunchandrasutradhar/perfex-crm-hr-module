@@ -208,15 +208,17 @@ class Reports_model extends App_Model
     }
 
     // ── Headcount ─────────────────────────────────────────────────────────────
+    // permanent/contract/parttime always report 0 - there's no employment_type column
+    // (or any other table tracking that categorization) anywhere on hr_employees.
     public function headcount($f = [])
     {
-        $this->db->select('d.name as department_name, d.id as department_id,
+        $this->db->select('d.name as department_name, d.departmentid as department_id,
             COUNT(e.id) as total,
             SUM(CASE WHEN e.status = 1 THEN 1 ELSE 0 END) as active,
             SUM(CASE WHEN e.status = 0 THEN 1 ELSE 0 END) as inactive,
-            SUM(CASE WHEN e.employment_type = "permanent" THEN 1 ELSE 0 END) as permanent,
-            SUM(CASE WHEN e.employment_type = "contract" THEN 1 ELSE 0 END) as contract,
-            SUM(CASE WHEN e.employment_type = "parttime" THEN 1 ELSE 0 END) as parttime,
+            0 as permanent,
+            0 as contract,
+            0 as parttime,
             SUM(CASE WHEN e.gender = "male" THEN 1 ELSE 0 END) as male,
             SUM(CASE WHEN e.gender = "female" THEN 1 ELSE 0 END) as female')
             ->from(db_prefix() . 'hr_employees e')
