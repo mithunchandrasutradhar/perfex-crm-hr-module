@@ -1,15 +1,38 @@
 <?php defined('BASEPATH') or exit('No direct script access allowed'); ?>
 <?php
-/** @var int    $year       */
-/** @var array  $holidays   */
-/** @var array  $weekly_off */
-/** @var bool   $can_edit   */
-if (!isset($year))       $year       = (int) date('Y');
-if (!isset($holidays))   $holidays   = [];
-if (!isset($weekly_off)) $weekly_off = [5];
-if (!isset($can_edit))   $can_edit   = false;
+/** @var int    $year           */
+/** @var array  $holidays       */
+/** @var array  $weekly_off     */
+/** @var bool   $can_edit       */
+/** @var int    $cal_year       */
+/** @var int    $cal_month      */
+/** @var array  $cal_holidays   */
+/** @var array  $cal_leave_days */
+if (!isset($year))           $year           = (int) date('Y');
+if (!isset($holidays))       $holidays       = [];
+if (!isset($weekly_off))     $weekly_off     = [5];
+if (!isset($can_edit))       $can_edit       = false;
+if (!isset($cal_year))       $cal_year       = (int) date('Y');
+if (!isset($cal_month))      $cal_month      = (int) date('n');
+if (!isset($cal_holidays))   $cal_holidays   = [];
+if (!isset($cal_leave_days)) $cal_leave_days = [];
 
 $day_names = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+
+// Group approved leave days by date for quick per-cell lookup on the calendar below.
+$leave_by_date = [];
+foreach ($cal_leave_days as $ld) {
+    $leave_by_date[$ld->leave_date][] = $ld;
+}
+
+$cal_prev_month = $cal_month - 1; $cal_prev_year = $cal_year;
+if ($cal_prev_month < 1) { $cal_prev_month = 12; $cal_prev_year--; }
+$cal_next_month = $cal_month + 1; $cal_next_year = $cal_year;
+if ($cal_next_month > 12) { $cal_next_month = 1; $cal_next_year++; }
+
+$cal_first_ts    = mktime(0, 0, 0, $cal_month, 1, $cal_year);
+$cal_days_in_month = (int) date('t', $cal_first_ts);
+$cal_first_dow     = (int) date('w', $cal_first_ts); // 0=Sun..6=Sat, matches weekly_off encoding
 ?>
 <?php init_head(); ?>
 <div id="wrapper">
@@ -19,13 +42,13 @@ $day_names = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Satur
       <div class="col-md-12">
         <div class="tw-mb-4 tw-flex tw-flex-wrap tw-items-center tw-justify-between tw-gap-3">
           <h4 class="tw-font-semibold tw-text-lg tw-text-neutral-700">
-            <i class="fa fa-calendar-alt tw-mr-2 text-danger"></i>Holiday Calendar
+            <i class="fa fa-calendar-alt tw-mr-2 text-danger"></i>Official Calendar
           </h4>
           <!-- Year navigator -->
           <div class="tw-flex tw-items-center tw-gap-2">
-            <a href="?year=<?php echo $year - 1; ?>" class="btn btn-default btn-sm"><i class="fa fa-chevron-left"></i></a>
+            <a href="?year=<?php echo $year - 1; ?>&cal_year=<?php echo $cal_year; ?>&cal_month=<?php echo $cal_month; ?>" class="btn btn-default btn-sm"><i class="fa fa-chevron-left"></i></a>
             <span class="tw-font-semibold tw-text-lg"><?php echo $year; ?></span>
-            <a href="?year=<?php echo $year + 1; ?>" class="btn btn-default btn-sm"><i class="fa fa-chevron-right"></i></a>
+            <a href="?year=<?php echo $year + 1; ?>&cal_year=<?php echo $cal_year; ?>&cal_month=<?php echo $cal_month; ?>" class="btn btn-default btn-sm"><i class="fa fa-chevron-right"></i></a>
           </div>
         </div>
       </div>
@@ -193,6 +216,97 @@ $day_names = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Satur
           </div>
         </div>
 
+      </div>
+    </div>
+
+    <!-- ── Who's on Leave (calendar) ── -->
+    <div class="row">
+      <div class="col-md-12">
+        <div class="panel_s">
+          <div class="panel-heading tw-flex tw-items-center tw-justify-between tw-flex-wrap tw-gap-3">
+            <h5 class="tw-font-semibold tw-mb-0"><i class="fa fa-users tw-mr-2 text-primary"></i>Who's on Leave</h5>
+            <div class="tw-flex tw-items-center tw-gap-2">
+              <a href="?year=<?php echo $year; ?>&cal_year=<?php echo $cal_prev_year; ?>&cal_month=<?php echo $cal_prev_month; ?>"
+                 class="btn btn-default btn-sm"><i class="fa fa-chevron-left"></i></a>
+              <span class="tw-font-semibold"><?php echo date('F', $cal_first_ts) . ' ' . $cal_year; ?></span>
+              <a href="?year=<?php echo $year; ?>&cal_year=<?php echo $cal_next_year; ?>&cal_month=<?php echo $cal_next_month; ?>"
+                 class="btn btn-default btn-sm"><i class="fa fa-chevron-right"></i></a>
+            </div>
+          </div>
+          <div class="panel-body">
+            <div class="table-responsive">
+            <table class="table table-bordered tw-mb-0" style="table-layout:fixed">
+              <thead>
+                <tr>
+                  <?php foreach ($day_names as $idx => $dname): ?>
+                  <th class="text-center <?php echo in_array($idx, $weekly_off) ? 'tw-bg-neutral-100' : ''; ?>"><?php echo substr($dname, 0, 3); ?></th>
+                  <?php endforeach; ?>
+                </tr>
+              </thead>
+              <tbody>
+                <?php
+                $day_num = 1 - $cal_first_dow;
+                while ($day_num <= $cal_days_in_month):
+                ?>
+                <tr>
+                  <?php for ($dow = 0; $dow < 7; $dow++, $day_num++): ?>
+                    <?php if ($day_num < 1 || $day_num > $cal_days_in_month): ?>
+                    <td class="tw-bg-neutral-50"></td>
+                    <?php else: ?>
+                    <?php
+                      $cell_date    = sprintf('%04d-%02d-%02d', $cal_year, $cal_month, $day_num);
+                      $is_off       = in_array($dow, $weekly_off);
+                      $holiday_name = $cal_holidays[$cell_date] ?? null;
+                      $on_leave     = $leave_by_date[$cell_date] ?? [];
+                    ?>
+                    <td class="<?php echo $is_off ? 'tw-bg-neutral-50' : ''; ?>" style="vertical-align:top;height:85px">
+                      <strong class="<?php echo $is_off ? 'text-muted' : ''; ?>"><?php echo $day_num; ?></strong>
+                      <?php if ($holiday_name): ?>
+                      <div class="tw-text-xs tw-mt-1">
+                        <span class="label label-danger" title="<?php echo htmlspecialchars($holiday_name); ?>">
+                          <?php echo htmlspecialchars($holiday_name); ?>
+                        </span>
+                      </div>
+                      <?php endif; ?>
+                      <?php
+                        $visible_leave = array_slice($on_leave, 0, 2);
+                        $hidden_leave  = array_slice($on_leave, 2);
+                      ?>
+                      <?php foreach ($visible_leave as $ld): ?>
+                      <div class="tw-text-xs tw-mt-1">
+                        <span class="label label-warning" title="<?php echo htmlspecialchars(hr_leave_day_type_label($ld->day_type)); ?>">
+                          <i class="fa fa-user tw-mr-1"></i><?php echo htmlspecialchars($ld->employee_name); ?>
+                        </span>
+                      </div>
+                      <?php endforeach; ?>
+                      <?php if (!empty($hidden_leave)): ?>
+                      <?php
+                        $hidden_html = '';
+                        foreach ($hidden_leave as $ld) {
+                            $hidden_html .= '<div class="tw-text-xs tw-mb-1"><i class="fa fa-user tw-mr-1"></i>' . htmlspecialchars($ld->employee_name) . '</div>';
+                        }
+                      ?>
+                      <div class="tw-text-xs tw-mt-1">
+                        <span class="label label-default pointer" data-toggle="popover" data-trigger="hover click"
+                              data-html="true" data-placement="top" data-container="body" title="On Leave"
+                              data-content="<?php echo htmlspecialchars($hidden_html); ?>">
+                          +<?php echo count($hidden_leave); ?> more
+                        </span>
+                      </div>
+                      <?php endif; ?>
+                    </td>
+                    <?php endif; ?>
+                  <?php endfor; ?>
+                </tr>
+                <?php endwhile; ?>
+              </tbody>
+            </table>
+            </div>
+            <?php if (empty($cal_leave_days)): ?>
+            <p class="text-muted tw-text-sm tw-mt-3 tw-mb-0"><i class="fa fa-info-circle tw-mr-1"></i>No approved leave for this month.</p>
+            <?php endif; ?>
+          </div>
+        </div>
       </div>
     </div>
 

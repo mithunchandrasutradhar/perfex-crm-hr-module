@@ -42,6 +42,7 @@ $lang['hr_perm_contracts']                 = 'HR Contracts';
 $lang['hr_perm_zkteco']                    = 'ZKTeco Devices';
 $lang['hr_perm_reports']                   = 'HR Reports';
 $lang['hr_perm_settings']                  = 'HR Settings';
+$lang['hr_perm_holidays']                  = 'Official Calendar';
 
 // Common
 $lang['hr_add']                            = 'Add';

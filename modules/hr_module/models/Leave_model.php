@@ -192,6 +192,22 @@ class Leave_model extends App_Model
         return $this->db->get($this->tbl_request_days)->result();
     }
 
+    // Every approved leave day falling within [$from,$to] (inclusive), with the
+    // employee's name - used to show "who's on leave" on the holiday calendar.
+    public function get_approved_leave_days_in_range($from, $to)
+    {
+        return $this->db->select('d.leave_date, d.day_type, d.employee_id,
+                CONCAT(e.first_name," ",e.last_name) as employee_name, e.employee_code', false)
+            ->from($this->tbl_request_days . ' d')
+            ->join($this->tbl_requests . ' r', 'r.id = d.leave_request_id')
+            ->join(db_prefix() . 'hr_employees e', 'e.id = d.employee_id', 'left')
+            ->where('r.status', 'approved')
+            ->where('d.leave_date >=', $from)
+            ->where('d.leave_date <=', $to)
+            ->order_by('d.leave_date', 'ASC')
+            ->get()->result();
+    }
+
     // Returns [leave_request_id => ['full', 'half_before_lunch', ...]] for the given
     // request IDs in one query, so a list page can show each request's day-type
     // composition without an N+1 query per row.

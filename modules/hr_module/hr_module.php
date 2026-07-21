@@ -87,6 +87,7 @@ function hr_module_register_permissions()
     register_staff_capabilities('hr_zkteco',       ['capabilities' => $cap_config],            _l('hr_perm_zkteco'));
     register_staff_capabilities('hr_reports',      ['capabilities' => ['view' => $view_global]], _l('hr_perm_reports'));
     register_staff_capabilities('hr_settings',     ['capabilities' => ['view' => $view_global, 'edit' => $edit]], _l('hr_perm_settings'));
+    register_staff_capabilities('hr_holidays',     ['capabilities' => ['view' => $view_global, 'edit' => $edit]], _l('hr_perm_holidays'));
 }
 
 /**
@@ -273,11 +274,11 @@ function hr_module_init_menu_items()
         ]);
     }
 
-    // Holiday Calendar
-    if (is_admin() || staff_can('view', 'hr_settings')) {
+    // Official Calendar
+    if (is_admin() || staff_can('view', 'hr_holidays')) {
         $CI->app_menu->add_sidebar_children_item('human-resource', [
             'slug'     => 'hr-holidays',
-            'name'     => 'Holiday Calendar',
+            'name'     => 'Official Calendar',
             'href'     => admin_url('hr_module/holidays'),
             'position' => 12,
         ]);
