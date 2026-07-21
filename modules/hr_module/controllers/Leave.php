@@ -235,6 +235,8 @@ class Leave extends AdminController
             . 'Please plan your work accordingly during this period.</p>'
             . $this->Hr_module_model->format_notification_details([
                 'Employee'    => htmlspecialchars($req->employee_name . ' (' . $req->employee_code . ')'),
+                'Department'  => htmlspecialchars($req->department_name ?: '-'),
+                'Designation' => htmlspecialchars($req->designation_name ?: '-'),
                 'Leave Type'  => htmlspecialchars($req->leave_type_name ?? ''),
                 'Leave Dates' => $dates_html,
                 'Total Days'  => $req->total_days,
@@ -265,10 +267,182 @@ class Leave extends AdminController
 
     public function cancel($id)
     {
-        $result = $this->Leave_model->cancel($id);
+        $reason = $this->input->post('reason', true);
+        $result = $this->Leave_model->cancel($id, $reason ?: '');
         set_alert($result['success'] ? 'success' : 'danger',
             $result['success'] ? _l('hr_leave_status_cancelled') : $result['message']);
         redirect(admin_url('hr_module/leave'));
+    }
+
+    // Employee requests cancellation of their own already-approved leave - HR must
+    // review it via approve_cancellation()/reject_cancellation() below, since the
+    // leave was already approved (balance deducted, colleagues possibly notified).
+    public function request_cancellation($id)
+    {
+        if (staff_cant('view', 'hr_leave') && staff_cant('view_own', 'hr_leave')) {
+            access_denied('hr_leave');
+        }
+        $request = $this->Leave_model->get_request($id);
+        if (!$request) show_404();
+        if (!staff_can('view', 'hr_leave') && staff_can('view_own', 'hr_leave')) {
+            if ((int) $request->employee_id !== hr_get_own_employee_id()) {
+                access_denied('hr_leave');
+            }
+        }
+        $reason = $this->input->post('reason', true);
+        $result = $this->Leave_model->request_cancellation($id, $reason);
+        if ($result['success']) {
+            $this->_notify_cancellation_requested($id, $reason);
+        }
+        set_alert($result['success'] ? 'success' : 'danger',
+            $result['success'] ? _l('hr_leave_cancellation_requested_msg') : $result['message']);
+        redirect(admin_url('hr_module/leave/view/' . $id));
+    }
+
+    public function approve_cancellation($id)
+    {
+        if (staff_cant('approve', 'hr_leave') && !is_admin()) {
+            access_denied('hr_leave');
+        }
+        $result = $this->Leave_model->approve_cancellation($id);
+        if ($result['success']) {
+            $this->_send_cancellation_status_email($id, 'approved');
+            $this->_broadcast_leave_cancellation($id);
+        }
+        set_alert($result['success'] ? 'success' : 'danger',
+            $result['success'] ? _l('hr_leave_cancellation_approved_msg') : $result['message']);
+        redirect(admin_url('hr_module/leave/view/' . $id));
+    }
+
+    public function reject_cancellation($id)
+    {
+        if (staff_cant('approve', 'hr_leave') && !is_admin()) {
+            access_denied('hr_leave');
+        }
+        $result = $this->Leave_model->reject_cancellation($id);
+        if ($result['success']) {
+            $this->_send_cancellation_status_email($id, 'rejected');
+        }
+        set_alert($result['success'] ? 'success' : 'danger',
+            $result['success'] ? _l('hr_leave_cancellation_rejected_msg') : $result['message']);
+        redirect(admin_url('hr_module/leave/view/' . $id));
+    }
+
+    // Notifies the configured HR inbox when an employee requests to cancel an
+    // already-approved leave request, with a link to review/accept it.
+    private function _notify_cancellation_requested($id, $reason)
+    {
+        $req = $this->Leave_model->get_request($id);
+        if (!$req) {
+            return;
+        }
+
+        $req_days = $this->Leave_model->get_request_days($id);
+        $time_fmt = (get_option('time_format') == 24) ? 'H:i' : 'g:i A';
+        $dates_html = implode('<br>', array_map(function ($d) use ($time_fmt) {
+            $line = _d($d->leave_date) . ' &mdash; ' . htmlspecialchars(hr_leave_day_type_label($d->day_type));
+            if ($d->day_type === 'hourly' && $d->hour_start && $d->hour_end) {
+                $line .= ' (' . date($time_fmt, strtotime($d->hour_start)) . ' - ' . date($time_fmt, strtotime($d->hour_end)) . ')';
+            }
+            return $line;
+        }, $req_days));
+
+        $message = '<p>An employee has requested to cancel an already-approved leave request.</p>'
+            . $this->Hr_module_model->format_notification_details([
+                'Employee'    => htmlspecialchars($req->employee_name . ' (' . $req->employee_code . ')'),
+                'Department'  => htmlspecialchars($req->department_name ?: '-'),
+                'Designation' => htmlspecialchars($req->designation_name ?: '-'),
+                'Leave Type'  => htmlspecialchars($req->leave_type_name ?? ''),
+                'Leave Dates' => $dates_html,
+                'Total Days'  => $req->total_days,
+                'Reason'      => nl2br(htmlspecialchars($reason ?: '-')),
+            ]);
+        $this->Hr_module_model->send_notification_email(
+            'Leave Cancellation Request Submitted',
+            $message,
+            admin_url('hr_module/leave/view/' . $id)
+        );
+    }
+
+    // Emails the requesting employee once their leave cancellation request has been
+    // approved (leave is now cancelled) or rejected (leave stays approved as-is).
+    private function _send_cancellation_status_email($id, $status)
+    {
+        $req = $this->Leave_model->get_request($id);
+        if (!$req || empty($req->employee_email)) {
+            return;
+        }
+
+        $req_days = $this->Leave_model->get_request_days($id);
+        $time_fmt = (get_option('time_format') == 24) ? 'H:i' : 'g:i A';
+        $dates_html = implode('<br>', array_map(function ($d) use ($time_fmt) {
+            $line = _d($d->leave_date) . ' &mdash; ' . htmlspecialchars(hr_leave_day_type_label($d->day_type));
+            if ($d->day_type === 'hourly' && $d->hour_start && $d->hour_end) {
+                $line .= ' (' . date($time_fmt, strtotime($d->hour_start)) . ' - ' . date($time_fmt, strtotime($d->hour_end)) . ')';
+            }
+            return $line;
+        }, $req_days));
+
+        $details = [
+            'Department'  => htmlspecialchars($req->department_name ?: '-'),
+            'Designation' => htmlspecialchars($req->designation_name ?: '-'),
+            'Leave Type'  => htmlspecialchars($req->leave_type_name ?? ''),
+            'Leave Dates' => $dates_html,
+            'Total Days'  => $req->total_days,
+        ];
+
+        $color = $status === 'approved' ? '#059669' : '#dc2626';
+        $intro = $status === 'approved'
+            ? 'Your leave cancellation request has been <strong style="color:' . $color . '">approved</strong> - this leave is now cancelled.'
+            : 'Your leave cancellation request has been <strong style="color:' . $color . '">rejected</strong> - this leave remains approved.';
+
+        $this->Hr_module_model->send_employee_email(
+            $req->employee_email,
+            'Your Leave Cancellation Request Has Been ' . ucfirst($status),
+            '<p>Hi ' . htmlspecialchars($req->employee_name) . ',</p>'
+                . '<p>' . $intro . '</p>'
+                . $this->Hr_module_model->format_notification_details($details),
+            admin_url('hr_module/leave/view/' . $id)
+        );
+    }
+
+    // Broadcasts a follow-up announcement once an approved leave is actually cancelled,
+    // so colleagues who saw the original "will be on leave" announcement know it no
+    // longer applies.
+    private function _broadcast_leave_cancellation($id)
+    {
+        $req = $this->Leave_model->get_request($id);
+        if (!$req) {
+            return;
+        }
+
+        $req_days = $this->Leave_model->get_request_days($id);
+        $time_fmt = (get_option('time_format') == 24) ? 'H:i' : 'g:i A';
+        $dates_html = implode('<br>', array_map(function ($d) use ($time_fmt) {
+            $line = _d($d->leave_date) . ' &mdash; ' . htmlspecialchars(hr_leave_day_type_label($d->day_type));
+            if ($d->day_type === 'hourly' && $d->hour_start && $d->hour_end) {
+                $line .= ' (' . date($time_fmt, strtotime($d->hour_start)) . ' - ' . date($time_fmt, strtotime($d->hour_end)) . ')';
+            }
+            return $line;
+        }, $req_days));
+
+        $message = '<p>Dear Team,</p>'
+            . '<p>Please note that the previously announced leave for <strong>' . htmlspecialchars($req->employee_name) . '</strong>'
+            . ' (' . htmlspecialchars($req->employee_code) . ') has been <strong style="color:#dc2626">cancelled</strong>. '
+            . 'Please disregard the earlier announcement.</p>'
+            . $this->Hr_module_model->format_notification_details([
+                'Employee'    => htmlspecialchars($req->employee_name . ' (' . $req->employee_code . ')'),
+                'Department'  => htmlspecialchars($req->department_name ?: '-'),
+                'Designation' => htmlspecialchars($req->designation_name ?: '-'),
+                'Leave Type'  => htmlspecialchars($req->leave_type_name ?? ''),
+                'Leave Dates' => $dates_html,
+            ])
+            . '<p>Regards,<br>HR Department</p>';
+
+        $this->Hr_module_model->send_leave_announcement(
+            'Leave Cancellation: ' . $req->employee_name . '\'s leave has been cancelled',
+            $message
+        );
     }
 
     public function delete($id)

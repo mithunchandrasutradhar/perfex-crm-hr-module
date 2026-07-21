@@ -2,7 +2,7 @@
 /** @var object      $request */
 /** @var array       $days    */
 /** @var object|null $balance */
-if (!isset($request)) $request = (object)['id'=>0,'status'=>'pending','leave_type_name'=>'','employee_name'=>'','employee_code'=>'','from_date'=>null,'to_date'=>null,'total_days'=>0,'is_half_day'=>0,'reason'=>'','rejection_reason'=>null,'attachment'=>null,'created_at'=>null,'approved_by'=>null,'approved_by_name'=>'','approved_at'=>null];
+if (!isset($request)) $request = (object)['id'=>0,'status'=>'pending','leave_type_name'=>'','employee_name'=>'','employee_code'=>'','from_date'=>null,'to_date'=>null,'total_days'=>0,'is_half_day'=>0,'reason'=>'','rejection_reason'=>null,'attachment'=>null,'created_at'=>null,'approved_by'=>null,'approved_by_name'=>'','approved_at'=>null,'cancellation_status'=>null,'cancellation_reason'=>null,'cancellation_requested_at'=>null];
 if (!isset($days)) $days = [];
 if (!isset($balance)) $balance = null;
 $r = $request;
@@ -135,12 +135,53 @@ $badge = '<span class="label ' . ($badge_map[$r->status] ?? 'label-default') . '
             </form>
             <?php endif; ?>
 
-            <?php if (in_array($r->status, ['pending', 'approved'])): ?>
-            <a href="<?php echo admin_url('hr_module/leave/cancel/' . $r->id); ?>"
-               onclick="return confirm('Cancel this leave request?')"
-               class="btn btn-warning btn-block btn-sm">
-              <i class="fa fa-ban tw-mr-1"></i><?php echo _l('hr_leave_cancel'); ?>
-            </a>
+            <?php if ($r->status === 'pending'): ?>
+            <form action="<?php echo admin_url('hr_module/leave/cancel/' . $r->id); ?>" method="post" class="tw-mb-3"
+              onsubmit="return confirm('Cancel this leave request?')">
+              <?php echo form_hidden($this->security->get_csrf_token_name(), $this->security->get_csrf_hash()); ?>
+              <div class="form-group">
+                <label><?php echo _l('hr_leave_cancellation_reason'); ?></label>
+                <textarea name="reason" class="form-control input-sm" rows="2" placeholder="Why are you cancelling this leave request?"></textarea>
+              </div>
+              <button type="submit" class="btn btn-warning btn-block btn-sm">
+                <i class="fa fa-ban tw-mr-1"></i><?php echo _l('hr_leave_cancel'); ?>
+              </button>
+            </form>
+            <?php endif; ?>
+
+            <?php if ($r->status === 'approved' && $r->cancellation_status === 'pending'): ?>
+            <div class="alert alert-warning tw-mb-3">
+              <strong><?php echo _l('hr_leave_cancellation_pending'); ?></strong>
+              <?php if ($r->cancellation_reason): ?>
+              <div class="tw-text-sm tw-mt-1"><?php echo nl2br(htmlspecialchars($r->cancellation_reason)); ?></div>
+              <?php endif; ?>
+            </div>
+            <?php if (staff_can('approve', 'hr_leave') || is_admin()): ?>
+            <form action="<?php echo admin_url('hr_module/leave/approve_cancellation/' . $r->id); ?>" method="post" class="tw-mb-3">
+              <?php echo form_hidden($this->security->get_csrf_token_name(), $this->security->get_csrf_hash()); ?>
+              <button type="submit" class="btn btn-success btn-block btn-sm">
+                <i class="fa fa-check tw-mr-1"></i><?php echo _l('hr_leave_approve_cancellation'); ?>
+              </button>
+            </form>
+            <form action="<?php echo admin_url('hr_module/leave/reject_cancellation/' . $r->id); ?>" method="post" class="tw-mb-3">
+              <?php echo form_hidden($this->security->get_csrf_token_name(), $this->security->get_csrf_hash()); ?>
+              <button type="submit" class="btn btn-danger btn-block btn-sm">
+                <i class="fa fa-times tw-mr-1"></i><?php echo _l('hr_leave_reject_cancellation'); ?>
+              </button>
+            </form>
+            <?php endif; ?>
+            <?php elseif ($r->status === 'approved'): ?>
+            <form action="<?php echo admin_url('hr_module/leave/request_cancellation/' . $r->id); ?>" method="post" class="tw-mb-3"
+              onsubmit="return confirm('Request cancellation of this leave?')">
+              <?php echo form_hidden($this->security->get_csrf_token_name(), $this->security->get_csrf_hash()); ?>
+              <div class="form-group">
+                <label><?php echo _l('hr_leave_cancellation_reason'); ?></label>
+                <textarea name="reason" class="form-control input-sm" rows="2" placeholder="Why are you requesting this cancellation?" required></textarea>
+              </div>
+              <button type="submit" class="btn btn-warning btn-block btn-sm">
+                <i class="fa fa-ban tw-mr-1"></i><?php echo _l('hr_leave_request_cancellation'); ?>
+              </button>
+            </form>
             <?php endif; ?>
 
             <hr>

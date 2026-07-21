@@ -15,6 +15,23 @@ class Leave_model extends App_Model
         $this->tbl_request_days  = db_prefix() . 'hr_leave_request_days';
         $this->tbl_types         = db_prefix() . 'hr_leave_types';
         $this->tbl_balances      = db_prefix() . 'hr_leave_balances';
+        $this->_ensure_cancellation_columns();
+    }
+
+    // Lets an employee request cancellation of an already-approved leave (reviewed
+    // by HR, rather than cancelled outright) - adds the columns on first use so
+    // this works immediately without requiring the module to be reactivated.
+    private function _ensure_cancellation_columns()
+    {
+        $col = $this->db->query("SHOW COLUMNS FROM `" . $this->tbl_requests . "` LIKE 'cancellation_status'")->num_rows();
+        if ($col === 0) {
+            $this->db->query("ALTER TABLE `" . $this->tbl_requests . "`
+                ADD COLUMN `cancellation_status` VARCHAR(20) DEFAULT NULL AFTER `status`,
+                ADD COLUMN `cancellation_reason` TEXT DEFAULT NULL,
+                ADD COLUMN `cancellation_requested_at` DATETIME DEFAULT NULL,
+                ADD COLUMN `cancellation_reviewed_by` INT(11) DEFAULT NULL,
+                ADD COLUMN `cancellation_reviewed_at` DATETIME DEFAULT NULL");
+        }
     }
 
     // ── Leave Types ──────────────────────────────────────────────────────
@@ -229,21 +246,90 @@ class Leave_model extends App_Model
         return ['success' => true];
     }
 
-    public function cancel($id)
+    // $allow_approved is only ever passed true by approve_cancellation() below, once HR
+    // has reviewed and approved the request - a direct call (e.g. the employee-facing
+    // cancel action) must never cancel an already-approved leave outright; it has to go
+    // through request_cancellation() instead.
+    public function cancel($id, $reason = '', $allow_approved = false)
     {
         $request = $this->get_request($id);
         if (!$request) return ['success' => false, 'message' => 'Not found'];
 
+        if ($request->status === 'approved' && !$allow_approved) {
+            return ['success' => false, 'message' => 'This leave is already approved - please submit a cancellation request for HR to review.'];
+        }
+
         $was_approved = $request->status === 'approved';
-        $this->db->where('id', $id)->update($this->tbl_requests, [
+        $update = [
             'status'     => 'cancelled',
             'updated_at' => date('Y-m-d H:i:s'),
-        ]);
+        ];
+        if ($reason !== '') {
+            $update['cancellation_reason'] = $reason;
+        }
+        $this->db->where('id', $id)->update($this->tbl_requests, $update);
         // Restore balance if was approved
         if ($was_approved) {
             $year = date('Y', strtotime($request->from_date));
             $this->_restore_balance($request->employee_id, $request->leave_type_id, $year, $request->total_days);
         }
+        return ['success' => true];
+    }
+
+    // Employee requests cancellation of an already-approved leave - doesn't cancel it
+    // immediately, since balance was already deducted and colleagues may already have
+    // been notified via the approval announcement. HR must review via
+    // approve_cancellation()/reject_cancellation() below.
+    public function request_cancellation($id, $reason = '')
+    {
+        $request = $this->get_request($id);
+        if (!$request || $request->status !== 'approved') {
+            return ['success' => false, 'message' => 'Only an approved leave request can have its cancellation requested.'];
+        }
+        if ($request->cancellation_status === 'pending') {
+            return ['success' => false, 'message' => 'A cancellation request is already pending for this leave.'];
+        }
+        $this->db->where('id', $id)->update($this->tbl_requests, [
+            'cancellation_status'       => 'pending',
+            'cancellation_reason'       => $reason ?: null,
+            'cancellation_requested_at' => date('Y-m-d H:i:s'),
+            'cancellation_reviewed_by'  => null,
+            'cancellation_reviewed_at'  => null,
+            'updated_at'                => date('Y-m-d H:i:s'),
+        ]);
+        return ['success' => true];
+    }
+
+    // Approves a pending cancellation request - actually cancels the leave (reusing
+    // cancel()'s existing balance-restore logic) and records who reviewed it.
+    public function approve_cancellation($id)
+    {
+        $request = $this->get_request($id);
+        if (!$request || $request->cancellation_status !== 'pending') {
+            return ['success' => false, 'message' => 'No pending cancellation request found.'];
+        }
+        $this->cancel($id, '', true);
+        $this->db->where('id', $id)->update($this->tbl_requests, [
+            'cancellation_status'      => 'approved',
+            'cancellation_reviewed_by' => get_staff_user_id(),
+            'cancellation_reviewed_at' => date('Y-m-d H:i:s'),
+        ]);
+        return ['success' => true];
+    }
+
+    // Rejects a pending cancellation request - the leave stays approved as-is.
+    public function reject_cancellation($id)
+    {
+        $request = $this->get_request($id);
+        if (!$request || $request->cancellation_status !== 'pending') {
+            return ['success' => false, 'message' => 'No pending cancellation request found.'];
+        }
+        $this->db->where('id', $id)->update($this->tbl_requests, [
+            'cancellation_status'      => 'rejected',
+            'cancellation_reviewed_by' => get_staff_user_id(),
+            'cancellation_reviewed_at' => date('Y-m-d H:i:s'),
+            'updated_at'                => date('Y-m-d H:i:s'),
+        ]);
         return ['success' => true];
     }
 

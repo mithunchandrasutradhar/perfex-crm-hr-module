@@ -35,6 +35,9 @@ $route['hr_module/leave/view/(:num)']             = 'hr_module/Leave/view/$1';
 $route['hr_module/leave/approve/(:num)']          = 'hr_module/Leave/approve/$1';
 $route['hr_module/leave/reject/(:num)']           = 'hr_module/Leave/reject/$1';
 $route['hr_module/leave/cancel/(:num)']           = 'hr_module/Leave/cancel/$1';
+$route['hr_module/leave/request_cancellation/(:num)']  = 'hr_module/Leave/request_cancellation/$1';
+$route['hr_module/leave/approve_cancellation/(:num)']  = 'hr_module/Leave/approve_cancellation/$1';
+$route['hr_module/leave/reject_cancellation/(:num)']   = 'hr_module/Leave/reject_cancellation/$1';
 $route['hr_module/leave/delete/(:num)']           = 'hr_module/Leave/delete/$1';
 
 // Leave Types
