@@ -53,6 +53,24 @@ class Hr_module_model extends App_Model
         return true;
     }
 
+    // The staff members (if configured via the policy_approver_ids setting, a
+    // comma-separated list of staffids) who may approve/reject policies - returns
+    // an empty array if not yet configured.
+    public function get_policy_approvers()
+    {
+        $csv = trim($this->get_setting('policy_approver_ids'));
+        if ($csv === '') {
+            return [];
+        }
+        $ids = array_values(array_filter(array_map('intval', explode(',', $csv))));
+        if (empty($ids)) {
+            return [];
+        }
+        return $this->db->select('staffid, email, firstname, lastname')
+            ->where_in('staffid', $ids)
+            ->get(db_prefix() . 'staff')->result();
+    }
+
     // ─── Notifications ────────────────────────────────────────────────────
 
     // Sends a plain HTML notification email (with a direct link back to the
@@ -129,6 +147,55 @@ class Hr_module_model extends App_Model
             return (bool) $CI->email->send();
         } catch (Exception $e) {
             log_activity('HR Module leave announcement email failed: ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    // Broadcasts a newly-published (or updated) policy to its audience - every active
+    // hr_module employee mapped to a staff account when $department_id is null (a
+    // public policy), or just those departments' employees when it's a private one
+    // targeting one or more specific departments.
+    public function send_policy_announcement($subject, $message, $department_ids = null, $link_url = null)
+    {
+        if (is_array($department_ids) && empty($department_ids)) {
+            return false;
+        }
+        $this->db->select('email')
+            ->where('status', 1)
+            ->where('email !=', '')
+            ->where('staff_id IS NOT NULL')
+            ->where('staff_id !=', 0);
+        if (is_array($department_ids)) {
+            $this->db->where_in('department_id', $department_ids);
+        } elseif ($department_ids !== null) {
+            $this->db->where('department_id', $department_ids);
+        }
+        $emails = array_filter(array_column(
+            $this->db->get(db_prefix() . 'hr_employees')->result_array(),
+            'email'
+        ));
+        if (empty($emails)) {
+            return false;
+        }
+
+        $company_name = get_option('companyname');
+        $body = $message
+            . ($link_url ? $this->_notification_link_block($link_url) : '')
+            . '<hr style="border:none;border-top:1px solid #e5e5e5;margin:20px 0">'
+            . '<p style="color:#999;font-size:12px;margin:0">This is an automated announcement from the '
+                . htmlspecialchars($company_name) . ' HR Department. Please do not reply to this email.</p>';
+
+        try {
+            $CI = &get_instance();
+            $CI->email->clear(true);
+            $CI->email->from(get_option('smtp_email'), get_option('companyname'));
+            $CI->email->to(get_option('smtp_email'));
+            $CI->email->bcc(implode(',', $emails));
+            $CI->email->subject($subject);
+            $CI->email->message($body);
+            return (bool) $CI->email->send();
+        } catch (Exception $e) {
+            log_activity('HR Module policy announcement email failed: ' . $e->getMessage());
             return false;
         }
     }

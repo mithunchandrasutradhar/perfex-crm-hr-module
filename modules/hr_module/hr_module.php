@@ -88,6 +88,7 @@ function hr_module_register_permissions()
     register_staff_capabilities('hr_reports',      ['capabilities' => ['view' => $view_global]], _l('hr_perm_reports'));
     register_staff_capabilities('hr_settings',     ['capabilities' => ['view' => $view_global, 'edit' => $edit]], _l('hr_perm_settings'));
     register_staff_capabilities('hr_holidays',     ['capabilities' => ['view' => $view_global, 'edit' => $edit]], _l('hr_perm_holidays'));
+    register_staff_capabilities('hr_policies',     ['capabilities' => $cap_personal],          _l('hr_perm_policies'));
 }
 
 /**
@@ -260,6 +261,16 @@ function hr_module_init_menu_items()
             'slug'     => 'hr-contracts',
             'name'     => _l('hr_menu_contracts'),
             'href'     => admin_url('hr_module/hr_contracts'),
+            'position' => 12,
+        ]);
+    }
+
+    // Policies
+    if (is_admin() || staff_can('view', 'hr_policies') || staff_can('view_own', 'hr_policies')) {
+        $CI->app_menu->add_sidebar_children_item('human-resource', [
+            'slug'     => 'hr-policies',
+            'name'     => 'Policies',
+            'href'     => admin_url('hr_module/policies'),
             'position' => 12,
         ]);
     }

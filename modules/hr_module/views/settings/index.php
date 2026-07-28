@@ -188,6 +188,25 @@ $can_edit = staff_can('edit', 'hr_settings') || is_admin();
                                         <p class="text-muted tw-mt-1 tw-mb-0"><?php echo _l('hr_settings_notification_email_hint'); ?></p>
                                     </div>
                                 </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label><?php echo _l('hr_settings_policy_approver'); ?></label>
+                                        <select name="policy_approver_ids[]" multiple class="form-control selectpicker" data-live-search="true" data-actions-box="true"
+                                            <?php echo !$can_edit ? 'disabled' : ''; ?>>
+                                            <?php
+                                                $cur_approvers = isset($settings['policy_approver_ids']) && $settings['policy_approver_ids'] !== ''
+                                                    ? array_map('intval', explode(',', $settings['policy_approver_ids']))
+                                                    : [];
+                                            ?>
+                                            <?php foreach ($admin_staff as $s): ?>
+                                            <option value="<?php echo $s->staffid; ?>" <?php echo in_array((int) $s->staffid, $cur_approvers, true) ? 'selected' : ''; ?>>
+                                                <?php echo htmlspecialchars($s->firstname . ' ' . $s->lastname); ?>
+                                            </option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                        <p class="text-muted tw-mt-1 tw-mb-0"><?php echo _l('hr_settings_policy_approver_hint'); ?></p>
+                                    </div>
+                                </div>
                             </div>
                             <div class="row">
                                 <?php

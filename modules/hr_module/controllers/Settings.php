@@ -27,8 +27,10 @@ class Settings extends AdminController
             redirect(admin_url('hr_module/settings'));
         }
 
-        $data['title']    = _l('hr_module_settings');
-        $data['settings'] = $this->Hr_module_model->get_all_settings();
+        $data['title']       = _l('hr_module_settings');
+        $data['settings']    = $this->Hr_module_model->get_all_settings();
+        $data['admin_staff'] = $this->db->where('admin', 1)->where('active', 1)
+            ->order_by('firstname', 'ASC')->get(db_prefix() . 'staff')->result();
 
         $this->load->view('hr_module/settings/index', $data);
     }
@@ -79,6 +81,16 @@ class Settings extends AdminController
         foreach ($allowed_keys as $key) {
             $posted = $this->input->post($key);
             $save_data[$key] = $posted !== null ? $posted : '0';
+        }
+
+        // Multi-select (policy_approver_ids[]) posts as an array - store as CSV,
+        // since hr_settings.setting_value is a plain string column.
+        $approver_ids = $this->input->post('policy_approver_ids');
+        $save_data['policy_approver_ids'] = is_array($approver_ids)
+            ? implode(',', array_values(array_filter(array_map('intval', $approver_ids))))
+            : '';
+        if ($save_data['policy_approver_ids'] !== $this->Hr_module_model->get_setting('policy_approver_ids')) {
+            log_activity('HR Policy Approvers Updated [Staff IDs: ' . ($save_data['policy_approver_ids'] ?: 'none') . ']');
         }
 
         // Admin-only, deliberately not in $allowed_keys: only a full admin may

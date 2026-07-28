@@ -43,6 +43,7 @@ $lang['hr_perm_zkteco']                    = 'ZKTeco Devices';
 $lang['hr_perm_reports']                   = 'HR Reports';
 $lang['hr_perm_settings']                  = 'HR Settings';
 $lang['hr_perm_holidays']                  = 'Official Calendar';
+$lang['hr_perm_policies']                  = 'Policies';
 
 // Common
 $lang['hr_add']                            = 'Add';
@@ -603,6 +604,8 @@ $lang['hr_settings_notify_loan_apply']     = 'Notify on Loan Apply';
 $lang['hr_settings_notify_payroll']        = 'Notify on Payroll Generation';
 $lang['hr_settings_notification_email']      = 'Notification Email';
 $lang['hr_settings_notification_email_hint'] = 'Receives an email with a direct link whenever a leave, loan, helpdesk, or overtime request is submitted. Leave blank to disable.';
+$lang['hr_settings_policy_approver']      = 'Policy Approvers';
+$lang['hr_settings_policy_approver_hint'] = 'Only these selected admins can approve/reject policies and their updates, and only they receive the policy review email - not every admin. Leave unset to allow any admin (fallback).';
 $lang['hr_settings_zkteco_enabled']        = 'Enable ZKTeco Integration';
 $lang['hr_settings_zkteco_sync_interval']  = 'Sync Interval (minutes)';
 $lang['hr_settings_danger_zone']           = 'Danger Zone';

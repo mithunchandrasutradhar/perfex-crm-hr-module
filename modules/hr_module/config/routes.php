@@ -165,3 +165,14 @@ $route['hr_module/reports/headcount']             = 'hr_module/Reports/headcount
 $route['hr_module/reports/department']            = 'hr_module/Reports/department';
 $route['hr_module/reports/salary']                = 'hr_module/Reports/salary';
 $route['hr_module/reports/turnover']              = 'hr_module/Reports/turnover';
+
+// Policies
+$route['hr_module/policies']                          = 'hr_module/Policies/index';
+$route['hr_module/policies/add']                      = 'hr_module/Policies/add';
+$route['hr_module/policies/edit/(:num)']               = 'hr_module/Policies/edit/$1';
+$route['hr_module/policies/view/(:num)']               = 'hr_module/Policies/view/$1';
+$route['hr_module/policies/delete/(:num)']             = 'hr_module/Policies/delete/$1';
+$route['hr_module/policies/approve/(:num)']            = 'hr_module/Policies/approve/$1';
+$route['hr_module/policies/reject/(:num)']             = 'hr_module/Policies/reject/$1';
+$route['hr_module/policies/approve_revision/(:num)']   = 'hr_module/Policies/approve_revision/$1';
+$route['hr_module/policies/reject_revision/(:num)']    = 'hr_module/Policies/reject_revision/$1';

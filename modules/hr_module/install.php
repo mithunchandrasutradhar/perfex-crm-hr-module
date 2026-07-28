@@ -1102,3 +1102,62 @@ if (!$CI->db->table_exists(db_prefix() . 'hr_loan_deduction_requests')) {
     $CI->db->query('ALTER TABLE `' . db_prefix() . 'hr_loan_deduction_requests`
       MODIFY `id` int(10) unsigned NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1;');
 }
+
+// 27. Policies - published record employees see. New policies and edits to existing
+// ones both need admin approval before becoming visible; edits are staged in
+// hr_policy_revisions (below) so the previously-approved content keeps showing until
+// the edit itself is approved. `attachment` holds a JSON-encoded array of
+// [{"file":"<stored name>","name":"<original name>"}, ...] to support multiple
+// uploaded files per policy.
+if (!$CI->db->table_exists(db_prefix() . 'hr_policies')) {
+    $CI->db->query('CREATE TABLE `' . db_prefix() . 'hr_policies` (
+      `id` int(10) unsigned NOT NULL,
+      `title` varchar(191) NOT NULL,
+      `type` enum(\'public\',\'private\') NOT NULL DEFAULT \'public\',
+      `department_id` int(11) DEFAULT NULL,
+      `department_ids` text DEFAULT NULL,
+      `content_type` enum(\'pdf\',\'text\') NOT NULL DEFAULT \'text\',
+      `content` longtext DEFAULT NULL,
+      `attachment` text DEFAULT NULL,
+      `status` enum(\'pending\',\'published\',\'rejected\') NOT NULL DEFAULT \'pending\',
+      `rejection_reason` text DEFAULT NULL,
+      `created_by` int(11) DEFAULT NULL,
+      `approved_by` int(11) DEFAULT NULL,
+      `approved_at` datetime DEFAULT NULL,
+      `published_at` datetime DEFAULT NULL,
+      `created_at` datetime NOT NULL,
+      `updated_at` datetime DEFAULT NULL
+    ) ENGINE=InnoDB DEFAULT CHARSET=' . $CI->db->char_set . ';');
+    $CI->db->query('ALTER TABLE `' . db_prefix() . 'hr_policies`
+      ADD PRIMARY KEY (`id`),
+      ADD KEY `department_id` (`department_id`),
+      ADD KEY `status` (`status`);');
+    $CI->db->query('ALTER TABLE `' . db_prefix() . 'hr_policies`
+      MODIFY `id` int(10) unsigned NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1;');
+}
+
+// 28. Policy Revisions - a pending proposed change to an existing published policy.
+if (!$CI->db->table_exists(db_prefix() . 'hr_policy_revisions')) {
+    $CI->db->query('CREATE TABLE `' . db_prefix() . 'hr_policy_revisions` (
+      `id` int(10) unsigned NOT NULL,
+      `policy_id` int(10) unsigned NOT NULL,
+      `title` varchar(191) NOT NULL,
+      `type` enum(\'public\',\'private\') NOT NULL DEFAULT \'public\',
+      `department_id` int(11) DEFAULT NULL,
+      `department_ids` text DEFAULT NULL,
+      `content_type` enum(\'pdf\',\'text\') NOT NULL DEFAULT \'text\',
+      `content` longtext DEFAULT NULL,
+      `attachment` text DEFAULT NULL,
+      `status` enum(\'pending\',\'approved\',\'rejected\') NOT NULL DEFAULT \'pending\',
+      `rejection_reason` text DEFAULT NULL,
+      `submitted_by` int(11) DEFAULT NULL,
+      `reviewed_by` int(11) DEFAULT NULL,
+      `reviewed_at` datetime DEFAULT NULL,
+      `created_at` datetime NOT NULL
+    ) ENGINE=InnoDB DEFAULT CHARSET=' . $CI->db->char_set . ';');
+    $CI->db->query('ALTER TABLE `' . db_prefix() . 'hr_policy_revisions`
+      ADD PRIMARY KEY (`id`),
+      ADD KEY `policy_id` (`policy_id`);');
+    $CI->db->query('ALTER TABLE `' . db_prefix() . 'hr_policy_revisions`
+      MODIFY `id` int(10) unsigned NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1;');
+}
