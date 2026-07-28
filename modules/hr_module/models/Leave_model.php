@@ -82,6 +82,7 @@ class Leave_model extends App_Model
     {
         $this->db->select('r.*, lt.name as leave_type_name,
             CONCAT(e.first_name," ",e.last_name) as employee_name, e.employee_code, e.email as employee_email,
+            e.staff_id as employee_staff_id,
             d.name as department_name, ds.name as designation_name,
             CONCAT(sa.firstname," ",sa.lastname) as approved_by_name', false)
             ->from($this->tbl_requests . ' r')

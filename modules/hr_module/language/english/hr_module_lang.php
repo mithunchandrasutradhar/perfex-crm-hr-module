@@ -673,3 +673,23 @@ $lang['hr_save_changes']                   = 'Save Changes';
 $lang['hr_employee_dob']                   = 'Date of Birth';
 $lang['hr_contract_content']               = 'Contract Content';
 $lang['hr_contract_value']                 = 'Contract Value';
+
+// ─── Central (bell-icon) notifications ─────────────────────────────────
+// Rendered via _l($description, $additional_data) - each %s is filled from the
+// additional_data array passed to notify_staff()/notify_by_permission().
+$lang['not_hr_leave_applied']                    = '%s submitted a new leave request';
+$lang['not_hr_leave_status']                     = 'Your leave request has been %s';
+$lang['not_hr_leave_announcement']               = '%s will be on leave';
+$lang['not_hr_leave_cancellation_requested']     = '%s requested to cancel their leave';
+$lang['not_hr_leave_cancellation_status']        = 'Your leave cancellation request has been %s';
+$lang['not_hr_leave_cancellation_announcement']  = "%s's leave has been cancelled";
+$lang['not_hr_loan_applied']                     = '%s submitted a new loan request';
+$lang['not_hr_loan_status']                      = 'Your loan request has been %s';
+$lang['not_hr_deduction_applied']                = '%s submitted a loan deduction request';
+$lang['not_hr_deduction_status']                 = 'Your loan deduction request has been %s';
+$lang['not_hr_overtime_applied']                 = '%s submitted a new overtime request';
+$lang['not_hr_helpdesk_submitted']               = 'New helpdesk ticket: %s';
+$lang['not_hr_policy_submitted']                 = 'New policy "%s" is awaiting approval';
+$lang['not_hr_policy_update_submitted']          = 'An update to policy "%s" is awaiting approval';
+$lang['not_hr_policy_published']                 = 'Policy "%s" has been published';
+$lang['not_hr_policy_updated_published']         = 'Policy "%s" has been updated';

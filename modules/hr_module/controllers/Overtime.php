@@ -53,6 +53,12 @@ class Overtime extends AdminController
                     $message,
                     admin_url('hr_module/overtime/view/' . $result['id'])
                 );
+                $this->Hr_module_model->notify_by_permission(
+                    'edit', 'hr_overtime',
+                    'not_hr_overtime_applied',
+                    'hr_module/overtime/view/' . $result['id'],
+                    [$emp ? $emp->first_name . ' ' . $emp->last_name : 'Unknown']
+                );
                 set_alert('success', $result['message']);
                 redirect(admin_url('hr_module/overtime/view/' . $result['id']));
             }

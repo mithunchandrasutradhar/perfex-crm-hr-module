@@ -71,6 +71,68 @@ class Hr_module_model extends App_Model
             ->get(db_prefix() . 'staff')->result();
     }
 
+    // ─── Central (bell-icon) notifications ─────────────────────────────────
+    // Perfex core has no built-in "notify everyone with permission X" helper -
+    // every core feature that needs this hand-rolls it (see Clients_model,
+    // Estimates_model), so these mirror that same pattern for hr_module.
+
+    // Active staff ids who hold $capability on $feature - used to target a
+    // central notification "by role" instead of a fixed setting/address.
+    private function _staff_ids_with_permission($capability, $feature)
+    {
+        $ids = [];
+        foreach ($this->db->select('staffid')->where('active', 1)->get(db_prefix() . 'staff')->result() as $s) {
+            if (staff_can($capability, $feature, $s->staffid)) {
+                $ids[] = (int) $s->staffid;
+            }
+        }
+        return $ids;
+    }
+
+    // Creates one central notification for a single staff member. $description
+    // must be a registered language key (hr_module_lang.php) - the bell dropdown
+    // renders it via _l($description, $additional_data), not as raw text.
+    // $link is relative (e.g. 'hr_module/leave/view/5'), no leading slash.
+    public function notify_staff($staff_id, $description, $link, $additional_data = [])
+    {
+        if (!$staff_id) {
+            return false;
+        }
+        return (bool) add_notification([
+            'touserid'        => (int) $staff_id,
+            'description'     => $description,
+            'link'            => $link,
+            'fromcompany'     => 1,
+            'fromuserid'      => 0,
+            'additional_data' => serialize($additional_data),
+        ]);
+    }
+
+    // Notifies every staff member already known to be the audience (e.g. the
+    // configured policy approvers, or the same mapped-employee list an
+    // announcement email already went to) - avoids re-deriving it.
+    public function notify_staff_list($staff_ids, $description, $link, $additional_data = [])
+    {
+        $notified = [];
+        foreach (array_unique(array_filter(array_map('intval', (array) $staff_ids))) as $id) {
+            if ($this->notify_staff($id, $description, $link, $additional_data)) {
+                $notified[] = $id;
+            }
+        }
+        if (!empty($notified) && function_exists('pusher_trigger_notification')) {
+            pusher_trigger_notification($notified);
+        }
+        return $notified;
+    }
+
+    // Notifies every active staff member who holds $capability on $feature -
+    // i.e. whoever can actually act on this, so visibility follows the same
+    // role/permission system already governing that feature.
+    public function notify_by_permission($capability, $feature, $description, $link, $additional_data = [])
+    {
+        return $this->notify_staff_list($this->_staff_ids_with_permission($capability, $feature), $description, $link, $additional_data);
+    }
+
     // ─── Notifications ────────────────────────────────────────────────────
 
     // Sends a plain HTML notification email (with a direct link back to the

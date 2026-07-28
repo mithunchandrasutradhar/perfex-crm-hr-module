@@ -62,6 +62,12 @@ class Helpdesk extends AdminController
                     $message,
                     admin_url('hr_module/helpdesk/view/' . $result['id'])
                 );
+                $this->Hr_module_model->notify_by_permission(
+                    'edit', 'hr_helpdesk',
+                    'not_hr_helpdesk_submitted',
+                    'hr_module/helpdesk/view/' . $result['id'],
+                    [$data['subject']]
+                );
                 set_alert('success', $result['message']);
                 redirect(admin_url('hr_module/helpdesk/view/' . $result['id']));
             }

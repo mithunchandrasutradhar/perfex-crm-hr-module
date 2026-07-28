@@ -159,6 +159,41 @@ class Employees_model extends App_Model
         return $this->db->where('staff_id', $staff_id)->get($this->table)->row();
     }
 
+    // Staff ids of every active hr_module employee mapped to a real staff account
+    // - the same audience send_leave_announcement()/send_policy_announcement()
+    // already email (public case), just as staff ids instead of addresses, for
+    // targeting a central (bell-icon) notification to the same people.
+    public function get_active_staff_ids()
+    {
+        return array_map('intval', array_column(
+            $this->db->select('staff_id')
+                ->where('status', 1)
+                ->where('staff_id IS NOT NULL')
+                ->where('staff_id !=', 0)
+                ->get($this->table)->result_array(),
+            'staff_id'
+        ));
+    }
+
+    // Same as get_active_staff_ids(), scoped to employees in any of the given
+    // departments - for a private policy's central-notification audience.
+    public function get_active_staff_ids_for_departments($department_ids)
+    {
+        $department_ids = array_values(array_filter(array_map('intval', (array) $department_ids)));
+        if (empty($department_ids)) {
+            return [];
+        }
+        return array_map('intval', array_column(
+            $this->db->select('staff_id')
+                ->where('status', 1)
+                ->where('staff_id IS NOT NULL')
+                ->where('staff_id !=', 0)
+                ->where_in('department_id', $department_ids)
+                ->get($this->table)->result_array(),
+            'staff_id'
+        ));
+    }
+
     // Returns all active staff who do NOT yet have an HR profile
     public function get_unlinked_staff()
     {

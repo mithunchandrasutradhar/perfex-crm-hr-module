@@ -99,6 +99,12 @@ class Leave extends AdminController
                     $message,
                     admin_url('hr_module/leave/view/' . $result['id'])
                 );
+                $this->Hr_module_model->notify_by_permission(
+                    'approve', 'hr_leave',
+                    'not_hr_leave_applied',
+                    'hr_module/leave/view/' . $result['id'],
+                    [$req->employee_name]
+                );
                 set_alert('success', _l('hr_leave_applied_msg'));
                 redirect(admin_url('hr_module/leave/view/' . $result['id']));
             }
@@ -208,6 +214,7 @@ class Leave extends AdminController
                 . $this->Hr_module_model->format_notification_details($details),
             admin_url('hr_module/leave/view/' . $id)
         );
+        $this->Hr_module_model->notify_staff($req->employee_staff_id, 'not_hr_leave_status', 'hr_module/leave/view/' . $id, [$status]);
     }
 
     // Broadcasts a formal announcement to all active staff once a leave request
@@ -246,6 +253,12 @@ class Leave extends AdminController
         $this->Hr_module_model->send_leave_announcement(
             'Leave Announcement: ' . $req->employee_name . ' will be on leave',
             $message
+        );
+        $this->Hr_module_model->notify_staff_list(
+            $this->Employees_model->get_active_staff_ids(),
+            'not_hr_leave_announcement',
+            'hr_module/leave/view/' . $id,
+            [$req->employee_name]
         );
     }
 
@@ -362,6 +375,12 @@ class Leave extends AdminController
             $message,
             admin_url('hr_module/leave/view/' . $id)
         );
+        $this->Hr_module_model->notify_by_permission(
+            'approve', 'hr_leave',
+            'not_hr_leave_cancellation_requested',
+            'hr_module/leave/view/' . $id,
+            [$req->employee_name]
+        );
     }
 
     // Emails the requesting employee once their leave cancellation request has been
@@ -404,6 +423,7 @@ class Leave extends AdminController
                 . $this->Hr_module_model->format_notification_details($details),
             admin_url('hr_module/leave/view/' . $id)
         );
+        $this->Hr_module_model->notify_staff($req->employee_staff_id, 'not_hr_leave_cancellation_status', 'hr_module/leave/view/' . $id, [$status]);
     }
 
     // Broadcasts a follow-up announcement once an approved leave is actually cancelled,
@@ -442,6 +462,12 @@ class Leave extends AdminController
         $this->Hr_module_model->send_leave_announcement(
             'Leave Cancellation: ' . $req->employee_name . '\'s leave has been cancelled',
             $message
+        );
+        $this->Hr_module_model->notify_staff_list(
+            $this->Employees_model->get_active_staff_ids(),
+            'not_hr_leave_cancellation_announcement',
+            'hr_module/leave/view/' . $id,
+            [$req->employee_name]
         );
     }
 

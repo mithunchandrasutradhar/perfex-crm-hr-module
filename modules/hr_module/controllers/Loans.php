@@ -78,6 +78,12 @@ class Loans extends AdminController
                     $message,
                     admin_url('hr_module/loans/view/' . $result['id'])
                 );
+                $this->Hr_module_model->notify_by_permission(
+                    'edit', 'hr_loans',
+                    'not_hr_loan_applied',
+                    'hr_module/loans/view/' . $result['id'],
+                    [$emp ? $emp->first_name . ' ' . $emp->last_name : 'Unknown']
+                );
                 set_alert('success', $result['message']);
                 redirect(admin_url('hr_module/loans/view/' . $result['id']));
             } else {
@@ -179,6 +185,7 @@ class Loans extends AdminController
                 . $this->Hr_module_model->format_notification_details($details),
             admin_url('hr_module/loans/view/' . $id)
         );
+        $this->Hr_module_model->notify_staff($loan->employee_staff_id, 'not_hr_loan_status', 'hr_module/loans/view/' . $id, [$status]);
     }
 
     public function add_repayment($id)
@@ -272,6 +279,12 @@ class Loans extends AdminController
             $message,
             admin_url('hr_module/loans/view/' . $loan_id)
         );
+        $this->Hr_module_model->notify_by_permission(
+            'edit', 'hr_loans',
+            'not_hr_deduction_applied',
+            'hr_module/loans/view/' . $loan_id,
+            [$loan ? $loan->first_name . ' ' . $loan->last_name : 'Unknown']
+        );
     }
 
     public function approve_deduction($id)
@@ -340,6 +353,7 @@ class Loans extends AdminController
                 . $this->Hr_module_model->format_notification_details($details),
             admin_url('hr_module/loans/view/' . $req->loan_id)
         );
+        $this->Hr_module_model->notify_staff($req->employee_staff_id, 'not_hr_deduction_status', 'hr_module/loans/view/' . $req->loan_id, [$status]);
     }
 
     public function delete_deduction_request($id)

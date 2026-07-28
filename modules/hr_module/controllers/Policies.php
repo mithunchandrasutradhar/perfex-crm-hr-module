@@ -283,22 +283,25 @@ class Policies extends AdminController
         redirect(admin_url('hr_module/policies'));
     }
 
-    // Sends a policy-review notification to the configured policy approver's own
-    // email specifically - not the general HR notification inbox, since only that
-    // one staff member can act on it. Falls back to the general inbox while
-    // policy_approver_id is left unconfigured, matching _is_policy_approver()'s
-    // is_admin() fallback above.
-    private function _notify_approver($subject, $message, $link_url)
+    // Sends a policy-review notification (email + central bell-icon notification)
+    // to the configured policy approver(s) specifically - not the general HR
+    // notification inbox, since only they can act on it. Falls back to the
+    // general inbox while policy_approver_ids is left unconfigured, matching
+    // _is_policy_approver()'s is_admin() fallback above. $path is the relative
+    // route (e.g. 'hr_module/policies/view/5'), used for both the email link and
+    // the notification's link.
+    private function _notify_approver($subject, $message, $path, $notif_key, $notif_data = [])
     {
         $approvers = $this->Hr_module_model->get_policy_approvers();
         $emails    = array_filter(array_column($approvers, 'email'));
         if (!empty($emails)) {
             foreach ($emails as $email) {
-                $this->Hr_module_model->send_employee_email($email, $subject, $message, $link_url);
+                $this->Hr_module_model->send_employee_email($email, $subject, $message, admin_url($path));
             }
-            return;
+        } else {
+            $this->Hr_module_model->send_notification_email($subject, $message, admin_url($path));
         }
-        $this->Hr_module_model->send_notification_email($subject, $message, $link_url);
+        $this->Hr_module_model->notify_staff_list(array_column($approvers, 'staffid'), $notif_key, $path, $notif_data);
     }
 
     // Reads the posted text content and/or multiple PDF uploads - both are optional
@@ -406,7 +409,9 @@ class Policies extends AdminController
         $this->_notify_approver(
             'New Policy Submitted For Approval',
             $message,
-            admin_url('hr_module/policies/view/' . $id)
+            'hr_module/policies/view/' . $id,
+            'not_hr_policy_submitted',
+            [$policy->title]
         );
     }
 
@@ -428,7 +433,9 @@ class Policies extends AdminController
         $this->_notify_approver(
             'Policy Update Submitted For Approval',
             $message,
-            admin_url('hr_module/policies/view/' . $policy_id)
+            'hr_module/policies/view/' . $policy_id,
+            'not_hr_policy_update_submitted',
+            [$policy->title]
         );
     }
 
@@ -462,6 +469,16 @@ class Policies extends AdminController
             $message,
             $policy->type === 'public' ? null : $policy->department_id_list,
             admin_url('hr_module/policies/view/' . $id)
+        );
+
+        $audience = $policy->type === 'public'
+            ? $this->Employees_model->get_active_staff_ids()
+            : $this->Employees_model->get_active_staff_ids_for_departments($policy->department_id_list);
+        $this->Hr_module_model->notify_staff_list(
+            $audience,
+            $is_update ? 'not_hr_policy_updated_published' : 'not_hr_policy_published',
+            'hr_module/policies/view/' . $id,
+            [$policy->title]
         );
     }
 }
