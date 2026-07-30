@@ -9,6 +9,7 @@ class Leave extends AdminController
         $this->load->model('hr_module/Leave_model');
         $this->load->model('hr_module/Employees_model');
         $this->load->model('hr_module/Hr_module_model');
+        $this->load->model('hr_module/Email_templates_model');
     }
 
     public function index()
@@ -73,38 +74,31 @@ class Leave extends AdminController
 
             $result = $this->Leave_model->apply($data, $days);
             if ($result['success']) {
-                $req      = $this->Leave_model->get_request($result['id']);
-                $req_days = $this->Leave_model->get_request_days($result['id']);
-                $time_fmt = (get_option('time_format') == 24) ? 'H:i' : 'g:i A';
-                $dates_html = implode('<br>', array_map(function ($d) use ($time_fmt) {
-                    $line = _d($d->leave_date) . ' &mdash; ' . htmlspecialchars(hr_leave_day_type_label($d->day_type));
-                    if ($d->day_type === 'hourly' && $d->hour_start && $d->hour_end) {
-                        $line .= ' (' . date($time_fmt, strtotime($d->hour_start)) . ' - ' . date($time_fmt, strtotime($d->hour_end)) . ')';
-                    }
-                    return $line;
-                }, $req_days));
+                if ($this->Hr_module_model->notifications_enabled('notify_leave_apply')) {
+                    $req      = $this->Leave_model->get_request($result['id']);
+                    $req_days = $this->Leave_model->get_request_days($result['id']);
 
-                $message = '<p>A new leave request has been submitted and is awaiting review.</p>'
-                    . $this->Hr_module_model->format_notification_details([
-                        'Employee'    => htmlspecialchars($req->employee_name . ' (' . $req->employee_code . ')'),
-                        'Department'  => htmlspecialchars($req->department_name ?: '-'),
-                        'Designation' => htmlspecialchars($req->designation_name ?: '-'),
-                        'Leave Type'  => htmlspecialchars($req->leave_type_name ?? ''),
-                        'Leave Dates' => $dates_html,
-                        'Total Days'  => $req->total_days,
-                        'Reason'      => nl2br(htmlspecialchars($req->reason ?: '-')),
+                    $tpl = $this->Email_templates_model->render('leave_apply', [
+                        '{employee_name}' => $req->employee_name . ' (' . $req->employee_code . ')',
+                        '{department}'    => $req->department_name ?: '-',
+                        '{designation}'   => $req->designation_name ?: '-',
+                        '{leave_type}'    => $req->leave_type_name ?? '',
+                        '{leave_dates}'   => $this->_leave_dates_plain($req_days),
+                        '{total_days}'    => $req->total_days,
+                        '{reason}'        => $req->reason ?: '-',
                     ]);
-                $this->Hr_module_model->send_notification_email(
-                    'New Leave Request Submitted',
-                    $message,
-                    admin_url('hr_module/leave/view/' . $result['id'])
-                );
-                $this->Hr_module_model->notify_by_permission(
-                    'approve', 'hr_leave',
-                    'not_hr_leave_applied',
-                    'hr_module/leave/view/' . $result['id'],
-                    [$req->employee_name]
-                );
+                    $this->Hr_module_model->send_notification_email(
+                        $tpl->subject,
+                        $tpl->body,
+                        admin_url('hr_module/leave/view/' . $result['id'])
+                    );
+                    $this->Hr_module_model->notify_by_permission(
+                        'approve', 'hr_leave',
+                        'not_hr_leave_applied',
+                        'hr_module/leave/view/' . $result['id'],
+                        [$req->employee_name]
+                    );
+                }
                 set_alert('success', _l('hr_leave_applied_msg'));
                 redirect(admin_url('hr_module/leave/view/' . $result['id']));
             }
@@ -162,7 +156,7 @@ class Leave extends AdminController
         }
         $notes  = $this->input->post('notes', true);
         $result = $this->Leave_model->approve($id, $notes);
-        if ($result['success']) {
+        if ($result['success'] && $this->Hr_module_model->notifications_enabled('notify_leave_approve')) {
             $this->_send_status_email($id, 'approved', $notes);
             $this->_broadcast_leave_announcement($id);
         }
@@ -186,32 +180,23 @@ class Leave extends AdminController
         }
 
         $req_days = $this->Leave_model->get_request_days($id);
-        $time_fmt = (get_option('time_format') == 24) ? 'H:i' : 'g:i A';
-        $dates_html = implode('<br>', array_map(function ($d) use ($time_fmt) {
-            $line = _d($d->leave_date) . ' &mdash; ' . htmlspecialchars(hr_leave_day_type_label($d->day_type));
-            if ($d->day_type === 'hourly' && $d->hour_start && $d->hour_end) {
-                $line .= ' (' . date($time_fmt, strtotime($d->hour_start)) . ' - ' . date($time_fmt, strtotime($d->hour_end)) . ')';
-            }
-            return $line;
-        }, $req_days));
 
-        $details = [
-            'Department'  => htmlspecialchars($req->department_name ?: '-'),
-            'Designation' => htmlspecialchars($req->designation_name ?: '-'),
-            'Leave Type'  => htmlspecialchars($req->leave_type_name ?? ''),
-            'Leave Dates' => $dates_html,
-            'Total Days'  => $req->total_days,
-        ];
-        if ($notes) {
-            $details['Notes'] = nl2br(htmlspecialchars($notes));
-        }
+        // This method is only ever called with $status === 'approved' (reject()
+        // sends no email), so a single 'leave_approved' template covers it.
+        $tpl = $this->Email_templates_model->render('leave_approved', [
+            '{employee_name}' => $req->employee_name,
+            '{department}'    => $req->department_name ?: '-',
+            '{designation}'   => $req->designation_name ?: '-',
+            '{leave_type}'    => $req->leave_type_name ?? '',
+            '{leave_dates}'   => $this->_leave_dates_plain($req_days),
+            '{total_days}'    => $req->total_days,
+            '{notes}'         => $notes ?: '-',
+        ]);
 
         $this->Hr_module_model->send_employee_email(
             $req->employee_email,
-            'Your Leave Request Has Been ' . ucfirst($status),
-            '<p>Hi ' . htmlspecialchars($req->employee_name) . ',</p>'
-                . '<p>Your leave request has been <strong style="color:#059669">' . htmlspecialchars($status) . '</strong>.</p>'
-                . $this->Hr_module_model->format_notification_details($details),
+            $tpl->subject,
+            $tpl->body,
             admin_url('hr_module/leave/view/' . $id)
         );
         $this->Hr_module_model->notify_staff($req->employee_staff_id, 'not_hr_leave_status', 'hr_module/leave/view/' . $id, [$status]);
@@ -227,33 +212,18 @@ class Leave extends AdminController
         }
 
         $req_days = $this->Leave_model->get_request_days($id);
-        $time_fmt = (get_option('time_format') == 24) ? 'H:i' : 'g:i A';
-        $dates_html = implode('<br>', array_map(function ($d) use ($time_fmt) {
-            $line = _d($d->leave_date) . ' &mdash; ' . htmlspecialchars(hr_leave_day_type_label($d->day_type));
-            if ($d->day_type === 'hourly' && $d->hour_start && $d->hour_end) {
-                $line .= ' (' . date($time_fmt, strtotime($d->hour_start)) . ' - ' . date($time_fmt, strtotime($d->hour_end)) . ')';
-            }
-            return $line;
-        }, $req_days));
 
-        $message = '<p>Dear Team,</p>'
-            . '<p>This is to formally inform you that <strong>' . htmlspecialchars($req->employee_name) . '</strong>'
-            . ' (' . htmlspecialchars($req->employee_code) . ') will be on leave as per the schedule below. '
-            . 'Please plan your work accordingly during this period.</p>'
-            . $this->Hr_module_model->format_notification_details([
-                'Employee'    => htmlspecialchars($req->employee_name . ' (' . $req->employee_code . ')'),
-                'Department'  => htmlspecialchars($req->department_name ?: '-'),
-                'Designation' => htmlspecialchars($req->designation_name ?: '-'),
-                'Leave Type'  => htmlspecialchars($req->leave_type_name ?? ''),
-                'Leave Dates' => $dates_html,
-                'Total Days'  => $req->total_days,
-            ])
-            . '<p>Regards,<br>HR Department</p>';
+        $tpl = $this->Email_templates_model->render('leave_announcement', [
+            '{employee_name}' => $req->employee_name,
+            '{employee_code}' => $req->employee_code,
+            '{department}'    => $req->department_name ?: '-',
+            '{designation}'   => $req->designation_name ?: '-',
+            '{leave_type}'    => $req->leave_type_name ?? '',
+            '{leave_dates}'   => $this->_leave_dates_plain($req_days),
+            '{total_days}'    => $req->total_days,
+        ]);
 
-        $this->Hr_module_model->send_leave_announcement(
-            'Leave Announcement: ' . $req->employee_name . ' will be on leave',
-            $message
-        );
+        $this->Hr_module_model->send_leave_announcement($tpl->subject, $tpl->body);
         $this->Hr_module_model->notify_staff_list(
             $this->Employees_model->get_active_staff_ids(),
             'not_hr_leave_announcement',
@@ -304,7 +274,7 @@ class Leave extends AdminController
         }
         $reason = $this->input->post('reason', true);
         $result = $this->Leave_model->request_cancellation($id, $reason);
-        if ($result['success']) {
+        if ($result['success'] && $this->Hr_module_model->notifications_enabled('notify_leave_cancellation')) {
             $this->_notify_cancellation_requested($id, $reason);
         }
         set_alert($result['success'] ? 'success' : 'danger',
@@ -318,7 +288,7 @@ class Leave extends AdminController
             access_denied('hr_leave');
         }
         $result = $this->Leave_model->approve_cancellation($id);
-        if ($result['success']) {
+        if ($result['success'] && $this->Hr_module_model->notifications_enabled('notify_leave_cancellation')) {
             $this->_send_cancellation_status_email($id, 'approved');
             $this->_broadcast_leave_cancellation($id);
         }
@@ -333,7 +303,7 @@ class Leave extends AdminController
             access_denied('hr_leave');
         }
         $result = $this->Leave_model->reject_cancellation($id);
-        if ($result['success']) {
+        if ($result['success'] && $this->Hr_module_model->notifications_enabled('notify_leave_cancellation')) {
             $this->_send_cancellation_status_email($id, 'rejected');
         }
         set_alert($result['success'] ? 'success' : 'danger',
@@ -351,28 +321,19 @@ class Leave extends AdminController
         }
 
         $req_days = $this->Leave_model->get_request_days($id);
-        $time_fmt = (get_option('time_format') == 24) ? 'H:i' : 'g:i A';
-        $dates_html = implode('<br>', array_map(function ($d) use ($time_fmt) {
-            $line = _d($d->leave_date) . ' &mdash; ' . htmlspecialchars(hr_leave_day_type_label($d->day_type));
-            if ($d->day_type === 'hourly' && $d->hour_start && $d->hour_end) {
-                $line .= ' (' . date($time_fmt, strtotime($d->hour_start)) . ' - ' . date($time_fmt, strtotime($d->hour_end)) . ')';
-            }
-            return $line;
-        }, $req_days));
 
-        $message = '<p>An employee has requested to cancel an already-approved leave request.</p>'
-            . $this->Hr_module_model->format_notification_details([
-                'Employee'    => htmlspecialchars($req->employee_name . ' (' . $req->employee_code . ')'),
-                'Department'  => htmlspecialchars($req->department_name ?: '-'),
-                'Designation' => htmlspecialchars($req->designation_name ?: '-'),
-                'Leave Type'  => htmlspecialchars($req->leave_type_name ?? ''),
-                'Leave Dates' => $dates_html,
-                'Total Days'  => $req->total_days,
-                'Reason'      => nl2br(htmlspecialchars($reason ?: '-')),
-            ]);
+        $tpl = $this->Email_templates_model->render('leave_cancellation_request', [
+            '{employee_name}' => $req->employee_name . ' (' . $req->employee_code . ')',
+            '{department}'    => $req->department_name ?: '-',
+            '{designation}'   => $req->designation_name ?: '-',
+            '{leave_type}'    => $req->leave_type_name ?? '',
+            '{leave_dates}'   => $this->_leave_dates_plain($req_days),
+            '{total_days}'    => $req->total_days,
+            '{reason}'        => $reason ?: '-',
+        ]);
         $this->Hr_module_model->send_notification_email(
-            'Leave Cancellation Request Submitted',
-            $message,
+            $tpl->subject,
+            $tpl->body,
             admin_url('hr_module/leave/view/' . $id)
         );
         $this->Hr_module_model->notify_by_permission(
@@ -393,34 +354,23 @@ class Leave extends AdminController
         }
 
         $req_days = $this->Leave_model->get_request_days($id);
-        $time_fmt = (get_option('time_format') == 24) ? 'H:i' : 'g:i A';
-        $dates_html = implode('<br>', array_map(function ($d) use ($time_fmt) {
-            $line = _d($d->leave_date) . ' &mdash; ' . htmlspecialchars(hr_leave_day_type_label($d->day_type));
-            if ($d->day_type === 'hourly' && $d->hour_start && $d->hour_end) {
-                $line .= ' (' . date($time_fmt, strtotime($d->hour_start)) . ' - ' . date($time_fmt, strtotime($d->hour_end)) . ')';
-            }
-            return $line;
-        }, $req_days));
 
-        $details = [
-            'Department'  => htmlspecialchars($req->department_name ?: '-'),
-            'Designation' => htmlspecialchars($req->designation_name ?: '-'),
-            'Leave Type'  => htmlspecialchars($req->leave_type_name ?? ''),
-            'Leave Dates' => $dates_html,
-            'Total Days'  => $req->total_days,
-        ];
-
-        $color = $status === 'approved' ? '#059669' : '#dc2626';
-        $intro = $status === 'approved'
-            ? 'Your leave cancellation request has been <strong style="color:' . $color . '">approved</strong> - this leave is now cancelled.'
-            : 'Your leave cancellation request has been <strong style="color:' . $color . '">rejected</strong> - this leave remains approved.';
+        $tpl = $this->Email_templates_model->render(
+            $status === 'approved' ? 'leave_cancellation_approved' : 'leave_cancellation_rejected',
+            [
+                '{employee_name}' => $req->employee_name,
+                '{department}'    => $req->department_name ?: '-',
+                '{designation}'   => $req->designation_name ?: '-',
+                '{leave_type}'    => $req->leave_type_name ?? '',
+                '{leave_dates}'   => $this->_leave_dates_plain($req_days),
+                '{total_days}'    => $req->total_days,
+            ]
+        );
 
         $this->Hr_module_model->send_employee_email(
             $req->employee_email,
-            'Your Leave Cancellation Request Has Been ' . ucfirst($status),
-            '<p>Hi ' . htmlspecialchars($req->employee_name) . ',</p>'
-                . '<p>' . $intro . '</p>'
-                . $this->Hr_module_model->format_notification_details($details),
+            $tpl->subject,
+            $tpl->body,
             admin_url('hr_module/leave/view/' . $id)
         );
         $this->Hr_module_model->notify_staff($req->employee_staff_id, 'not_hr_leave_cancellation_status', 'hr_module/leave/view/' . $id, [$status]);
@@ -437,32 +387,17 @@ class Leave extends AdminController
         }
 
         $req_days = $this->Leave_model->get_request_days($id);
-        $time_fmt = (get_option('time_format') == 24) ? 'H:i' : 'g:i A';
-        $dates_html = implode('<br>', array_map(function ($d) use ($time_fmt) {
-            $line = _d($d->leave_date) . ' &mdash; ' . htmlspecialchars(hr_leave_day_type_label($d->day_type));
-            if ($d->day_type === 'hourly' && $d->hour_start && $d->hour_end) {
-                $line .= ' (' . date($time_fmt, strtotime($d->hour_start)) . ' - ' . date($time_fmt, strtotime($d->hour_end)) . ')';
-            }
-            return $line;
-        }, $req_days));
 
-        $message = '<p>Dear Team,</p>'
-            . '<p>Please note that the previously announced leave for <strong>' . htmlspecialchars($req->employee_name) . '</strong>'
-            . ' (' . htmlspecialchars($req->employee_code) . ') has been <strong style="color:#dc2626">cancelled</strong>. '
-            . 'Please disregard the earlier announcement.</p>'
-            . $this->Hr_module_model->format_notification_details([
-                'Employee'    => htmlspecialchars($req->employee_name . ' (' . $req->employee_code . ')'),
-                'Department'  => htmlspecialchars($req->department_name ?: '-'),
-                'Designation' => htmlspecialchars($req->designation_name ?: '-'),
-                'Leave Type'  => htmlspecialchars($req->leave_type_name ?? ''),
-                'Leave Dates' => $dates_html,
-            ])
-            . '<p>Regards,<br>HR Department</p>';
+        $tpl = $this->Email_templates_model->render('leave_cancellation_announcement', [
+            '{employee_name}' => $req->employee_name,
+            '{employee_code}' => $req->employee_code,
+            '{department}'    => $req->department_name ?: '-',
+            '{designation}'   => $req->designation_name ?: '-',
+            '{leave_type}'    => $req->leave_type_name ?? '',
+            '{leave_dates}'   => $this->_leave_dates_plain($req_days),
+        ]);
 
-        $this->Hr_module_model->send_leave_announcement(
-            'Leave Cancellation: ' . $req->employee_name . '\'s leave has been cancelled',
-            $message
-        );
+        $this->Hr_module_model->send_leave_announcement($tpl->subject, $tpl->body);
         $this->Hr_module_model->notify_staff_list(
             $this->Employees_model->get_active_staff_ids(),
             'not_hr_leave_cancellation_announcement',
@@ -493,6 +428,22 @@ class Leave extends AdminController
             $remaining = $balance->allocated_days + $balance->carry_forward_days - $balance->used_days;
         }
         echo json_encode(['balance' => $balance, 'remaining' => $remaining]);
+    }
+
+    // Plain-text (not HTML) rendering of a leave request's day-by-day breakdown,
+    // for use as the {leave_dates} placeholder value in email templates - each
+    // line is separated by a real newline, which becomes <br> once the
+    // template is rendered by Email_templates_model::render().
+    private function _leave_dates_plain($req_days)
+    {
+        $time_fmt = (get_option('time_format') == 24) ? 'H:i' : 'g:i A';
+        return implode("\n", array_map(function ($d) use ($time_fmt) {
+            $line = _d($d->leave_date) . ' - ' . hr_leave_day_type_label($d->day_type);
+            if ($d->day_type === 'hourly' && $d->hour_start && $d->hour_end) {
+                $line .= ' (' . date($time_fmt, strtotime($d->hour_start)) . ' - ' . date($time_fmt, strtotime($d->hour_end)) . ')';
+            }
+            return $line;
+        }, $req_days));
     }
 
     // Parses the day-by-day rows posted from the apply form (days[i][date/type/half_period/hour_start/hour_end])

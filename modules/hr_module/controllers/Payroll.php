@@ -11,6 +11,7 @@ class Payroll extends AdminController
         $this->load->model('hr_module/Employees_model');
         $this->load->model('hr_module/Departments_model');
         $this->load->model('hr_module/Shifts_model');
+        $this->load->model('hr_module/Email_templates_model');
     }
 
     public function index()
@@ -45,6 +46,9 @@ class Payroll extends AdminController
             foreach ($emp_ids as $eid) {
                 $r = $this->Payroll_model->generate((int) $eid, $month, $year, ['notes' => $notes]);
                 if ($r['success']) $success++; else $skipped++;
+            }
+            if ($success > 0 && $this->Hr_module_model->notifications_enabled('notify_payroll')) {
+                $this->_notify_payroll_generated($month, $year, $success, $skipped);
             }
             set_alert('success', "Generated: $success payroll(s). Skipped (already exists): $skipped.");
             redirect(admin_url('hr_module/payroll'));
@@ -107,5 +111,30 @@ class Payroll extends AdminController
         $data['details']  = $this->Payroll_model->get_details($id);
         $data['settings'] = $this->Hr_module_model->get_all_settings();
         $this->load->view('hr_module/payroll/slip', $data);
+    }
+
+    // Notifies whoever can view payroll that a batch was just generated -
+    // gated by the "Notify on Payroll Generation" Settings toggle.
+    private function _notify_payroll_generated($month, $year, $success, $skipped)
+    {
+        $period = date('F', mktime(0, 0, 0, $month, 1)) . ' ' . $year;
+
+        $tpl = $this->Email_templates_model->render('payroll_generated', [
+            '{period}'         => $period,
+            '{success_count}'  => $success,
+            '{skipped_count}'  => $skipped,
+        ]);
+
+        $this->Hr_module_model->send_notification_email(
+            $tpl->subject,
+            $tpl->body,
+            admin_url('hr_module/payroll')
+        );
+        $this->Hr_module_model->notify_by_permission(
+            'view', 'hr_payroll',
+            'not_hr_payroll_generated',
+            'hr_module/payroll',
+            [$period]
+        );
     }
 }

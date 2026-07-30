@@ -22,10 +22,6 @@ class Holidays extends AdminController
 
         $cal_year  = (int) ($this->input->get('cal_year')  ?: date('Y'));
         $cal_month = (int) ($this->input->get('cal_month') ?: date('n'));
-        if ($cal_month < 1) { $cal_month = 12; $cal_year--; }
-        if ($cal_month > 12) { $cal_month = 1; $cal_year++; }
-        $cal_from = sprintf('%04d-%02d-01', $cal_year, $cal_month);
-        $cal_to   = date('Y-m-t', strtotime($cal_from));
 
         $data['title']      = 'Official Calendar';
         $data['year']       = $year;
@@ -33,11 +29,7 @@ class Holidays extends AdminController
         $data['weekly_off'] = $this->Holidays_model->get_weekly_off_days();
         $data['can_edit']   = is_admin() || staff_can('edit', 'hr_holidays');
 
-        $data['cal_year']       = $cal_year;
-        $data['cal_month']      = $cal_month;
-        $data['cal_holidays']   = $this->Holidays_model->get_holiday_names_in_range($cal_from, $cal_to);
-        $data['cal_leave_days'] = $this->Leave_model->get_approved_leave_days_in_range($cal_from, $cal_to);
-        $data['cal_shifts']     = $this->Shifts_model->get_approved_shifts_in_range($cal_from, $cal_to);
+        $data = array_merge($data, $this->_build_calendar_data($cal_year, $cal_month));
 
         $roster_date = $this->input->get('roster_date') ?: date('Y-m-d');
         if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $roster_date)) {
@@ -49,6 +41,63 @@ class Holidays extends AdminController
         $this->load->view('hr_module/holidays/index', $data);
     }
 
+    // AJAX: re-renders just the merged "Who's on Leave / Shift Roster" calendar
+    // for a given month, so the prev/next month buttons don't reload the page.
+    public function calendar()
+    {
+        if (!$this->input->is_ajax_request()) show_404();
+        if (!is_admin() && staff_cant('view', 'hr_holidays')) {
+            show_404();
+        }
+        $cal_year  = (int) ($this->input->get('cal_year')  ?: date('Y'));
+        $cal_month = (int) ($this->input->get('cal_month') ?: date('n'));
+
+        $data = $this->_build_calendar_data($cal_year, $cal_month);
+        $data['weekly_off'] = $this->Holidays_model->get_weekly_off_days();
+
+        $html = $this->load->view('hr_module/holidays/calendar', $data, true);
+        echo json_encode(['html' => $html]);
+    }
+
+    // Builds the derived per-day lookups the merged calendar partial needs -
+    // shared by index() (initial page load) and calendar() (AJAX month nav),
+    // so the two never drift out of sync.
+    private function _build_calendar_data($cal_year, $cal_month)
+    {
+        if ($cal_month < 1) { $cal_month = 12; $cal_year--; }
+        if ($cal_month > 12) { $cal_month = 1; $cal_year++; }
+        $cal_from = sprintf('%04d-%02d-01', $cal_year, $cal_month);
+        $cal_to   = date('Y-m-t', strtotime($cal_from));
+
+        $cal_holidays   = $this->Holidays_model->get_holiday_names_in_range($cal_from, $cal_to);
+        $cal_leave_days = $this->Leave_model->get_approved_leave_days_in_range($cal_from, $cal_to);
+        $cal_shifts     = $this->Shifts_model->get_approved_shifts_in_range($cal_from, $cal_to);
+
+        $leave_by_date = [];
+        foreach ($cal_leave_days as $ld) {
+            $leave_by_date[$ld->leave_date][] = $ld;
+        }
+
+        // Each shift assignment is a date RANGE (not per-day rows like leave), so
+        // expand it into a lookup by date, clipped to this calendar month.
+        $shifts_by_date = [];
+        foreach ($cal_shifts as $sh) {
+            $clip_from = max($sh->from_date, $cal_from);
+            $clip_to   = min($sh->to_date, $cal_to);
+            for ($ts = strtotime($clip_from); $ts <= strtotime($clip_to); $ts += 86400) {
+                $shifts_by_date[date('Y-m-d', $ts)][] = $sh;
+            }
+        }
+
+        return [
+            'cal_year'       => $cal_year,
+            'cal_month'      => $cal_month,
+            'cal_holidays'   => $cal_holidays,
+            'leave_by_date'  => $leave_by_date,
+            'shifts_by_date' => $shifts_by_date,
+        ];
+    }
+
     public function add()
     {
         if (!$this->input->is_ajax_request()) show_404();
@@ -57,7 +106,7 @@ class Holidays extends AdminController
             return;
         }
         $name = trim($this->input->post('name', true));
-        $date = $this->input->post('holiday_date');
+        $date = to_sql_date($this->input->post('holiday_date'));
         $type = $this->input->post('type');
 
         if (!$name || !$date) {
@@ -72,6 +121,42 @@ class Holidays extends AdminController
         ]);
 
         echo json_encode(['success' => (bool) $id, 'id' => $id]);
+    }
+
+    // Manually (re-)sends the same day-before holiday announcement the cron job
+    // sends automatically (see Hr_module_model::send_holiday_reminder()) - lets
+    // HR resend for a specific holiday if the automated one failed, using the
+    // exact same "holiday_reminder" email template.
+    public function send_announcement($id)
+    {
+        if (!$this->input->is_ajax_request()) show_404();
+        if (!is_admin() && staff_cant('edit', 'hr_holidays')) {
+            echo json_encode(['success' => false, 'message' => _l('hr_error_permission')]);
+            return;
+        }
+        $holiday = $this->Holidays_model->get($id);
+        if (!$holiday) {
+            echo json_encode(['success' => false, 'message' => 'Holiday not found.']);
+            return;
+        }
+
+        $this->load->model('hr_module/Email_templates_model');
+        $day_name   = date('l', strtotime($holiday->holiday_date));
+        $date_label = _d($holiday->holiday_date);
+
+        $tpl = $this->Email_templates_model->render('holiday_reminder', [
+            '{holiday_name}' => $holiday->name,
+            '{day_name}'     => $day_name,
+            '{date}'         => $date_label,
+        ]);
+
+        $sent = $this->Hr_module_model->send_leave_announcement($tpl->subject, $tpl->body);
+        echo json_encode([
+            'success' => $sent,
+            'message' => $sent
+                ? _l('hr_holiday_announcement_sent')
+                : _l('hr_holiday_announcement_failed'),
+        ]);
     }
 
     public function delete($id)

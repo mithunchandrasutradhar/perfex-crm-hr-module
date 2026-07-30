@@ -8,6 +8,7 @@ class Training extends AdminController
         parent::__construct();
         $this->load->model('hr_module/Training_model');
         $this->load->model('hr_module/Hr_module_model');
+        $this->load->model('hr_module/Email_templates_model');
     }
 
     public function index()
@@ -32,6 +33,9 @@ class Training extends AdminController
             $this->_handle_attachment($data);
             $result = $this->Training_model->add($data);
             if ($result['success']) {
+                if ($this->Hr_module_model->notifications_enabled('notify_training')) {
+                    $this->_notify_instructor_assigned($result['id']);
+                }
                 set_alert('success', $result['message']);
                 redirect(admin_url('hr_module/training/view/' . $result['id']));
             }
@@ -53,7 +57,15 @@ class Training extends AdminController
         if ($this->input->post()) {
             $data = $this->_post_data();
             $this->_handle_attachment($data);
+            $old_instructor_id = (int) $training->instructor_id;
             $result = $this->Training_model->update($data, $id);
+            $new_instructor_id = !empty($data['instructor_id']) ? (int) $data['instructor_id'] : 0;
+            // Only notify when the instructor is actually being newly set/changed -
+            // otherwise saving an unrelated field on every edit would re-notify them.
+            if ($result['success'] && $new_instructor_id && $new_instructor_id !== $old_instructor_id
+                && $this->Hr_module_model->notifications_enabled('notify_training')) {
+                $this->_notify_instructor_assigned($id);
+            }
             set_alert($result['success'] ? 'success' : 'danger', $result['message']);
             redirect(admin_url('hr_module/training/view/' . $id));
         }
@@ -104,6 +116,10 @@ class Training extends AdminController
         if ($this->input->is_ajax_request()) {
             $emp_ids = $this->input->post('employee_ids') ?: [];
             $result  = $this->Training_model->enroll($id, $emp_ids);
+            if ($result['success'] && !empty($result['enrolled_ids'])
+                && $this->Hr_module_model->notifications_enabled('notify_training')) {
+                $this->_notify_enrolled($id, $result['enrolled_ids']);
+            }
             echo json_encode($result);
             return;
         }
@@ -175,6 +191,40 @@ class Training extends AdminController
         $data['days']            = array_column($sessions, 'session_date');
         $data['attendance_grid'] = $this->Training_model->get_attendance_grid($id);
         $this->load->view('hr_module/training/report', $data);
+    }
+
+    // Emails a summary of the training report to the admin inbox already
+    // configured in Settings (hr_notification_email) - the same address every
+    // other HR-module admin notification uses, not a new setting.
+    public function email_report($id)
+    {
+        $training = $this->Training_model->get($id);
+        if (!$training) show_404();
+
+        $is_instructor = $this->Training_model->is_instructor($id, get_staff_user_id());
+        if (staff_cant('create', 'hr_training') && staff_cant('edit', 'hr_training') && !$is_instructor) {
+            access_denied('hr_training');
+        }
+
+        // Same premium look as the printable report - rendered from a dedicated
+        // view (report_email.php) built with table/inline-style markup only, since
+        // email clients strip <style> blocks and don't support flexbox/grid.
+        $sessions = $this->Training_model->get_sessions($id);
+        $data['training']        = $training;
+        $data['participants']    = $this->Training_model->get_participants($id);
+        $data['sessions']        = $sessions;
+        $data['days']            = array_column($sessions, 'session_date');
+        $data['attendance_grid'] = $this->Training_model->get_attendance_grid($id);
+        $message = $this->load->view('hr_module/training/report_email', $data, true);
+
+        $sent = $this->Hr_module_model->send_notification_email(
+            'Training Report: ' . $training->title,
+            $message,
+            admin_url('hr_module/training/report/' . $id)
+        );
+
+        set_alert($sent ? 'success' : 'danger', $sent ? _l('hr_training_report_emailed') : _l('hr_training_report_email_failed'));
+        redirect(admin_url('hr_module/training/view/' . $id));
     }
 
     public function mark_attendance($training_id, $employee_id)
@@ -261,5 +311,105 @@ class Training extends AdminController
         $out = [];
         foreach ($staff as $s) $out[$s->staffid] = $s->name;
         return $out;
+    }
+
+    private function _training_dates_label($training)
+    {
+        if (!$training->start_date) return '-';
+        if ($training->start_date === $training->end_date) return _d($training->start_date);
+        return _d($training->start_date) . ' - ' . _d($training->end_date);
+    }
+
+    // Day-by-day schedule with actual session times (e.g. "01 Jul 2026, 9:00 AM -
+    // 5:00 PM<br>02 Jul 2026, 9:00 AM - 5:00 PM") for the notification emails -
+    // falls back to the plain date range when no sessions are set up yet.
+    private function _training_schedule_label($training_id, $training)
+    {
+        $sessions = $this->Training_model->get_sessions($training_id);
+        if (empty($sessions)) {
+            return $this->_training_dates_label($training);
+        }
+        $lines = [];
+        foreach ($sessions as $s) {
+            $line = _d($s->session_date);
+            if ($s->start_time || $s->end_time) {
+                $line .= ', ' . ($s->start_time ? date('g:i A', strtotime($s->start_time)) : '?')
+                       . ' - ' . ($s->end_time ? date('g:i A', strtotime($s->end_time)) : '?');
+            }
+            $lines[] = $line;
+        }
+        return implode('<br>', $lines);
+    }
+
+    // Emails the assigned instructor (a staff account) the training's details -
+    // fired on create (if an instructor is picked) and on edit only when the
+    // instructor actually changes, so re-saving other fields doesn't re-notify them.
+    // Wrapped in try/catch - a notification hiccup must never break the
+    // save-and-redirect flow that triggered it (same rule Hr_module_model's own
+    // senders follow).
+    private function _notify_instructor_assigned($training_id)
+    {
+        try {
+            $training = $this->Training_model->get($training_id);
+            if (!$training || !$training->instructor_id) return;
+
+            $staff = $this->db->select('email, CONCAT(firstname," ",lastname) as name')
+                ->where('staffid', $training->instructor_id)
+                ->get(db_prefix() . 'staff')->row();
+            if (!$staff || empty($staff->email)) return;
+
+            $tpl = $this->Email_templates_model->render('training_instructor_assigned', [
+                '{instructor_name}' => $staff->name,
+                '{training_title}'  => $training->title,
+                '{venue}'           => $training->venue ?: '-',
+                '{schedule}'        => $this->_training_schedule_label($training_id, $training),
+                '{status}'          => ucfirst($training->status),
+                '{description}'     => $training->description ?: '-',
+            ]);
+
+            $this->Hr_module_model->send_employee_email(
+                $staff->email,
+                $tpl->subject,
+                $tpl->body,
+                admin_url('hr_module/training/view/' . $training_id)
+            );
+        } catch (Exception $e) {
+            log_activity('HR Training instructor-assigned email failed: ' . $e->getMessage());
+        }
+    }
+
+    // Emails each newly-enrolled employee the training's details. Wrapped in
+    // try/catch for the same reason as _notify_instructor_assigned() above.
+    private function _notify_enrolled($training_id, $employee_ids)
+    {
+        try {
+            $training = $this->Training_model->get($training_id);
+            if (!$training || empty($employee_ids)) return;
+
+            $employees = $this->db->select('email, CONCAT(first_name," ",last_name) as name')
+                ->where_in('id', $employee_ids)
+                ->where('email !=', '')
+                ->get(db_prefix() . 'hr_employees')->result();
+
+            foreach ($employees as $emp) {
+                $tpl = $this->Email_templates_model->render('training_enrolled', [
+                    '{employee_name}'   => $emp->name,
+                    '{training_title}'  => $training->title,
+                    '{instructor_name}' => $training->instructor_name ?: $training->trainer ?: '-',
+                    '{venue}'           => $training->venue ?: '-',
+                    '{schedule}'        => $this->_training_schedule_label($training_id, $training),
+                    '{description}'     => $training->description ?: '-',
+                ]);
+
+                $this->Hr_module_model->send_employee_email(
+                    $emp->email,
+                    $tpl->subject,
+                    $tpl->body,
+                    admin_url('hr_module/training/view/' . $training_id)
+                );
+            }
+        } catch (Exception $e) {
+            log_activity('HR Training enrollment email failed: ' . $e->getMessage());
+        }
     }
 }

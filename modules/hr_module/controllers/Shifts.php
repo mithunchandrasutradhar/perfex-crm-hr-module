@@ -10,6 +10,7 @@ class Shifts extends AdminController
         $this->load->model('hr_module/Hr_module_model');
         $this->load->model('hr_module/Employees_model');
         $this->load->model('hr_module/Departments_model');
+        $this->load->model('hr_module/Email_templates_model');
     }
 
     public function index()
@@ -76,8 +77,10 @@ class Shifts extends AdminController
                 redirect(admin_url('hr_module/shifts/apply'));
             }
 
-            foreach ($created_ids as $id) {
-                $this->_notify_submitted($id);
+            if ($this->Hr_module_model->notifications_enabled('notify_shift')) {
+                foreach ($created_ids as $id) {
+                    $this->_notify_submitted($id);
+                }
             }
 
             if (!empty($created_ids)) {
@@ -133,7 +136,7 @@ class Shifts extends AdminController
             access_denied('hr_shifts');
         }
         $result = $this->Shifts_model->approve($id);
-        if ($result['success']) {
+        if ($result['success'] && $this->Hr_module_model->notifications_enabled('notify_shift')) {
             $this->_notify_status($id, 'approved');
         }
         if ($this->input->is_ajax_request()) {
@@ -152,7 +155,7 @@ class Shifts extends AdminController
         }
         $reason = $this->input->post('reason', true);
         $result = $this->Shifts_model->reject($id, $reason);
-        if ($result['success']) {
+        if ($result['success'] && $this->Hr_module_model->notifications_enabled('notify_shift')) {
             $this->_notify_status($id, 'rejected');
         }
         if ($this->input->is_ajax_request()) {
@@ -186,18 +189,17 @@ class Shifts extends AdminController
         if (!$a) return;
 
         $range = _d($a->from_date) . ($a->to_date !== $a->from_date ? ' - ' . _d($a->to_date) : '');
-        $message = '<p>A new shift assignment request has been submitted and is awaiting review.</p>'
-            . $this->Hr_module_model->format_notification_details([
-                'Employee'    => htmlspecialchars($a->employee_name . ' (' . $a->employee_code . ')'),
-                'Department'  => htmlspecialchars($a->department_name ?: '-'),
-                'Designation' => htmlspecialchars($a->designation_name ?: '-'),
-                'Shift'       => htmlspecialchars($a->shift_name),
-                'Date Range'  => $range,
-                'Reason'      => nl2br(htmlspecialchars($a->reason ?: '-')),
-            ]);
+        $tpl = $this->Email_templates_model->render('shift_applied', [
+            '{employee_name}' => $a->employee_name . ' (' . $a->employee_code . ')',
+            '{department}'    => $a->department_name ?: '-',
+            '{designation}'   => $a->designation_name ?: '-',
+            '{shift_name}'    => $a->shift_name,
+            '{date_range}'    => $range,
+            '{reason}'        => $a->reason ?: '-',
+        ]);
         $this->Hr_module_model->send_notification_email(
-            'New Shift Assignment Request Submitted',
-            $message,
+            $tpl->subject,
+            $tpl->body,
             admin_url('hr_module/shifts/view/' . $id)
         );
         $this->Hr_module_model->notify_by_permission(
@@ -216,22 +218,26 @@ class Shifts extends AdminController
         if (!$a) return;
 
         $range = _d($a->from_date) . ($a->to_date !== $a->from_date ? ' - ' . _d($a->to_date) : '');
-        $color = $status === 'approved' ? '#059669' : '#dc2626';
 
         if (!empty($a->employee_email)) {
-            $details = [
-                'Shift'      => htmlspecialchars($a->shift_name),
-                'Date Range' => $range,
-            ];
-            if ($status === 'rejected' && $a->rejection_reason) {
-                $details['Reason'] = nl2br(htmlspecialchars($a->rejection_reason));
+            if ($status === 'approved') {
+                $tpl = $this->Email_templates_model->render('shift_approved', [
+                    '{employee_name}' => $a->employee_name,
+                    '{shift_name}'    => $a->shift_name,
+                    '{date_range}'    => $range,
+                ]);
+            } else {
+                $tpl = $this->Email_templates_model->render('shift_rejected', [
+                    '{employee_name}' => $a->employee_name,
+                    '{shift_name}'    => $a->shift_name,
+                    '{date_range}'    => $range,
+                    '{reason}'        => $a->rejection_reason ?: '-',
+                ]);
             }
             $this->Hr_module_model->send_employee_email(
                 $a->employee_email,
-                'Your Shift Assignment Request Has Been ' . ucfirst($status),
-                '<p>Hi ' . htmlspecialchars($a->employee_name) . ',</p>'
-                    . '<p>Your shift assignment request has been <strong style="color:' . $color . '">' . htmlspecialchars($status) . '</strong>.</p>'
-                    . $this->Hr_module_model->format_notification_details($details),
+                $tpl->subject,
+                $tpl->body,
                 admin_url('hr_module/shifts/view/' . $id)
             );
         }

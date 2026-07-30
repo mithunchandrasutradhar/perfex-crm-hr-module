@@ -11,6 +11,11 @@ $route['hr_module/settings/add_shift']            = 'hr_module/Settings/add_shif
 $route['hr_module/settings/edit_shift/(:num)']    = 'hr_module/Settings/edit_shift/$1';
 $route['hr_module/settings/delete_shift/(:num)']  = 'hr_module/Settings/delete_shift/$1';
 
+// Email Templates
+$route['hr_module/email_templates']               = 'hr_module/Email_templates/index';
+$route['hr_module/email_templates/edit/(:num)']   = 'hr_module/Email_templates/edit/$1';
+$route['hr_module/email_templates/send_test/(:num)'] = 'hr_module/Email_templates/send_test/$1';
+
 // Employees
 $route['hr_module/employees']                              = 'hr_module/Employees/index';
 $route['hr_module/employees/add']                          = 'hr_module/Employees/add';
@@ -134,6 +139,7 @@ $route['hr_module/training/mark_attendance/(:num)/(:num)']     = 'hr_module/Trai
 $route['hr_module/training/mark_complete/(:num)']              = 'hr_module/Training/mark_complete/$1';
 $route['hr_module/training/mark_daily_attendance/(:num)/(:num)'] = 'hr_module/Training/mark_daily_attendance/$1/$2';
 $route['hr_module/training/report/(:num)']                     = 'hr_module/Training/report/$1';
+$route['hr_module/training/email_report/(:num)']               = 'hr_module/Training/email_report/$1';
 $route['hr_module/training/save_employee_note/(:num)/(:num)']     = 'hr_module/Training/save_employee_note/$1/$2';
 $route['hr_module/training/save_employee_feedback/(:num)/(:num)'] = 'hr_module/Training/save_employee_feedback/$1/$2';
 

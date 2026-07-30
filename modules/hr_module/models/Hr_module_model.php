@@ -20,6 +20,15 @@ class Hr_module_model extends App_Model
         return $default;
     }
 
+    // Whether a given "Notify on X" checkbox (Settings > Notification Settings)
+    // is turned on - defaults to enabled ('1') when never saved, so wiring this
+    // guard into a notification call site doesn't silently go quiet for any
+    // install that hasn't touched this settings panel yet.
+    public function notifications_enabled($key)
+    {
+        return $this->get_setting($key, '1') == '1';
+    }
+
     public function get_all_settings()
     {
         $rows    = $this->db->get(db_prefix() . 'hr_settings')->result();
@@ -487,6 +496,64 @@ class Hr_module_model extends App_Model
             // Fire hook for notifications — Phase 4 will add the email handler
             hooks()->do_action('hr_contract_expiring', $contract);
         }
+    }
+
+    // ─── Holiday reminder (day-before, all employees) ──────────────────────
+
+    // Cron-driven (see hr_module_cron_tasks()) - checks once per calendar day,
+    // once the configured time-of-day (holiday_reminder_time, default 09:00)
+    // has passed, whether tomorrow is a government/company holiday, and if so
+    // emails every active mapped employee. No-op unless holiday_reminder_enabled
+    // is turned on in Settings. Guarded by holiday_reminder_last_sent_date so
+    // later cron ticks the same day don't resend - a ">=" time check (rather
+    // than an exact-minute match) since the cron polling cadence isn't
+    // guaranteed to land on the exact configured minute.
+    //
+    // The configured time (and "today"/"tomorrow") are always evaluated in
+    // Bangladesh Standard Time (Asia/Dhaka, UTC+6) regardless of the server's
+    // own timezone, so a non-technical HR user can enter a plain local time
+    // (e.g. 4:01 PM) and get exactly that, even if the server itself runs on
+    // UTC or any other zone.
+    public function send_holiday_reminder()
+    {
+        if ($this->get_setting('holiday_reminder_enabled') != '1') {
+            return false;
+        }
+
+        $now_bd = new DateTime('now', new DateTimeZone('Asia/Dhaka'));
+
+        $target_time = $this->get_setting('holiday_reminder_time', '09:00');
+        if ($now_bd->format('H:i') < $target_time) {
+            return false;
+        }
+
+        $today = $now_bd->format('Y-m-d');
+        if ($this->get_setting('holiday_reminder_last_sent_date') === $today) {
+            return false;
+        }
+        // Mark as checked for today regardless of whether a holiday is found,
+        // so this only ever evaluates once per calendar day.
+        $this->save_settings(['holiday_reminder_last_sent_date' => $today]);
+
+        $CI = &get_instance();
+        $CI->load->model('hr_module/Holidays_model');
+        $tomorrow = (clone $now_bd)->modify('+1 day')->format('Y-m-d');
+        $holiday  = $CI->Holidays_model->get_holiday_on_date($tomorrow);
+        if (!$holiday) {
+            return false;
+        }
+
+        $day_name   = date('l', strtotime($tomorrow));
+        $date_label = _d($tomorrow);
+
+        $CI->load->model('hr_module/Email_templates_model');
+        $tpl = $CI->Email_templates_model->render('holiday_reminder', [
+            '{holiday_name}' => $holiday->name,
+            '{day_name}'     => $day_name,
+            '{date}'         => $date_label,
+        ]);
+
+        return $this->send_leave_announcement($tpl->subject, $tpl->body);
     }
 
     // ─── Helpers ──────────────────────────────────────────────────────────

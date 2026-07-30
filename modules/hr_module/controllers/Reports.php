@@ -45,6 +45,8 @@ class Reports extends AdminController
     {
         if (staff_cant('view', 'hr_reports')) access_denied('hr_reports');
         $f = $this->_get_filters(['employee_id','department_id','status','leave_type_id','from_date','to_date']);
+        if (!empty($f['from_date'])) $f['from_date'] = to_sql_date($f['from_date']);
+        if (!empty($f['to_date']))   $f['to_date']   = to_sql_date($f['to_date']);
 
         $rows = $this->Reports_model->leave($f);
         $this->load->model('hr_module/Leave_model');
@@ -114,6 +116,8 @@ class Reports extends AdminController
     {
         if (staff_cant('view', 'hr_reports')) access_denied('hr_reports');
         $f = $this->_get_filters(['department_id','status','from_date','to_date']);
+        if (!empty($f['from_date'])) $f['from_date'] = to_sql_date($f['from_date']);
+        if (!empty($f['to_date']))   $f['to_date']   = to_sql_date($f['to_date']);
 
         $rows = $this->Reports_model->overtime($f);
 

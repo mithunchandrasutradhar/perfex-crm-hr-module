@@ -16,8 +16,18 @@ $day_type_labels = [
   <div class="panel_s tw-mb-3"><div class="panel-body">
     <?php echo form_open(admin_url('hr_module/reports/overtime'), ['method'=>'get']); ?>
     <div class="row">
-      <div class="col-md-2"><input type="date" name="from_date" class="form-control input-sm" value="<?php echo $filters['from_date'] ?? ''; ?>"></div>
-      <div class="col-md-2"><input type="date" name="to_date"   class="form-control input-sm" value="<?php echo $filters['to_date'] ?? ''; ?>"></div>
+      <div class="col-md-2">
+        <div class="input-group date">
+          <input type="text" name="from_date" class="form-control input-sm datepicker" autocomplete="off" value="<?php echo !empty($filters['from_date']) ? _d($filters['from_date']) : ''; ?>" placeholder="From Date">
+          <span class="input-group-addon"><i class="fa-regular fa-calendar calendar-icon"></i></span>
+        </div>
+      </div>
+      <div class="col-md-2">
+        <div class="input-group date">
+          <input type="text" name="to_date" class="form-control input-sm datepicker" autocomplete="off" value="<?php echo !empty($filters['to_date']) ? _d($filters['to_date']) : ''; ?>" placeholder="To Date">
+          <span class="input-group-addon"><i class="fa-regular fa-calendar calendar-icon"></i></span>
+        </div>
+      </div>
       <div class="col-md-2"><select name="department_id" class="form-control input-sm"><option value="">All Departments</option><?php foreach($departments as $d): ?><option value="<?php echo $d->id; ?>" <?php if(($filters['department_id']??'')==$d->id) echo 'selected'; ?>><?php echo htmlspecialchars($d->name); ?></option><?php endforeach; ?></select></div>
       <div class="col-md-2"><select name="status" class="form-control input-sm"><option value="">All Status</option><?php foreach(['pending','approved','rejected'] as $s): ?><option value="<?php echo $s; ?>" <?php if(($filters['status']??'')==$s) echo 'selected'; ?>><?php echo ucfirst($s); ?></option><?php endforeach; ?></select></div>
       <div class="col-md-2"><button type="submit" class="btn btn-primary btn-sm btn-block">Filter</button></div>

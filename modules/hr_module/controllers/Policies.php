@@ -10,6 +10,7 @@ class Policies extends AdminController
         $this->load->model('hr_module/Hr_module_model');
         $this->load->model('hr_module/Employees_model');
         $this->load->model('hr_module/Departments_model');
+        $this->load->model('hr_module/Email_templates_model');
     }
 
     // Global managers (is_admin, or granted the global 'view' capability) may manage
@@ -127,7 +128,9 @@ class Policies extends AdminController
 
             $id = $this->Policies_model->add($data);
             if ($id) {
-                $this->_notify_admin_submitted($id);
+                if ($this->Hr_module_model->notifications_enabled('notify_policy')) {
+                    $this->_notify_admin_submitted($id);
+                }
                 set_alert('success', 'Policy submitted and awaiting admin approval.');
                 redirect(admin_url('hr_module/policies/view/' . $id));
             }
@@ -187,7 +190,9 @@ class Policies extends AdminController
 
             $result = $this->Policies_model->submit_revision($id, $data);
             if ($result['success']) {
-                $this->_notify_admin_revision($id, $result['id']);
+                if ($this->Hr_module_model->notifications_enabled('notify_policy')) {
+                    $this->_notify_admin_revision($id, $result['id']);
+                }
                 set_alert('success', 'Update submitted and awaiting admin approval. The current version stays visible until then.');
                 redirect(admin_url('hr_module/policies/view/' . $id));
             }
@@ -227,7 +232,9 @@ class Policies extends AdminController
         if (!$this->_is_policy_approver()) access_denied('hr_policies');
         $result = $this->Policies_model->approve($id);
         if ($result['success']) {
-            $this->_broadcast_published($id);
+            if ($this->Hr_module_model->notifications_enabled('notify_policy')) {
+                $this->_broadcast_published($id);
+            }
             set_alert('success', 'Policy approved and published.');
         } else {
             set_alert('danger', $result['message']);
@@ -250,7 +257,9 @@ class Policies extends AdminController
         if (!$this->_is_policy_approver()) access_denied('hr_policies');
         $result = $this->Policies_model->approve_revision($id);
         if ($result['success']) {
-            $this->_broadcast_published($result['policy_id'], true);
+            if ($this->Hr_module_model->notifications_enabled('notify_policy')) {
+                $this->_broadcast_published($result['policy_id'], true);
+            }
             set_alert('success', 'Update approved and published.');
             redirect(admin_url('hr_module/policies/view/' . $result['policy_id']));
         }
@@ -399,16 +408,15 @@ class Policies extends AdminController
         $policy = $this->Policies_model->get($id);
         if (!$policy) return;
 
-        $message = '<p>A new policy has been submitted and is awaiting approval.</p>'
-            . $this->Hr_module_model->format_notification_details([
-                'Title'        => htmlspecialchars($policy->title),
-                'Visibility'   => $policy->type === 'public' ? 'Public (all employees)' : htmlspecialchars('Private - ' . ($policy->department_names ?: '-')),
-                'Content'      => $this->_content_summary($policy),
-                'Submitted By' => htmlspecialchars($policy->created_by_name ?: '-'),
-            ]);
+        $tpl = $this->Email_templates_model->render('policy_submitted_for_approval', [
+            '{title}'        => $policy->title,
+            '{visibility}'   => $policy->type === 'public' ? 'Public (all employees)' : 'Private - ' . ($policy->department_names ?: '-'),
+            '{content}'      => $this->_content_summary($policy),
+            '{submitted_by}' => $policy->created_by_name ?: '-',
+        ]);
         $this->_notify_approver(
-            'New Policy Submitted For Approval',
-            $message,
+            $tpl->subject,
+            $tpl->body,
             'hr_module/policies/view/' . $id,
             'not_hr_policy_submitted',
             [$policy->title]
@@ -423,16 +431,15 @@ class Policies extends AdminController
         $revision = $this->Policies_model->get_revision($revision_id);
         if (!$policy || !$revision) return;
 
-        $message = '<p>An update to an existing policy has been submitted and is awaiting approval. The current version stays visible to employees until then.</p>'
-            . $this->Hr_module_model->format_notification_details([
-                'Policy'       => htmlspecialchars($policy->title),
-                'Visibility'   => $revision->type === 'public' ? 'Public (all employees)' : htmlspecialchars('Private - ' . ($revision->department_names ?: '-')),
-                'Content'      => $this->_content_summary($revision),
-                'Submitted By' => htmlspecialchars($revision->submitted_by_name ?: '-'),
-            ]);
+        $tpl = $this->Email_templates_model->render('policy_revision_submitted', [
+            '{title}'        => $policy->title,
+            '{visibility}'   => $revision->type === 'public' ? 'Public (all employees)' : 'Private - ' . ($revision->department_names ?: '-'),
+            '{content}'      => $this->_content_summary($revision),
+            '{submitted_by}' => $revision->submitted_by_name ?: '-',
+        ]);
         $this->_notify_approver(
-            'Policy Update Submitted For Approval',
-            $message,
+            $tpl->subject,
+            $tpl->body,
             'hr_module/policies/view/' . $policy_id,
             'not_hr_policy_update_submitted',
             [$policy->title]
@@ -446,27 +453,26 @@ class Policies extends AdminController
         $policy = $this->Policies_model->get($id);
         if (!$policy) return;
 
-        $details = [
-            'Title'      => htmlspecialchars($policy->title),
-            'Visibility' => $policy->type === 'public' ? 'Public (all employees)' : htmlspecialchars('Private - ' . ($policy->department_names ?: '-')),
-            'Content'    => $this->_content_summary($policy),
-        ];
+        $visibility = $policy->type === 'public' ? 'Public (all employees)' : 'Private - ' . ($policy->department_names ?: '-');
         if ($is_update) {
-            $details['Updated'] = _dt($policy->updated_at);
+            $tpl = $this->Email_templates_model->render('policy_updated', [
+                '{title}'        => $policy->title,
+                '{visibility}'   => $visibility,
+                '{content}'      => $this->_content_summary($policy),
+                '{updated_info}' => _dt($policy->updated_at),
+            ]);
         } else {
-            $details['Published'] = _dt($policy->published_at) . ' by ' . htmlspecialchars($policy->approved_by_name ?: '-');
+            $tpl = $this->Email_templates_model->render('policy_published', [
+                '{title}'          => $policy->title,
+                '{visibility}'     => $visibility,
+                '{content}'        => $this->_content_summary($policy),
+                '{published_info}' => _dt($policy->published_at) . ' by ' . ($policy->approved_by_name ?: '-'),
+            ]);
         }
 
-        $subject = ($is_update ? 'Policy Updated: ' : 'New Policy Published: ') . $policy->title;
-        $message = '<p>' . ($is_update
-                ? 'An existing policy has been updated. Please review the changes.'
-                : 'A new policy has been published.')
-            . '</p>'
-            . $this->Hr_module_model->format_notification_details($details);
-
         $this->Hr_module_model->send_policy_announcement(
-            $subject,
-            $message,
+            $tpl->subject,
+            $tpl->body,
             $policy->type === 'public' ? null : $policy->department_id_list,
             admin_url('hr_module/policies/view/' . $id)
         );

@@ -10,6 +10,7 @@ class Overtime extends AdminController
         $this->load->model('hr_module/Hr_module_model');
         $this->load->model('hr_module/Departments_model');
         $this->load->model('hr_module/Employees_model');
+        $this->load->model('hr_module/Email_templates_model');
     }
 
     public function index()
@@ -41,24 +42,25 @@ class Overtime extends AdminController
                 'reason'      => $this->input->post('reason', true),
             ]);
             if ($result['success']) {
-                $emp = $this->Employees_model->get($employee_id);
-                $message = '<p>A new overtime request has been submitted and is awaiting review.</p>'
-                    . $this->Hr_module_model->format_notification_details([
-                        'Employee' => htmlspecialchars($emp ? $emp->first_name . ' ' . $emp->last_name . ' (' . $emp->employee_code . ')' : 'Unknown'),
-                        'Dates'    => htmlspecialchars(implode(', ', array_map('_d', $dates))),
-                        'Reason'   => nl2br(htmlspecialchars($this->input->post('reason', true) ?: '-')),
+                if ($this->Hr_module_model->notifications_enabled('notify_overtime')) {
+                    $emp = $this->Employees_model->get($employee_id);
+                    $tpl = $this->Email_templates_model->render('overtime_apply', [
+                        '{employee_name}' => $emp ? $emp->first_name . ' ' . $emp->last_name . ' (' . $emp->employee_code . ')' : 'Unknown',
+                        '{dates}'         => implode(', ', array_map('_d', $dates)),
+                        '{reason}'        => $this->input->post('reason', true) ?: '-',
                     ]);
-                $this->Hr_module_model->send_notification_email(
-                    'New Overtime Request Submitted',
-                    $message,
-                    admin_url('hr_module/overtime/view/' . $result['id'])
-                );
-                $this->Hr_module_model->notify_by_permission(
-                    'edit', 'hr_overtime',
-                    'not_hr_overtime_applied',
-                    'hr_module/overtime/view/' . $result['id'],
-                    [$emp ? $emp->first_name . ' ' . $emp->last_name : 'Unknown']
-                );
+                    $this->Hr_module_model->send_notification_email(
+                        $tpl->subject,
+                        $tpl->body,
+                        admin_url('hr_module/overtime/view/' . $result['id'])
+                    );
+                    $this->Hr_module_model->notify_by_permission(
+                        'edit', 'hr_overtime',
+                        'not_hr_overtime_applied',
+                        'hr_module/overtime/view/' . $result['id'],
+                        [$emp ? $emp->first_name . ' ' . $emp->last_name : 'Unknown']
+                    );
+                }
                 set_alert('success', $result['message']);
                 redirect(admin_url('hr_module/overtime/view/' . $result['id']));
             }

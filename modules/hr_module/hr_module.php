@@ -347,4 +347,7 @@ function hr_module_cron_tasks()
     // Notify expiring contracts (30 days ahead)
     $CI->load->model('hr_module/Hr_module_model');
     $CI->Hr_module_model->notify_expiring_contracts();
+
+    // Day-before holiday reminder to all employees (see send_holiday_reminder())
+    $CI->Hr_module_model->send_holiday_reminder();
 }

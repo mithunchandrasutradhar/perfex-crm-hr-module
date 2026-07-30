@@ -133,11 +133,21 @@ class Settings extends AdminController
             'currency',
             'notify_leave_apply',
             'notify_leave_approve',
+            'notify_leave_cancellation',
             'notify_loan_apply',
+            'notify_loan_approve',
+            'notify_loan_deduction',
+            'notify_overtime',
+            'notify_helpdesk',
+            'notify_shift',
+            'notify_policy',
+            'notify_training',
             'notify_payroll',
             'hr_notification_email',
             'zkteco_enabled',
             'zkteco_sync_interval',
+            'holiday_reminder_enabled',
+            'holiday_reminder_time',
         ];
 
         // input->post() returns NULL (not false) for a key absent from the

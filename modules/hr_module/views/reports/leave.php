@@ -12,8 +12,18 @@ $sbadge = ['approved'=>'success','pending'=>'warning','rejected'=>'danger','canc
   <div class="panel_s tw-mb-3"><div class="panel-body">
     <?php echo form_open(admin_url('hr_module/reports/leave'), ['method'=>'get']); ?>
     <div class="row">
-      <div class="col-md-2"><input type="date" name="from_date" class="form-control input-sm" value="<?php echo $filters['from_date'] ?? ''; ?>" placeholder="From Date"></div>
-      <div class="col-md-2"><input type="date" name="to_date" class="form-control input-sm" value="<?php echo $filters['to_date'] ?? ''; ?>" placeholder="To Date"></div>
+      <div class="col-md-2">
+        <div class="input-group date">
+          <input type="text" name="from_date" class="form-control input-sm datepicker" autocomplete="off" value="<?php echo !empty($filters['from_date']) ? _d($filters['from_date']) : ''; ?>" placeholder="From Date">
+          <span class="input-group-addon"><i class="fa-regular fa-calendar calendar-icon"></i></span>
+        </div>
+      </div>
+      <div class="col-md-2">
+        <div class="input-group date">
+          <input type="text" name="to_date" class="form-control input-sm datepicker" autocomplete="off" value="<?php echo !empty($filters['to_date']) ? _d($filters['to_date']) : ''; ?>" placeholder="To Date">
+          <span class="input-group-addon"><i class="fa-regular fa-calendar calendar-icon"></i></span>
+        </div>
+      </div>
       <div class="col-md-2">
         <select name="department_id" class="form-control input-sm">
           <option value="">All Departments</option>

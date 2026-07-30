@@ -321,6 +321,7 @@ class Training_model extends App_Model
         $session_dates = array_column($this->get_sessions($training_id), 'session_date');
 
         $added = 0;
+        $enrolled_ids = [];
         foreach ($employee_ids as $eid) {
             $eid = (int) $eid;
             if (in_array($eid, $already)) continue;
@@ -333,8 +334,9 @@ class Training_model extends App_Model
             ]);
             $this->_generate_attendance_rows($training_id, $eid, $session_dates);
             $added++;
+            $enrolled_ids[] = $eid;
         }
-        return ['success' => true, 'message' => "$added participant(s) enrolled."];
+        return ['success' => true, 'message' => "$added participant(s) enrolled.", 'enrolled_ids' => $enrolled_ids];
     }
 
     public function remove_participant($training_id, $employee_id)

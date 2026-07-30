@@ -217,7 +217,7 @@ class Performance extends AdminController
             'employee_id' => (int) $this->input->post('employee_id'),
             'title'       => $this->input->post('title', true),
             'description' => $this->input->post('description', true),
-            'due_date'    => $this->input->post('due_date'),
+            'due_date'    => to_sql_date($this->input->post('due_date')),
         ];
     }
 
@@ -245,7 +245,7 @@ class Performance extends AdminController
             $rows[] = [
                 'title'         => trim($title),
                 'description'   => $descriptions[$i] ?? null,
-                'due_date'      => $due_dates[$i] ?? null,
+                'due_date'      => to_sql_date($due_dates[$i] ?? null),
                 'evaluator_ids' => $evaluators[$i] ?? [],
             ];
         }

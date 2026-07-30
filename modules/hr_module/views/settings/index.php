@@ -11,6 +11,9 @@ $can_edit = staff_can('edit', 'hr_settings') || is_admin();
                     <h4 class="tw-font-semibold tw-text-lg tw-text-neutral-700">
                         <?php echo _l('hr_module_settings'); ?>
                     </h4>
+                    <a href="<?php echo admin_url('hr_module/email_templates'); ?>" class="btn btn-default btn-sm">
+                        <i class="fa fa-envelope-o tw-mr-1"></i><?php echo _l('hr_email_templates'); ?>
+                    </a>
                 </div>
             </div>
         </div>
@@ -267,13 +270,24 @@ $can_edit = staff_can('edit', 'hr_settings') || is_admin();
                             <div class="row">
                                 <?php
                                 $notif_settings = [
-                                    'notify_leave_apply'   => _l('hr_settings_notify_leave_apply'),
-                                    'notify_leave_approve' => _l('hr_settings_notify_leave_approve'),
-                                    'notify_loan_apply'    => _l('hr_settings_notify_loan_apply'),
-                                    'notify_payroll'       => _l('hr_settings_notify_payroll'),
+                                    'notify_leave_apply'        => _l('hr_settings_notify_leave_apply'),
+                                    'notify_leave_approve'       => _l('hr_settings_notify_leave_approve'),
+                                    'notify_leave_cancellation'  => _l('hr_settings_notify_leave_cancellation'),
+                                    'notify_loan_apply'          => _l('hr_settings_notify_loan_apply'),
+                                    'notify_loan_approve'        => _l('hr_settings_notify_loan_approve'),
+                                    'notify_loan_deduction'      => _l('hr_settings_notify_loan_deduction'),
+                                    'notify_overtime'            => _l('hr_settings_notify_overtime'),
+                                    'notify_helpdesk'            => _l('hr_settings_notify_helpdesk'),
+                                    'notify_shift'               => _l('hr_settings_notify_shift'),
+                                    'notify_policy'              => _l('hr_settings_notify_policy'),
+                                    'notify_training'            => _l('hr_settings_notify_training'),
+                                    'notify_payroll'             => _l('hr_settings_notify_payroll'),
                                 ];
                                 foreach ($notif_settings as $key => $label):
-                                    $checked = isset($settings[$key]) && $settings[$key] == '1' ? 'checked' : '';
+                                    // Defaults to checked when never saved, matching
+                                    // Hr_module_model::notifications_enabled()'s "enabled
+                                    // unless explicitly turned off" default.
+                                    $checked = (!isset($settings[$key]) || $settings[$key] == '1') ? 'checked' : '';
                                 ?>
                                 <div class="col-md-3 col-sm-6">
                                     <div class="form-group">
@@ -323,6 +337,40 @@ $can_edit = staff_can('edit', 'hr_settings') || is_admin();
                                         <a href="<?php echo admin_url('hr_module/zkteco'); ?>" class="btn btn-default btn-sm">
                                             <i class="fa fa-microchip"></i> <?php echo _l('hr_zkteco_devices'); ?>
                                         </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Holiday Reminder -->
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="panel_s">
+                        <div class="panel-body">
+                            <h5 class="tw-font-semibold tw-border-b tw-pb-2 tw-mb-4">
+                                <i class="fa fa-calendar-check-o tw-mr-2"></i><?php echo _l('hr_settings_holiday_reminder'); ?>
+                            </h5>
+                            <p class="text-muted tw-mb-3" style="font-size:0.85rem"><?php echo _l('hr_settings_holiday_reminder_hint'); ?></p>
+                            <div class="row">
+                                <div class="col-md-6 col-sm-6">
+                                    <div class="form-group">
+                                        <div class="checkbox checkbox-primary">
+                                            <input type="checkbox" name="holiday_reminder_enabled" id="setting_holiday_reminder_enabled" value="1"
+                                                <?php echo isset($settings['holiday_reminder_enabled']) && $settings['holiday_reminder_enabled'] == '1' ? 'checked' : ''; ?>
+                                                <?php echo !$can_edit ? 'disabled' : ''; ?>>
+                                            <label for="setting_holiday_reminder_enabled"><?php echo _l('hr_settings_holiday_reminder_enabled'); ?></label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3 col-sm-6">
+                                    <div class="form-group">
+                                        <label><?php echo _l('hr_settings_holiday_reminder_time'); ?></label>
+                                        <input type="time" name="holiday_reminder_time" class="form-control"
+                                            value="<?php echo isset($settings['holiday_reminder_time']) ? htmlspecialchars($settings['holiday_reminder_time']) : '09:00'; ?>"
+                                            <?php echo !$can_edit ? 'disabled' : ''; ?>>
                                     </div>
                                 </div>
                             </div>

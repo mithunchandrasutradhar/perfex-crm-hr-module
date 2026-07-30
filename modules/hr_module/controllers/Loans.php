@@ -9,6 +9,7 @@ class Loans extends AdminController
         $this->load->model('hr_module/Loans_model');
         $this->load->model('hr_module/Hr_module_model');
         $this->load->model('hr_module/Departments_model');
+        $this->load->model('hr_module/Email_templates_model');
     }
 
     public function index()
@@ -61,29 +62,30 @@ class Loans extends AdminController
 
             $result = $this->Loans_model->apply($data);
             if ($result['success']) {
-                $this->load->model('hr_module/Employees_model');
-                $emp = $this->Employees_model->get($data['employee_id']);
-                $message = '<p>A new loan request has been submitted and is awaiting review.</p>'
-                    . $this->Hr_module_model->format_notification_details([
-                        'Employee'            => htmlspecialchars($emp ? $emp->first_name . ' ' . $emp->last_name . ' (' . $emp->employee_code . ')' : 'Unknown'),
-                        'Department'          => htmlspecialchars($emp && $emp->department_name ? $emp->department_name : '-'),
-                        'Designation'         => htmlspecialchars($emp && $emp->designation_name ? $emp->designation_name : '-'),
-                        'Amount'              => number_format($data['amount'], 2),
-                        'Monthly Installment' => number_format($data['monthly_installment'], 2),
-                        'Repayment Months'    => $data['repayment_months'],
-                        'Reason'              => nl2br(htmlspecialchars($data['reason'] ?: '-')),
+                if ($this->Hr_module_model->notifications_enabled('notify_loan_apply')) {
+                    $this->load->model('hr_module/Employees_model');
+                    $emp = $this->Employees_model->get($data['employee_id']);
+                    $tpl = $this->Email_templates_model->render('loan_apply', [
+                        '{employee_name}'         => $emp ? $emp->first_name . ' ' . $emp->last_name . ' (' . $emp->employee_code . ')' : 'Unknown',
+                        '{department}'            => $emp && $emp->department_name ? $emp->department_name : '-',
+                        '{designation}'           => $emp && $emp->designation_name ? $emp->designation_name : '-',
+                        '{amount}'                => number_format($data['amount'], 2),
+                        '{monthly_installment}'   => number_format($data['monthly_installment'], 2),
+                        '{repayment_months}'      => $data['repayment_months'],
+                        '{reason}'                => $data['reason'] ?: '-',
                     ]);
-                $this->Hr_module_model->send_notification_email(
-                    'New Loan Request Submitted',
-                    $message,
-                    admin_url('hr_module/loans/view/' . $result['id'])
-                );
-                $this->Hr_module_model->notify_by_permission(
-                    'edit', 'hr_loans',
-                    'not_hr_loan_applied',
-                    'hr_module/loans/view/' . $result['id'],
-                    [$emp ? $emp->first_name . ' ' . $emp->last_name : 'Unknown']
-                );
+                    $this->Hr_module_model->send_notification_email(
+                        $tpl->subject,
+                        $tpl->body,
+                        admin_url('hr_module/loans/view/' . $result['id'])
+                    );
+                    $this->Hr_module_model->notify_by_permission(
+                        'edit', 'hr_loans',
+                        'not_hr_loan_applied',
+                        'hr_module/loans/view/' . $result['id'],
+                        [$emp ? $emp->first_name . ' ' . $emp->last_name : 'Unknown']
+                    );
+                }
                 set_alert('success', $result['message']);
                 redirect(admin_url('hr_module/loans/view/' . $result['id']));
             } else {
@@ -131,7 +133,9 @@ class Loans extends AdminController
         $date   = $this->input->post('disbursement_date') ?: date('Y-m-d');
         $result = $this->Loans_model->approve($id, $date);
         if ($result['success']) {
-            $this->_send_loan_status_email($id, 'approved');
+            if ($this->Hr_module_model->notifications_enabled('notify_loan_approve')) {
+                $this->_send_loan_status_email($id, 'approved');
+            }
             set_alert('success', $result['message']);
         } else {
             set_alert('danger', $result['message']);
@@ -145,7 +149,9 @@ class Loans extends AdminController
         $reason = $this->input->post('rejection_reason', true);
         $result = $this->Loans_model->reject($id, $reason);
         if ($result['success']) {
-            $this->_send_loan_status_email($id, 'rejected', $reason);
+            if ($this->Hr_module_model->notifications_enabled('notify_loan_approve')) {
+                $this->_send_loan_status_email($id, 'rejected', $reason);
+            }
             set_alert('success', $result['message']);
         } else {
             set_alert('danger', $result['message']);
@@ -162,27 +168,29 @@ class Loans extends AdminController
             return;
         }
 
-        $details = [
-            'Department'          => htmlspecialchars($loan->department_name ?: '-'),
-            'Designation'         => htmlspecialchars($loan->designation_name ?: '-'),
-            'Amount'              => number_format($loan->amount, 2),
-            'Monthly Installment' => number_format($loan->monthly_installment, 2),
-            'Repayment Months'    => $loan->repayment_months,
+        $placeholders = [
+            '{employee_name}'       => $loan->first_name . ' ' . $loan->last_name,
+            '{department}'          => $loan->department_name ?: '-',
+            '{designation}'         => $loan->designation_name ?: '-',
+            '{amount}'              => number_format($loan->amount, 2),
+            '{monthly_installment}' => number_format($loan->monthly_installment, 2),
+            '{repayment_months}'    => $loan->repayment_months,
         ];
         if ($status === 'approved') {
-            $details['Disbursement Date'] = _d($loan->disbursement_date);
+            $placeholders['{disbursement_date}'] = $loan->disbursement_date ? _d($loan->disbursement_date) : '-';
         }
-        if ($reason) {
-            $details['Reason'] = nl2br(htmlspecialchars($reason));
+        if ($status === 'rejected') {
+            $placeholders['{reason}'] = $reason ?: '-';
         }
 
-        $color = $status === 'approved' ? '#059669' : '#dc2626';
+        $tpl = $this->Email_templates_model->render(
+            $status === 'approved' ? 'loan_approved' : 'loan_rejected',
+            $placeholders
+        );
         $this->Hr_module_model->send_employee_email(
             $loan->employee_email,
-            'Your Loan Request Has Been ' . ucfirst($status),
-            '<p>Hi ' . htmlspecialchars($loan->first_name . ' ' . $loan->last_name) . ',</p>'
-                . '<p>Your loan request has been <strong style="color:' . $color . '">' . htmlspecialchars($status) . '</strong>.</p>'
-                . $this->Hr_module_model->format_notification_details($details),
+            $tpl->subject,
+            $tpl->body,
             admin_url('hr_module/loans/view/' . $id)
         );
         $this->Hr_module_model->notify_staff($loan->employee_staff_id, 'not_hr_loan_status', 'hr_module/loans/view/' . $id, [$status]);
@@ -248,7 +256,9 @@ class Loans extends AdminController
                 $this->input->post('carry_option')
             );
             if ($result['success']) {
-                $this->_notify_deduction_request_submitted($loan_id, $pay_month, $pay_year, $amount, $is_skip, $notes);
+                if ($this->Hr_module_model->notifications_enabled('notify_loan_deduction')) {
+                    $this->_notify_deduction_request_submitted($loan_id, $pay_month, $pay_year, $amount, $is_skip, $notes);
+                }
                 set_alert('success', $result['message']);
             } else {
                 set_alert('danger', $result['message']);
@@ -263,20 +273,20 @@ class Loans extends AdminController
     {
         $loan = $this->Loans_model->get($loan_id);
         $month_name = date('F', mktime(0, 0, 0, $pay_month, 1));
-        $message = '<p>A new loan deduction request has been submitted and is awaiting review.</p>'
-            . $this->Hr_module_model->format_notification_details([
-                'Employee'   => htmlspecialchars($loan ? $loan->first_name . ' ' . $loan->last_name . ' (' . $loan->employee_code . ')' : 'Unknown'),
-                'Department' => htmlspecialchars($loan && $loan->department_name ? $loan->department_name : '-'),
-                'Designation'=> htmlspecialchars($loan && $loan->designation_name ? $loan->designation_name : '-'),
-                'Loan'       => $loan ? number_format($loan->amount, 2) . ' (Outstanding: ' . number_format($loan->outstanding, 2) . ')' : '-',
-                'Pay Period' => $month_name . ' ' . $pay_year,
-                'Amount'     => number_format($amount, 2),
-                'Type'       => $is_skip ? 'Skip this installment' : 'Adjusted deduction amount',
-                'Notes'      => nl2br(htmlspecialchars($notes ?: '-')),
-            ]);
+        $tpl = $this->Email_templates_model->render('loan_deduction_request', [
+            '{employee_name}'       => $loan ? $loan->first_name . ' ' . $loan->last_name . ' (' . $loan->employee_code . ')' : 'Unknown',
+            '{department}'          => $loan && $loan->department_name ? $loan->department_name : '-',
+            '{designation}'         => $loan && $loan->designation_name ? $loan->designation_name : '-',
+            '{loan_amount}'         => $loan ? number_format($loan->amount, 2) : '-',
+            '{outstanding}'         => $loan ? number_format($loan->outstanding, 2) : '-',
+            '{pay_period}'          => $month_name . ' ' . $pay_year,
+            '{amount}'              => number_format($amount, 2),
+            '{type}'                => $is_skip ? 'Skip this installment' : 'Adjusted deduction amount',
+            '{notes}'               => $notes ?: '-',
+        ]);
         $this->Hr_module_model->send_notification_email(
-            'New Loan Deduction Request Submitted',
-            $message,
+            $tpl->subject,
+            $tpl->body,
             admin_url('hr_module/loans/view/' . $loan_id)
         );
         $this->Hr_module_model->notify_by_permission(
@@ -292,7 +302,7 @@ class Loans extends AdminController
         if (staff_cant('edit', 'hr_loans')) access_denied('hr_loans');
         $req    = $this->Loans_model->get_deduction_request($id);
         $result = $this->Loans_model->approve_deduction($id);
-        if ($result['success']) {
+        if ($result['success'] && $this->Hr_module_model->notifications_enabled('notify_loan_deduction')) {
             $this->_send_deduction_status_email($req, 'approved');
         }
         if ($this->input->is_ajax_request()) {
@@ -310,7 +320,7 @@ class Loans extends AdminController
         if (staff_cant('edit', 'hr_loans')) access_denied('hr_loans');
         $req    = $this->Loans_model->get_deduction_request($id);
         $result = $this->Loans_model->reject_deduction($id);
-        if ($result['success']) {
+        if ($result['success'] && $this->Hr_module_model->notifications_enabled('notify_loan_deduction')) {
             $this->_send_deduction_status_email($req, 'rejected');
         }
         if ($this->input->is_ajax_request()) {
@@ -333,24 +343,23 @@ class Loans extends AdminController
         }
 
         $month_name = date('F', mktime(0, 0, 0, (int) $req->pay_month, 1));
-        $details = [
-            'Department' => htmlspecialchars($req->department_name ?: '-'),
-            'Designation'=> htmlspecialchars($req->designation_name ?: '-'),
-            'Pay Period' => $month_name . ' ' . $req->pay_year,
-            'Amount'     => number_format($req->amount, 2),
-            'Type'       => $req->is_skip ? 'Skip this installment' : 'Adjusted deduction amount',
-        ];
-        if ($req->notes) {
-            $details['Notes'] = nl2br(htmlspecialchars($req->notes));
-        }
+        $tpl = $this->Email_templates_model->render(
+            $status === 'approved' ? 'loan_deduction_approved' : 'loan_deduction_rejected',
+            [
+                '{employee_name}' => $req->first_name . ' ' . $req->last_name,
+                '{department}'    => $req->department_name ?: '-',
+                '{designation}'   => $req->designation_name ?: '-',
+                '{pay_period}'    => $month_name . ' ' . $req->pay_year,
+                '{amount}'        => number_format($req->amount, 2),
+                '{type}'          => $req->is_skip ? 'Skip this installment' : 'Adjusted deduction amount',
+                '{notes}'         => $req->notes ?: '-',
+            ]
+        );
 
-        $color = $status === 'approved' ? '#059669' : '#dc2626';
         $this->Hr_module_model->send_employee_email(
             $req->employee_email,
-            'Your Loan Deduction Request Has Been ' . ucfirst($status),
-            '<p>Hi ' . htmlspecialchars($req->first_name . ' ' . $req->last_name) . ',</p>'
-                . '<p>Your loan deduction request has been <strong style="color:' . $color . '">' . htmlspecialchars($status) . '</strong>.</p>'
-                . $this->Hr_module_model->format_notification_details($details),
+            $tpl->subject,
+            $tpl->body,
             admin_url('hr_module/loans/view/' . $req->loan_id)
         );
         $this->Hr_module_model->notify_staff($req->employee_staff_id, 'not_hr_deduction_status', 'hr_module/loans/view/' . $req->loan_id, [$status]);

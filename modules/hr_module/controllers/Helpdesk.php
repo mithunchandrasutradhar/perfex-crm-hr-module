@@ -9,6 +9,7 @@ class Helpdesk extends AdminController
         $this->load->model('hr_module/Helpdesk_model');
         $this->load->model('hr_module/Hr_module_model');
         $this->load->model('hr_module/Departments_model');
+        $this->load->model('hr_module/Email_templates_model');
     }
 
     public function index()
@@ -43,31 +44,33 @@ class Helpdesk extends AdminController
             $this->_handle_attachment($data, 'attachment');
             $result = $this->Helpdesk_model->submit($data);
             if ($result['success']) {
-                $details = [];
-                if (!$data['is_anonymous']) {
-                    $this->load->model('hr_module/Employees_model');
-                    $emp = $this->Employees_model->get($data['employee_id']);
-                    $details['Employee'] = htmlspecialchars($emp ? $emp->first_name . ' ' . $emp->last_name . ' (' . $emp->employee_code . ')' : 'Unknown');
+                if ($this->Hr_module_model->notifications_enabled('notify_helpdesk')) {
+                    if ($data['is_anonymous']) {
+                        $employee_name = 'Anonymous';
+                    } else {
+                        $this->load->model('hr_module/Employees_model');
+                        $emp = $this->Employees_model->get($data['employee_id']);
+                        $employee_name = $emp ? $emp->first_name . ' ' . $emp->last_name . ' (' . $emp->employee_code . ')' : 'Unknown';
+                    }
+                    $tpl = $this->Email_templates_model->render('helpdesk_ticket_submitted', [
+                        '{employee_name}' => $employee_name,
+                        '{subject}'       => $data['subject'],
+                        '{category}'      => $data['category'] ?: '-',
+                        '{priority}'      => ucfirst($data['priority'] ?: '-'),
+                        '{message}'       => mb_strimwidth($data['message'] ?: '', 0, 300, '...'),
+                    ]);
+                    $this->Hr_module_model->send_notification_email(
+                        $tpl->subject,
+                        $tpl->body,
+                        admin_url('hr_module/helpdesk/view/' . $result['id'])
+                    );
+                    $this->Hr_module_model->notify_by_permission(
+                        'edit', 'hr_helpdesk',
+                        'not_hr_helpdesk_submitted',
+                        'hr_module/helpdesk/view/' . $result['id'],
+                        [$data['subject']]
+                    );
                 }
-                $details['Subject']  = htmlspecialchars($data['subject']);
-                $details['Category'] = htmlspecialchars($data['category'] ?: '-');
-                $details['Priority'] = htmlspecialchars(ucfirst($data['priority'] ?: '-'));
-                $details['Message']  = nl2br(htmlspecialchars(mb_strimwidth($data['message'] ?: '', 0, 300, '...')));
-
-                $message = '<p>A new helpdesk ticket has been submitted'
-                    . ($data['is_anonymous'] ? ' anonymously' : '') . ' and is awaiting review.</p>'
-                    . $this->Hr_module_model->format_notification_details($details);
-                $this->Hr_module_model->send_notification_email(
-                    'New Helpdesk Ticket Submitted',
-                    $message,
-                    admin_url('hr_module/helpdesk/view/' . $result['id'])
-                );
-                $this->Hr_module_model->notify_by_permission(
-                    'edit', 'hr_helpdesk',
-                    'not_hr_helpdesk_submitted',
-                    'hr_module/helpdesk/view/' . $result['id'],
-                    [$data['subject']]
-                );
                 set_alert('success', $result['message']);
                 redirect(admin_url('hr_module/helpdesk/view/' . $result['id']));
             }

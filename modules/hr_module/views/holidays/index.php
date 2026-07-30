@@ -7,8 +7,8 @@
 /** @var int    $cal_year       */
 /** @var int    $cal_month      */
 /** @var array  $cal_holidays   */
-/** @var array  $cal_leave_days */
-/** @var array  $cal_shifts     */
+/** @var array  $leave_by_date  */
+/** @var array  $shifts_by_date */
 /** @var string $roster_date    */
 /** @var array  $shift_roster   */
 if (!isset($year))           $year           = (int) date('Y');
@@ -18,40 +18,12 @@ if (!isset($can_edit))       $can_edit       = false;
 if (!isset($cal_year))       $cal_year       = (int) date('Y');
 if (!isset($cal_month))      $cal_month      = (int) date('n');
 if (!isset($cal_holidays))   $cal_holidays   = [];
-if (!isset($cal_leave_days)) $cal_leave_days = [];
-if (!isset($cal_shifts))     $cal_shifts     = [];
+if (!isset($leave_by_date))  $leave_by_date  = [];
+if (!isset($shifts_by_date)) $shifts_by_date = [];
 if (!isset($roster_date))    $roster_date    = date('Y-m-d');
 if (!isset($shift_roster))   $shift_roster   = [];
 
 $day_names = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-
-// Group approved leave days by date for quick per-cell lookup on the calendar below.
-$leave_by_date = [];
-foreach ($cal_leave_days as $ld) {
-    $leave_by_date[$ld->leave_date][] = $ld;
-}
-
-$cal_prev_month = $cal_month - 1; $cal_prev_year = $cal_year;
-if ($cal_prev_month < 1) { $cal_prev_month = 12; $cal_prev_year--; }
-$cal_next_month = $cal_month + 1; $cal_next_year = $cal_year;
-if ($cal_next_month > 12) { $cal_next_month = 1; $cal_next_year++; }
-
-$cal_first_ts    = mktime(0, 0, 0, $cal_month, 1, $cal_year);
-$cal_days_in_month = (int) date('t', $cal_first_ts);
-$cal_first_dow     = (int) date('w', $cal_first_ts); // 0=Sun..6=Sat, matches weekly_off encoding
-
-// Each shift assignment is a date RANGE (not per-day rows like leave), so expand it
-// into a lookup by date, clipped to this calendar month.
-$cal_month_from = sprintf('%04d-%02d-01', $cal_year, $cal_month);
-$cal_month_to   = sprintf('%04d-%02d-%02d', $cal_year, $cal_month, $cal_days_in_month);
-$shifts_by_date = [];
-foreach ($cal_shifts as $sh) {
-    $clip_from = max($sh->from_date, $cal_month_from);
-    $clip_to   = min($sh->to_date, $cal_month_to);
-    for ($ts = strtotime($clip_from); $ts <= strtotime($clip_to); $ts += 86400) {
-        $shifts_by_date[date('Y-m-d', $ts)][] = $sh;
-    }
-}
 ?>
 <?php init_head(); ?>
 <div id="wrapper">
@@ -100,7 +72,10 @@ foreach ($cal_shifts as $sh) {
               <div class="col-md-3">
                 <div class="form-group tw-mb-2">
                   <label class="tw-text-sm">Date <span class="text-danger">*</span></label>
-                  <input type="date" id="new-holiday-date" class="form-control input-sm" value="">
+                  <div class="input-group date">
+                    <input type="text" id="new-holiday-date" class="form-control input-sm datepicker" autocomplete="off" value="">
+                    <span class="input-group-addon"><i class="fa-regular fa-calendar calendar-icon"></i></span>
+                  </div>
                 </div>
               </div>
               <div class="col-md-2">
@@ -135,7 +110,7 @@ foreach ($cal_shifts as $sh) {
                   <th>Holiday Name</th>
                   <th style="width:100px">Day</th>
                   <th style="width:100px">Type</th>
-                  <?php if ($can_edit): ?><th style="width:60px"></th><?php endif; ?>
+                  <?php if ($can_edit): ?><th style="width:90px"></th><?php endif; ?>
                 </tr>
               </thead>
               <tbody>
@@ -153,6 +128,8 @@ foreach ($cal_shifts as $sh) {
                   </td>
                   <?php if ($can_edit): ?>
                   <td>
+                    <a href="#" class="text-primary btn-send-announcement tw-text-sm tw-mr-2" data-id="<?php echo $h->id; ?>"
+                       title="<?php echo _l('hr_holiday_send_announcement'); ?>"><i class="fa fa-paper-plane"></i></a>
                     <a href="#" class="text-danger btn-delete-holiday tw-text-sm" data-id="<?php echo $h->id; ?>"
                        title="Delete"><i class="fa fa-trash"></i></a>
                   </td>
@@ -238,174 +215,18 @@ foreach ($cal_shifts as $sh) {
       </div>
     </div>
 
-    <!-- ── Who's on Leave (calendar) ── -->
+    <!-- ── Who's on Leave / Shift Roster (merged calendar) ── -->
     <div class="row">
       <div class="col-md-12">
-        <div class="panel_s">
-          <div class="panel-heading tw-flex tw-items-center tw-justify-between tw-flex-wrap tw-gap-3">
-            <h5 class="tw-font-semibold tw-mb-0"><i class="fa fa-users tw-mr-2 text-primary"></i>Who's on Leave</h5>
-            <div class="tw-flex tw-items-center tw-gap-2">
-              <a href="?year=<?php echo $year; ?>&cal_year=<?php echo $cal_prev_year; ?>&cal_month=<?php echo $cal_prev_month; ?>"
-                 class="btn btn-default btn-sm"><i class="fa fa-chevron-left"></i></a>
-              <span class="tw-font-semibold"><?php echo date('F', $cal_first_ts) . ' ' . $cal_year; ?></span>
-              <a href="?year=<?php echo $year; ?>&cal_year=<?php echo $cal_next_year; ?>&cal_month=<?php echo $cal_next_month; ?>"
-                 class="btn btn-default btn-sm"><i class="fa fa-chevron-right"></i></a>
-            </div>
-          </div>
-          <div class="panel-body">
-            <div class="table-responsive">
-            <table class="table table-bordered tw-mb-0" style="table-layout:fixed">
-              <thead>
-                <tr>
-                  <?php foreach ($day_names as $idx => $dname): ?>
-                  <th class="text-center <?php echo in_array($idx, $weekly_off) ? 'tw-bg-neutral-100' : ''; ?>"><?php echo substr($dname, 0, 3); ?></th>
-                  <?php endforeach; ?>
-                </tr>
-              </thead>
-              <tbody>
-                <?php
-                $day_num = 1 - $cal_first_dow;
-                while ($day_num <= $cal_days_in_month):
-                ?>
-                <tr>
-                  <?php for ($dow = 0; $dow < 7; $dow++, $day_num++): ?>
-                    <?php if ($day_num < 1 || $day_num > $cal_days_in_month): ?>
-                    <td class="tw-bg-neutral-50"></td>
-                    <?php else: ?>
-                    <?php
-                      $cell_date    = sprintf('%04d-%02d-%02d', $cal_year, $cal_month, $day_num);
-                      $is_off       = in_array($dow, $weekly_off);
-                      $holiday_name = $cal_holidays[$cell_date] ?? null;
-                      $on_leave     = $leave_by_date[$cell_date] ?? [];
-                    ?>
-                    <td class="<?php echo $is_off ? 'tw-bg-neutral-50' : ''; ?>" style="vertical-align:top;height:85px">
-                      <strong class="<?php echo $is_off ? 'text-muted' : ''; ?>"><?php echo $day_num; ?></strong>
-                      <?php if ($holiday_name): ?>
-                      <div class="tw-text-xs tw-mt-1">
-                        <span class="label label-danger" title="<?php echo htmlspecialchars($holiday_name); ?>">
-                          <?php echo htmlspecialchars($holiday_name); ?>
-                        </span>
-                      </div>
-                      <?php endif; ?>
-                      <?php
-                        $visible_leave = array_slice($on_leave, 0, 2);
-                        $hidden_leave  = array_slice($on_leave, 2);
-                      ?>
-                      <?php foreach ($visible_leave as $ld): ?>
-                      <div class="tw-text-xs tw-mt-1">
-                        <span class="label label-warning" title="<?php echo htmlspecialchars(hr_leave_day_type_label($ld->day_type)); ?>">
-                          <i class="fa fa-user tw-mr-1"></i><?php echo htmlspecialchars($ld->employee_name); ?>
-                        </span>
-                      </div>
-                      <?php endforeach; ?>
-                      <?php if (!empty($hidden_leave)): ?>
-                      <?php
-                        $hidden_html = '';
-                        foreach ($hidden_leave as $ld) {
-                            $hidden_html .= '<div class="tw-text-xs tw-mb-1"><i class="fa fa-user tw-mr-1"></i>' . htmlspecialchars($ld->employee_name) . '</div>';
-                        }
-                      ?>
-                      <div class="tw-text-xs tw-mt-1">
-                        <span class="label label-default pointer" data-toggle="popover" data-trigger="hover click"
-                              data-html="true" data-placement="top" data-container="body" title="On Leave"
-                              data-content="<?php echo htmlspecialchars($hidden_html); ?>">
-                          +<?php echo count($hidden_leave); ?> more
-                        </span>
-                      </div>
-                      <?php endif; ?>
-                    </td>
-                    <?php endif; ?>
-                  <?php endfor; ?>
-                </tr>
-                <?php endwhile; ?>
-              </tbody>
-            </table>
-            </div>
-            <?php if (empty($cal_leave_days)): ?>
-            <p class="text-muted tw-text-sm tw-mt-3 tw-mb-0"><i class="fa fa-info-circle tw-mr-1"></i>No approved leave for this month.</p>
-            <?php endif; ?>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- ── Shift Roster (calendar) ── -->
-    <div class="row">
-      <div class="col-md-12">
-        <div class="panel_s">
-          <div class="panel-heading tw-flex tw-items-center tw-justify-between tw-flex-wrap tw-gap-3">
-            <h5 class="tw-font-semibold tw-mb-0"><i class="fa fa-user-clock tw-mr-2 text-primary"></i>Shift Roster</h5>
-            <div class="tw-flex tw-items-center tw-gap-2">
-              <a href="?year=<?php echo $year; ?>&cal_year=<?php echo $cal_prev_year; ?>&cal_month=<?php echo $cal_prev_month; ?>"
-                 class="btn btn-default btn-sm"><i class="fa fa-chevron-left"></i></a>
-              <span class="tw-font-semibold"><?php echo date('F', $cal_first_ts) . ' ' . $cal_year; ?></span>
-              <a href="?year=<?php echo $year; ?>&cal_year=<?php echo $cal_next_year; ?>&cal_month=<?php echo $cal_next_month; ?>"
-                 class="btn btn-default btn-sm"><i class="fa fa-chevron-right"></i></a>
-            </div>
-          </div>
-          <div class="panel-body">
-            <div class="table-responsive">
-            <table class="table table-bordered tw-mb-0" style="table-layout:fixed">
-              <thead>
-                <tr>
-                  <?php foreach ($day_names as $idx => $dname): ?>
-                  <th class="text-center <?php echo in_array($idx, $weekly_off) ? 'tw-bg-neutral-100' : ''; ?>"><?php echo substr($dname, 0, 3); ?></th>
-                  <?php endforeach; ?>
-                </tr>
-              </thead>
-              <tbody>
-                <?php
-                $day_num = 1 - $cal_first_dow;
-                while ($day_num <= $cal_days_in_month):
-                ?>
-                <tr>
-                  <?php for ($dow = 0; $dow < 7; $dow++, $day_num++): ?>
-                    <?php if ($day_num < 1 || $day_num > $cal_days_in_month): ?>
-                    <td class="tw-bg-neutral-50"></td>
-                    <?php else: ?>
-                    <?php
-                      $cell_date = sprintf('%04d-%02d-%02d', $cal_year, $cal_month, $day_num);
-                      $is_off    = in_array($dow, $weekly_off);
-                      $on_shift  = $shifts_by_date[$cell_date] ?? [];
-                      $visible_shift = array_slice($on_shift, 0, 2);
-                      $hidden_shift  = array_slice($on_shift, 2);
-                    ?>
-                    <td class="<?php echo $is_off ? 'tw-bg-neutral-50' : ''; ?>" style="vertical-align:top;height:85px">
-                      <strong class="<?php echo $is_off ? 'text-muted' : ''; ?>"><?php echo $day_num; ?></strong>
-                      <?php foreach ($visible_shift as $sh): ?>
-                      <div class="tw-text-xs tw-mt-1">
-                        <span class="label label-info" title="<?php echo htmlspecialchars($sh->shift_name); ?>">
-                          <i class="fa fa-user tw-mr-1"></i><?php echo htmlspecialchars($sh->employee_name); ?>
-                        </span>
-                      </div>
-                      <?php endforeach; ?>
-                      <?php if (!empty($hidden_shift)): ?>
-                      <?php
-                        $hidden_html = '';
-                        foreach ($hidden_shift as $sh) {
-                            $hidden_html .= '<div class="tw-text-xs tw-mb-1"><i class="fa fa-user tw-mr-1"></i>' . htmlspecialchars($sh->employee_name) . ' - ' . htmlspecialchars($sh->shift_name) . '</div>';
-                        }
-                      ?>
-                      <div class="tw-text-xs tw-mt-1">
-                        <span class="label label-default pointer" data-toggle="popover" data-trigger="hover click"
-                              data-html="true" data-placement="top" data-container="body" title="On Shift"
-                              data-content="<?php echo htmlspecialchars($hidden_html); ?>">
-                          +<?php echo count($hidden_shift); ?> more
-                        </span>
-                      </div>
-                      <?php endif; ?>
-                    </td>
-                    <?php endif; ?>
-                  <?php endfor; ?>
-                </tr>
-                <?php endwhile; ?>
-              </tbody>
-            </table>
-            </div>
-            <?php if (empty($cal_shifts)): ?>
-            <p class="text-muted tw-text-sm tw-mt-3 tw-mb-0"><i class="fa fa-info-circle tw-mr-1"></i>No approved shift assignments for this month.</p>
-            <?php endif; ?>
-          </div>
+        <div class="panel_s" id="team-calendar-panel">
+          <?php echo $this->load->view('hr_module/holidays/calendar', [
+              'cal_year'       => $cal_year,
+              'cal_month'      => $cal_month,
+              'weekly_off'     => $weekly_off,
+              'cal_holidays'   => $cal_holidays,
+              'leave_by_date'  => $leave_by_date,
+              'shifts_by_date' => $shifts_by_date,
+          ], true); ?>
         </div>
       </div>
     </div>
@@ -466,13 +287,13 @@ $(function(){
     var canEdit   = <?php echo $can_edit ? 'true' : 'false'; ?>;
 
     // Toggle add form
+    var defaultDateToday = '<?php echo _d(date('Y-m-d')); ?>';
+    var defaultDateJan1  = '<?php echo _d($year . '-01-01'); ?>';
     $('#btn-add-holiday').on('click', function(){
         $('#add-holiday-form').slideToggle(150);
         var y = <?php echo $year; ?>;
         var today = new Date();
-        var defDate = today.getFullYear() === y
-            ? today.toISOString().split('T')[0]
-            : (y + '-01-01');
+        var defDate = today.getFullYear() === y ? defaultDateToday : defaultDateJan1;
         $('#new-holiday-date').val(defDate);
         $('#new-holiday-name').focus();
     });
@@ -522,6 +343,30 @@ $(function(){
                 $('#weekly-off-saved').fadeIn().delay(2000).fadeOut();
             }
         }, 'json');
+    });
+
+    // Send holiday announcement manually (e.g. if the automated day-before
+    // email failed) - uses the exact same "holiday_reminder" email template.
+    $(document).on('click', '.btn-send-announcement', function(e){
+        e.preventDefault();
+        if (!confirm('Send the holiday announcement email now?')) return;
+        var id = $(this).data('id');
+        $.post(baseUrl + '/send_announcement/' + id, { [csrfName]: csrfHash }, function(r){
+            alert_float(r.success ? 'success' : 'danger', r.message);
+        }, 'json');
+    });
+
+    // Team calendar month navigation - loads just the calendar panel via AJAX
+    // instead of reloading the whole page.
+    function loadTeamCalendar(calYear, calMonth) {
+        var $panel = $('#team-calendar-panel');
+        $.getJSON(baseUrl + '/calendar', { cal_year: calYear, cal_month: calMonth }, function(r){
+            $panel.html(r.html);
+            $panel.find('[data-toggle="popover"]').popover();
+        });
+    }
+    $(document).on('click', '#team-calendar-panel .cal-nav', function(){
+        loadTeamCalendar($(this).data('cal-year'), $(this).data('cal-month'));
     });
 });
 </script>

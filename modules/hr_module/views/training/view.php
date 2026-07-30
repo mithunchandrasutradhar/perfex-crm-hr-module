@@ -291,6 +291,9 @@ $sessions_by_date = array_column($sessions, null, 'session_date');
             <a href="<?php echo admin_url('hr_module/training/report/'.$training->id); ?>" target="_blank" class="btn btn-default btn-block tw-mb-2">
               <i class="fa fa-file-text-o tw-mr-1"></i><?php echo _l('hr_training_generate_report'); ?>
             </a>
+            <a href="<?php echo admin_url('hr_module/training/email_report/'.$training->id); ?>" class="btn btn-default btn-block tw-mb-2 _delete">
+              <i class="fa fa-envelope-o tw-mr-1"></i><?php echo _l('hr_training_email_report'); ?>
+            </a>
             <?php endif; ?>
             <?php if (staff_can('edit','hr_training')): ?>
             <a href="<?php echo admin_url('hr_module/training/edit/'.$training->id); ?>" class="btn btn-primary btn-block tw-mb-2">
