@@ -4,6 +4,7 @@ defined('BASEPATH') or exit('No direct script access allowed');
 $CI = &get_instance();
 $CI->load->model('hr_module/Payroll_model');
 $CI->load->model('hr_module/Loans_model');
+$CI->load->model('hr_module/Shifts_model');
 
 $filters = [];
 foreach (['employee_id', 'department_id', 'pay_month', 'pay_year', 'status'] as $key) {
@@ -90,9 +91,14 @@ foreach ($rows as $r) {
         ? $r->overtime_days . ' ' . ($r->overtime_days == 1 ? 'day' : 'days') . '<br><small class="text-muted">' . number_format($r->overtime_amount, 2) . '</small>'
         : '-';
 
+    $period_from = sprintf('%04d-%02d-01', $r->pay_year, $r->pay_month);
+    $period_to   = date('Y-m-t', strtotime($period_from));
+    $shift_cell  = htmlspecialchars($CI->Shifts_model->get_employee_shift_summary($r->employee_id, $period_from, $period_to));
+
     $row = [
         $employee_cell,
         $r->department_name ? htmlspecialchars($r->department_name) : '-',
+        $shift_cell,
         $period,
         number_format($r->gross_salary, 2),
         $overtime_cell,

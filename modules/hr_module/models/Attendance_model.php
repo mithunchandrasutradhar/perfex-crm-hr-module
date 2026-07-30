@@ -122,7 +122,7 @@ class Attendance_model extends App_Model
         if (in_array($status, ['absent', 'half_day'], true)) {
             return $status;
         }
-        return $this->_determine_status($data['in_time'] ?? null);
+        return $this->_determine_status($data['in_time'] ?? null, $data['employee_id'] ?? null, $data['attendance_date'] ?? null);
     }
 
     public function delete($id)
@@ -163,16 +163,19 @@ class Attendance_model extends App_Model
         if ($existing) {
             // Only update if device record
             if ($existing->source === 'zkteco') {
+                $in  = $in_time ?: $existing->in_time;
+                $out = $out_time ?: $existing->out_time;
                 $this->db->where('id', $existing->id)->update($this->table, [
-                    'in_time'      => $in_time ?: $existing->in_time,
-                    'out_time'     => $out_time ?: $existing->out_time,
-                    'working_hours'=> $this->_calc_hours($in_time ?: $existing->in_time, $out_time ?: $existing->out_time),
+                    'in_time'      => $in,
+                    'out_time'     => $out,
+                    'working_hours'=> $this->_calc_hours($in, $out),
+                    'status'       => $this->_determine_status($in, $employee_id, $date),
                     'updated_at'   => date('Y-m-d H:i:s'),
                 ]);
             }
             return false;
         }
-        $status = $this->_determine_status($in_time);
+        $status = $this->_determine_status($in_time, $employee_id, $date);
         $this->db->insert($this->table, [
             'employee_id'     => $employee_id,
             'attendance_date' => $date,
@@ -193,21 +196,56 @@ class Attendance_model extends App_Model
         return $this->db->get($this->table)->row();
     }
 
+    // Shared shift-aware status/hours resolution - used by manual entry/import
+    // above and by Zkteco_model::sync() so device-synced punches get the same
+    // shift-based late/hours calculation instead of a separate, divergent path.
+    public function resolve_status_and_hours($employee_id, $date, $in_time, $out_time)
+    {
+        return [
+            'status'        => $this->_determine_status($in_time, $employee_id, $date),
+            'working_hours' => $this->_calc_hours($in_time, $out_time),
+        ];
+    }
+
+    // Handles overnight shifts (e.g. Night Shift 22:00 -> 06:00), where out_time
+    // is technically earlier in the clock than in_time because it falls on the
+    // next calendar day.
     private function _calc_hours($in, $out)
     {
         if (!$in || !$out) return null;
         $diff = strtotime($out) - strtotime($in);
-        return $diff > 0 ? round($diff / 3600, 2) : null;
+        if ($diff <= 0) {
+            $diff += 86400;
+        }
+        return round($diff / 3600, 2);
     }
 
-    private function _determine_status($in_time)
+    // Looks up the employee's approved shift assignment for this date and uses
+    // its start time as the late-arrival reference point instead of the global
+    // office_start_time - so a Night Shift employee clocking in at 22:05 isn't
+    // marked "late" against a 09:00 office start. Falls back to the global
+    // office hours when the employee has no shift assigned for that date, so
+    // non-shift employees are completely unaffected.
+    private function _determine_status($in_time, $employee_id = null, $date = null)
     {
         if (!$in_time) return 'absent';
         $CI = &get_instance();
         $CI->load->model('hr_module/Hr_module_model');
-        $office_start = $CI->Hr_module_model->get_setting('office_start_time', '09:00');
-        $threshold    = (int) $CI->Hr_module_model->get_setting('late_threshold_minutes', '15');
-        $late_cutoff  = date('H:i', strtotime($office_start) + $threshold * 60);
+
+        $start_time = null;
+        if ($employee_id && $date) {
+            $CI->load->model('hr_module/Shifts_model');
+            $shift = $CI->Shifts_model->get_employee_shift_for_date($employee_id, $date);
+            if ($shift) {
+                $start_time = $shift->start_time;
+            }
+        }
+        if (!$start_time) {
+            $start_time = $CI->Hr_module_model->get_setting('office_start_time', '09:00');
+        }
+
+        $threshold   = (int) $CI->Hr_module_model->get_setting('late_threshold_minutes', '15');
+        $late_cutoff = date('H:i', strtotime($start_time) + $threshold * 60);
         return (substr($in_time, 0, 5) > $late_cutoff) ? 'late' : 'present';
     }
 }

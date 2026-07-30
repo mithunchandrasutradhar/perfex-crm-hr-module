@@ -1161,3 +1161,56 @@ if (!$CI->db->table_exists(db_prefix() . 'hr_policy_revisions')) {
     $CI->db->query('ALTER TABLE `' . db_prefix() . 'hr_policy_revisions`
       MODIFY `id` int(10) unsigned NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1;');
 }
+
+// 29. Shift Types - defined on the Settings page (name + start/end time), e.g.
+// Morning/Evening/Night. Employees are then assigned to one for a date range.
+if (!$CI->db->table_exists(db_prefix() . 'hr_shift_types')) {
+    $CI->db->query('CREATE TABLE `' . db_prefix() . 'hr_shift_types` (
+      `id` int(11) NOT NULL,
+      `name` varchar(191) NOT NULL,
+      `start_time` time NOT NULL,
+      `end_time` time NOT NULL,
+      `status` tinyint(1) NOT NULL DEFAULT 1,
+      `created_at` datetime NOT NULL,
+      `updated_at` datetime DEFAULT NULL
+    ) ENGINE=InnoDB DEFAULT CHARSET=' . $CI->db->char_set . ';');
+    $CI->db->query('ALTER TABLE `' . db_prefix() . 'hr_shift_types`
+      ADD PRIMARY KEY (`id`);');
+    $CI->db->query('ALTER TABLE `' . db_prefix() . 'hr_shift_types`
+      MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1;');
+
+    // Default shifts so the feature isn't empty on first use.
+    $now = date('Y-m-d H:i:s');
+    $CI->db->query("INSERT INTO `" . db_prefix() . "hr_shift_types` (`name`, `start_time`, `end_time`, `status`, `created_at`) VALUES
+      ('Morning Shift', '06:00:00', '14:00:00', 1, '$now'),
+      ('Evening Shift', '14:00:00', '22:00:00', 1, '$now'),
+      ('Night Shift', '22:00:00', '06:00:00', 1, '$now')");
+}
+
+// 30. Shift Assignments - an employee's shift for a specific date or date range.
+// New assignments and their date range need approval before they count for the
+// calendar/payroll shift column below.
+if (!$CI->db->table_exists(db_prefix() . 'hr_shift_assignments')) {
+    $CI->db->query('CREATE TABLE `' . db_prefix() . 'hr_shift_assignments` (
+      `id` int(11) NOT NULL,
+      `employee_id` int(11) NOT NULL,
+      `shift_type_id` int(11) NOT NULL,
+      `from_date` date NOT NULL,
+      `to_date` date NOT NULL,
+      `status` enum(\'pending\',\'approved\',\'rejected\') NOT NULL DEFAULT \'pending\',
+      `reason` text DEFAULT NULL,
+      `rejection_reason` text DEFAULT NULL,
+      `created_by` int(11) DEFAULT NULL,
+      `approved_by` int(11) DEFAULT NULL,
+      `approved_at` datetime DEFAULT NULL,
+      `created_at` datetime NOT NULL,
+      `updated_at` datetime DEFAULT NULL
+    ) ENGINE=InnoDB DEFAULT CHARSET=' . $CI->db->char_set . ';');
+    $CI->db->query('ALTER TABLE `' . db_prefix() . 'hr_shift_assignments`
+      ADD PRIMARY KEY (`id`),
+      ADD KEY `employee_id` (`employee_id`),
+      ADD KEY `shift_type_id` (`shift_type_id`),
+      ADD KEY `status` (`status`);');
+    $CI->db->query('ALTER TABLE `' . db_prefix() . 'hr_shift_assignments`
+      MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1;');
+}

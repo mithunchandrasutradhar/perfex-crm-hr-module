@@ -7,6 +7,7 @@ class Settings extends AdminController
     {
         parent::__construct();
         $this->load->model('hr_module/Hr_module_model');
+        $this->load->model('hr_module/Shifts_model');
     }
 
     public function index()
@@ -31,8 +32,73 @@ class Settings extends AdminController
         $data['settings']    = $this->Hr_module_model->get_all_settings();
         $data['admin_staff'] = $this->db->where('admin', 1)->where('active', 1)
             ->order_by('firstname', 'ASC')->get(db_prefix() . 'staff')->result();
+        $data['shift_types'] = $this->Shifts_model->get_type();
 
         $this->load->view('hr_module/settings/index', $data);
+    }
+
+    // ── Shift Types (name + start/end time) ─────────────────────────────
+
+    public function add_shift()
+    {
+        if (!$this->input->is_ajax_request()) show_404();
+        if (staff_cant('edit', 'hr_settings') && !is_admin()) {
+            echo json_encode(['success' => false, 'message' => _l('hr_error_permission')]);
+            return;
+        }
+        $name  = trim($this->input->post('name', true));
+        $start = $this->input->post('start_time');
+        $end   = $this->input->post('end_time');
+
+        if (!$name || !$start || !$end) {
+            echo json_encode(['success' => false, 'message' => 'Name, start time, and end time are required.']);
+            return;
+        }
+
+        $id = $this->Shifts_model->add_type([
+            'name'       => $name,
+            'start_time' => date('H:i:s', strtotime($start)),
+            'end_time'   => date('H:i:s', strtotime($end)),
+        ]);
+        echo json_encode(['success' => (bool) $id, 'id' => $id]);
+    }
+
+    public function edit_shift($id)
+    {
+        if (!$this->input->is_ajax_request()) show_404();
+        if (staff_cant('edit', 'hr_settings') && !is_admin()) {
+            echo json_encode(['success' => false, 'message' => _l('hr_error_permission')]);
+            return;
+        }
+        $name  = trim($this->input->post('name', true));
+        $start = $this->input->post('start_time');
+        $end   = $this->input->post('end_time');
+
+        if (!$name || !$start || !$end) {
+            echo json_encode(['success' => false, 'message' => 'Name, start time, and end time are required.']);
+            return;
+        }
+
+        $updated = $this->Shifts_model->update_type([
+            'name'       => $name,
+            'start_time' => date('H:i:s', strtotime($start)),
+            'end_time'   => date('H:i:s', strtotime($end)),
+        ], (int) $id);
+        echo json_encode(['success' => (bool) $updated]);
+    }
+
+    // Plain navigate-and-redirect (not AJAX) - matches the `_delete` class
+    // convention used by every other delete action in this module, so it's
+    // handled by Perfex's own global confirm-dialog handler in app.js.
+    public function delete_shift($id)
+    {
+        if (staff_cant('edit', 'hr_settings') && !is_admin()) {
+            access_denied('hr_settings');
+        }
+        $result = $this->Shifts_model->delete_type((int) $id);
+        set_alert($result['success'] ? 'success' : 'danger',
+            $result['success'] ? _l('hr_deleted_successfully') : $result['message']);
+        redirect(admin_url('hr_module/settings'));
     }
 
     public function save()

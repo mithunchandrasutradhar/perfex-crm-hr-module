@@ -76,6 +76,8 @@ class Zkteco_model extends App_Model
 
     public function sync($device_id)
     {
+        $this->load->model('hr_module/Attendance_model');
+
         $device = $this->get_device($device_id);
         if (!$device) return ['success' => false, 'message' => 'Device not found.'];
 
@@ -110,19 +112,23 @@ class Zkteco_model extends App_Model
                 ->get(db_prefix() . 'hr_attendance')->row();
 
             if (!$existing) {
+                $resolved = $this->Attendance_model->resolve_status_and_hours($employee_id, $check_date, $check_time, null);
                 $this->db->insert(db_prefix() . 'hr_attendance', [
                     'employee_id'     => $employee_id,
                     'attendance_date' => $check_date,
                     'in_time'         => $check_time,
-                    'status'          => 'present',
+                    'status'          => $resolved['status'],
                     'source'          => 'zkteco',
                     'created_at'      => date('Y-m-d H:i:s'),
                 ]);
                 $records_saved++;
             } elseif (empty($existing->out_time) && $check_time > $existing->in_time) {
-                // Update out_time if later than in_time
+                // Update out_time if later than in_time, and recompute hours now
+                // that both punches are known.
+                $resolved = $this->Attendance_model->resolve_status_and_hours($employee_id, $check_date, $existing->in_time, $check_time);
                 $this->db->where('id', $existing->id)->update(db_prefix() . 'hr_attendance', [
-                    'out_time' => $check_time,
+                    'out_time'      => $check_time,
+                    'working_hours' => $resolved['working_hours'],
                 ]);
             }
         }

@@ -106,19 +106,13 @@ if (!isset($is_global))   $is_global   = is_admin() || staff_can('view', 'hr_att
           <div class="col-md-4">
             <div class="form-group">
               <label><?php echo _l('hr_attendance_in_time'); ?></label>
-              <div class="input-group">
-                <input type="text" name="in_time" id="att_in" class="form-control att-timepicker" autocomplete="off">
-                <div class="input-group-addon"><i class="fa-regular fa-clock clock-icon"></i></div>
-              </div>
+              <input type="time" name="in_time" id="att_in" class="form-control">
             </div>
           </div>
           <div class="col-md-4">
             <div class="form-group">
               <label><?php echo _l('hr_attendance_out_time'); ?></label>
-              <div class="input-group">
-                <input type="text" name="out_time" id="att_out" class="form-control att-timepicker" autocomplete="off">
-                <div class="input-group-addon"><i class="fa-regular fa-clock clock-icon"></i></div>
-              </div>
+              <input type="time" name="out_time" id="att_out" class="form-control">
             </div>
           </div>
           <div class="col-md-4">
@@ -153,23 +147,6 @@ if (!isset($is_global))   $is_global   = is_admin() || staff_can('view', 'hr_att
 <script>
 $(function(){
     initDataTable('.table-hr-attendance', window.location.href, [], [2, 'desc']);
-
-    function init_att_timepickers() {
-        var fmt = app.options.time_format == 24 ? 'H:i' : 'g:i A';
-        $('.att-timepicker').each(function(){
-            var that = $(this);
-            if (that.data('xdsoft_datetimepicker')) return;
-            that.datetimepicker({
-                datepicker: false,
-                format: fmt,
-                formatTime: fmt,
-                step: 15,
-                scrollInput: false,
-                lazyInit: true,
-            });
-        });
-    }
-    init_att_timepickers();
 
     function reload() {
         var url = window.location.href.split('?')[0]

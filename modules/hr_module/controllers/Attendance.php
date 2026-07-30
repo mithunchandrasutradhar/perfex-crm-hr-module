@@ -53,13 +53,15 @@ class Attendance extends AdminController
         if ($this->input->is_ajax_request() && !$this->input->post()) {
             $row = $this->Attendance_model->get($id);
             if (!$row) { echo json_encode(null); return; }
-            $time_fmt = (get_option('time_format') == 24) ? 'H:i' : 'g:i A';
+            // Native <input type="time"> always requires its value in 24-hour
+            // "HH:MM" regardless of the app's display time format - the browser
+            // renders it in the user's own locale/format automatically.
             echo json_encode([
                 'id'              => $row->id,
                 'employee_id'     => $row->employee_id,
                 'attendance_date' => _d($row->attendance_date),
-                'in_time'         => $row->in_time  ? date($time_fmt, strtotime($row->in_time))  : '',
-                'out_time'        => $row->out_time ? date($time_fmt, strtotime($row->out_time)) : '',
+                'in_time'         => $row->in_time  ? date('H:i', strtotime($row->in_time))  : '',
+                'out_time'        => $row->out_time ? date('H:i', strtotime($row->out_time)) : '',
                 'status'          => $row->status,
                 'notes'           => $row->notes,
             ]);

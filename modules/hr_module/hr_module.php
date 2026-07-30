@@ -89,6 +89,7 @@ function hr_module_register_permissions()
     register_staff_capabilities('hr_settings',     ['capabilities' => ['view' => $view_global, 'edit' => $edit]], _l('hr_perm_settings'));
     register_staff_capabilities('hr_holidays',     ['capabilities' => ['view' => $view_global, 'edit' => $edit]], _l('hr_perm_holidays'));
     register_staff_capabilities('hr_policies',     ['capabilities' => $cap_personal],          _l('hr_perm_policies'));
+    register_staff_capabilities('hr_shifts',       ['capabilities' => $cap_personal_approve],  _l('hr_perm_shifts'));
 }
 
 /**
@@ -272,6 +273,16 @@ function hr_module_init_menu_items()
             'name'     => 'Policies',
             'href'     => admin_url('hr_module/policies'),
             'position' => 12,
+        ]);
+    }
+
+    // Shifts
+    if (is_admin() || staff_can('view', 'hr_shifts') || staff_can('view_own', 'hr_shifts')) {
+        $CI->app_menu->add_sidebar_children_item('human-resource', [
+            'slug'     => 'hr-shifts',
+            'name'     => 'Shifts',
+            'href'     => admin_url('hr_module/shifts'),
+            'position' => 8.5, // right after Overtime (8), before Performance (9)
         ]);
     }
 

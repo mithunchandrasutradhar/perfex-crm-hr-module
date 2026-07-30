@@ -44,7 +44,7 @@
         <div class="panel_s">
           <div class="panel-body panel-table-full">
             <?php render_datatable([
-              _l('hr_employee'), _l('hr_department'), _l('hr_payroll_period'),
+              _l('hr_employee'), _l('hr_department'), _l('hr_shift_type'), _l('hr_payroll_period'),
               _l('hr_payroll_gross_salary'), _l('hr_payroll_overtime'),
               _l('hr_payroll_loan_deduction'),
               _l('hr_payroll_net_salary'), _l('hr_status'), 'Payment Date',
@@ -92,7 +92,7 @@
 <?php init_tail(); ?>
 <script>
 $(function(){
-    initDataTable('.table-hr-payroll', window.location.href, [], [2,'desc']);
+    initDataTable('.table-hr-payroll', window.location.href, [], [3,'desc']);
     function reload() {
         var url = window.location.href.split('?')[0]
             + '?department_id=' + $('#f-dept').val()

@@ -9,6 +9,7 @@ class Holidays extends AdminController
         $this->load->model('hr_module/Holidays_model');
         $this->load->model('hr_module/Hr_module_model');
         $this->load->model('hr_module/Leave_model');
+        $this->load->model('hr_module/Shifts_model');
     }
 
     public function index()
@@ -36,6 +37,14 @@ class Holidays extends AdminController
         $data['cal_month']      = $cal_month;
         $data['cal_holidays']   = $this->Holidays_model->get_holiday_names_in_range($cal_from, $cal_to);
         $data['cal_leave_days'] = $this->Leave_model->get_approved_leave_days_in_range($cal_from, $cal_to);
+        $data['cal_shifts']     = $this->Shifts_model->get_approved_shifts_in_range($cal_from, $cal_to);
+
+        $roster_date = $this->input->get('roster_date') ?: date('Y-m-d');
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $roster_date)) {
+            $roster_date = date('Y-m-d');
+        }
+        $data['roster_date']   = $roster_date;
+        $data['shift_roster']  = $this->Shifts_model->get_shift_roster_for_date($roster_date);
 
         $this->load->view('hr_module/holidays/index', $data);
     }

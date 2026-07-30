@@ -10,6 +10,7 @@ class Payroll extends AdminController
         $this->load->model('hr_module/Hr_module_model');
         $this->load->model('hr_module/Employees_model');
         $this->load->model('hr_module/Departments_model');
+        $this->load->model('hr_module/Shifts_model');
     }
 
     public function index()
@@ -62,9 +63,13 @@ class Payroll extends AdminController
         if (!staff_can('view', 'hr_payroll') && staff_can('view_own', 'hr_payroll')) {
             if ((int) $payroll->employee_id !== hr_get_own_employee_id()) access_denied('hr_payroll');
         }
+        $period_from = sprintf('%04d-%02d-01', $payroll->pay_year, $payroll->pay_month);
+        $period_to   = date('Y-m-t', strtotime($period_from));
+
         $data['title']   = _l('hr_payroll_view');
         $data['payroll'] = $payroll;
         $data['details'] = $this->Payroll_model->get_details($id);
+        $data['shift_summary'] = $this->Shifts_model->get_employee_shift_summary($payroll->employee_id, $period_from, $period_to);
         $this->load->view('hr_module/payroll/view', $data);
     }
 

@@ -101,6 +101,9 @@ $status_badge = ['draft'=>'default','paid'=>'success'];
               <tr><td>Working Days</td><td class="tw-text-right"><?php echo $payroll->working_days ?? '-'; ?></td></tr>
               <tr><td>Present Days</td><td class="tw-text-right text-success"><?php echo $payroll->present_days ?? '-'; ?></td></tr>
               <tr><td>Absent Days</td><td class="tw-text-right text-danger"><?php echo $payroll->absent_days ?? '-'; ?></td></tr>
+              <?php if (!empty($shift_summary)): ?>
+              <tr><td><?php echo _l('hr_shift_type'); ?></td><td class="tw-text-right"><?php echo htmlspecialchars($shift_summary); ?></td></tr>
+              <?php endif; ?>
             </table>
           </div>
         </div>

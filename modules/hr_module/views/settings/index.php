@@ -169,6 +169,62 @@ $can_edit = staff_can('edit', 'hr_settings') || is_admin();
                 </div>
             </div>
 
+            <!-- Shift Types -->
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="panel_s">
+                        <div class="panel-body">
+                            <div class="tw-flex tw-items-center tw-justify-between tw-border-b tw-pb-2 tw-mb-4">
+                                <h5 class="tw-font-semibold tw-mb-0">
+                                    <i class="fa fa-user-clock tw-mr-2"></i><?php echo _l('hr_settings_shift_types'); ?>
+                                </h5>
+                                <?php if ($can_edit): ?>
+                                <button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#addShiftModal">
+                                    <i class="fa-regular fa-plus tw-mr-1"></i><?php echo _l('hr_shift_add'); ?>
+                                </button>
+                                <?php endif; ?>
+                            </div>
+
+                            <?php if (empty($shift_types)): ?>
+                            <p class="text-muted tw-mb-0"><?php echo _l('hr_shift_none_added'); ?></p>
+                            <?php else: ?>
+                            <table class="table table-condensed tw-mb-0">
+                                <thead>
+                                    <tr>
+                                        <th><?php echo _l('hr_shift_name'); ?></th>
+                                        <th><?php echo _l('hr_shift_start_time'); ?></th>
+                                        <th><?php echo _l('hr_shift_end_time'); ?></th>
+                                        <th style="width:60px"></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php $time_fmt = (get_option('time_format') == 24) ? 'H:i' : 'g:i A'; ?>
+                                    <?php foreach ($shift_types as $s): ?>
+                                    <tr>
+                                        <td><?php echo htmlspecialchars($s->name); ?></td>
+                                        <td><?php echo date($time_fmt, strtotime($s->start_time)); ?></td>
+                                        <td><?php echo date($time_fmt, strtotime($s->end_time)); ?></td>
+                                        <td>
+                                            <?php if ($can_edit): ?>
+                                            <a href="#" class="hr-edit-shift tw-mr-2"
+                                                data-id="<?php echo $s->id; ?>"
+                                                data-name="<?php echo htmlspecialchars($s->name, ENT_QUOTES); ?>"
+                                                data-start="<?php echo date('H:i', strtotime($s->start_time)); ?>"
+                                                data-end="<?php echo date('H:i', strtotime($s->end_time)); ?>"
+                                                title="<?php echo _l('hr_edit'); ?>"><i class="fa fa-pencil"></i></a>
+                                            <a href="<?php echo admin_url('hr_module/settings/delete_shift/' . $s->id); ?>" class="_delete text-danger" title="<?php echo _l('hr_delete'); ?>"><i class="fa fa-trash"></i></a>
+                                            <?php endif; ?>
+                                        </td>
+                                    </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Notification Settings -->
             <div class="row">
                 <div class="col-md-12">
@@ -309,8 +365,55 @@ $can_edit = staff_can('edit', 'hr_settings') || is_admin();
     </div>
 </div>
 
+<!-- Add Shift Modal -->
+<?php if ($can_edit): ?>
+<div class="modal fade" id="addShiftModal" tabindex="-1">
+  <div class="modal-dialog"><div class="modal-content">
+    <div class="modal-header">
+      <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+      <h4 class="modal-title">
+        <span class="shift-add-title"><?php echo _l('hr_shift_add'); ?></span>
+        <span class="shift-edit-title hide"><?php echo _l('hr_shift_edit'); ?></span>
+      </h4>
+    </div>
+    <form id="addShiftForm" data-mode="add">
+      <input type="hidden" name="id" value="">
+      <div class="modal-body">
+        <div class="form-group">
+          <label><?php echo _l('hr_shift_name'); ?> <span class="text-danger">*</span></label>
+          <input type="text" name="name" class="form-control" placeholder="e.g. Night Shift" required>
+        </div>
+        <div class="row">
+          <div class="col-md-6">
+            <div class="form-group">
+              <label><?php echo _l('hr_shift_start_time'); ?> <span class="text-danger">*</span></label>
+              <input type="time" name="start_time" class="form-control" required>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="form-group">
+              <label><?php echo _l('hr_shift_end_time'); ?> <span class="text-danger">*</span></label>
+              <input type="time" name="end_time" class="form-control" required>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default" data-dismiss="modal"><?php echo _l('hr_cancel'); ?></button>
+        <button type="submit" class="btn btn-primary" id="add-shift-submit-btn"><?php echo _l('hr_save'); ?></button>
+      </div>
+    </form>
+  </div></div>
+</div>
+<?php endif; ?>
+
+<?php init_tail(); ?>
+
 <script>
 $(document).ready(function(){
+    var csrfName = '<?php echo $this->security->get_csrf_token_name(); ?>';
+    var csrfHash = '<?php echo $this->security->get_csrf_hash(); ?>';
+
     $('#hr-settings-form').on('submit', function(e){
         e.preventDefault();
         var $btn = $('#hr-save-settings').prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i>');
@@ -325,7 +428,58 @@ $(document).ready(function(){
             $btn.prop('disabled', false).html('<?php echo _l('hr_save'); ?>');
         });
     });
+
+    // Shift Types (independent AJAX - not part of the settings form submit above)
+    // Reset happens on close (not open) so edit_shift's pre-fill below isn't
+    // wiped out by this handler firing after .modal('show').
+    $('#addShiftModal').on('hidden.bs.modal', function(){
+        var $form = $('#addShiftForm');
+        $form[0].reset();
+        $form.attr('data-mode', 'add');
+        $form.find('input[name="id"]').val('');
+        $('.shift-add-title').removeClass('hide');
+        $('.shift-edit-title').addClass('hide');
+    });
+    $('#addShiftModal').on('shown.bs.modal', function(){
+        $('#addShiftForm input[name="name"]').focus();
+    });
+
+    $(document).on('click', '.hr-edit-shift', function(e){
+        e.preventDefault();
+        var $form = $('#addShiftForm');
+        $form.attr('data-mode', 'edit');
+        $form.find('input[name="id"]').val($(this).data('id'));
+        $form.find('input[name="name"]').val($(this).data('name'));
+        $form.find('input[name="start_time"]').val($(this).data('start'));
+        $form.find('input[name="end_time"]').val($(this).data('end'));
+        $('.shift-add-title').addClass('hide');
+        $('.shift-edit-title').removeClass('hide');
+        $('#addShiftModal').modal('show');
+    });
+
+    $('#addShiftForm').on('submit', function(e){
+        e.preventDefault();
+        var $btn  = $('#add-shift-submit-btn').prop('disabled', true);
+        var mode  = $(this).attr('data-mode') || 'add';
+        var id    = $(this).find('input[name="id"]').val();
+        var url   = mode === 'edit'
+            ? '<?php echo admin_url('hr_module/settings/edit_shift/'); ?>' + id
+            : '<?php echo admin_url('hr_module/settings/add_shift'); ?>';
+        var successMsg = mode === 'edit' ? '<?php echo _l('hr_shift_updated'); ?>' : '<?php echo _l('hr_shift_add'); ?>';
+        $.post(url, $(this).serialize() + '&' + csrfName + '=' + csrfHash, function(r){
+            if (r.success) {
+                alert_float('success', successMsg);
+                location.reload();
+            } else {
+                alert_float('danger', r.message || 'Error saving shift.');
+            }
+        }, 'json').fail(function(){
+            alert_float('danger', 'Unexpected error saving shift.');
+        }).always(function(){
+            $btn.prop('disabled', false);
+        });
+    });
+    // Shift type deletion uses the `_delete` class (bound globally in app.js) -
+    // no custom handler needed here.
 });
 </script>
-
-<?php init_tail(); ?>

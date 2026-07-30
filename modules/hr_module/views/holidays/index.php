@@ -8,6 +8,9 @@
 /** @var int    $cal_month      */
 /** @var array  $cal_holidays   */
 /** @var array  $cal_leave_days */
+/** @var array  $cal_shifts     */
+/** @var string $roster_date    */
+/** @var array  $shift_roster   */
 if (!isset($year))           $year           = (int) date('Y');
 if (!isset($holidays))       $holidays       = [];
 if (!isset($weekly_off))     $weekly_off     = [5];
@@ -16,6 +19,9 @@ if (!isset($cal_year))       $cal_year       = (int) date('Y');
 if (!isset($cal_month))      $cal_month      = (int) date('n');
 if (!isset($cal_holidays))   $cal_holidays   = [];
 if (!isset($cal_leave_days)) $cal_leave_days = [];
+if (!isset($cal_shifts))     $cal_shifts     = [];
+if (!isset($roster_date))    $roster_date    = date('Y-m-d');
+if (!isset($shift_roster))   $shift_roster   = [];
 
 $day_names = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 
@@ -33,6 +39,19 @@ if ($cal_next_month > 12) { $cal_next_month = 1; $cal_next_year++; }
 $cal_first_ts    = mktime(0, 0, 0, $cal_month, 1, $cal_year);
 $cal_days_in_month = (int) date('t', $cal_first_ts);
 $cal_first_dow     = (int) date('w', $cal_first_ts); // 0=Sun..6=Sat, matches weekly_off encoding
+
+// Each shift assignment is a date RANGE (not per-day rows like leave), so expand it
+// into a lookup by date, clipped to this calendar month.
+$cal_month_from = sprintf('%04d-%02d-01', $cal_year, $cal_month);
+$cal_month_to   = sprintf('%04d-%02d-%02d', $cal_year, $cal_month, $cal_days_in_month);
+$shifts_by_date = [];
+foreach ($cal_shifts as $sh) {
+    $clip_from = max($sh->from_date, $cal_month_from);
+    $clip_to   = min($sh->to_date, $cal_month_to);
+    for ($ts = strtotime($clip_from); $ts <= strtotime($clip_to); $ts += 86400) {
+        $shifts_by_date[date('Y-m-d', $ts)][] = $sh;
+    }
+}
 ?>
 <?php init_head(); ?>
 <div id="wrapper">
@@ -305,6 +324,131 @@ $cal_first_dow     = (int) date('w', $cal_first_ts); // 0=Sun..6=Sat, matches we
             <?php if (empty($cal_leave_days)): ?>
             <p class="text-muted tw-text-sm tw-mt-3 tw-mb-0"><i class="fa fa-info-circle tw-mr-1"></i>No approved leave for this month.</p>
             <?php endif; ?>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Shift Roster (calendar) ── -->
+    <div class="row">
+      <div class="col-md-12">
+        <div class="panel_s">
+          <div class="panel-heading tw-flex tw-items-center tw-justify-between tw-flex-wrap tw-gap-3">
+            <h5 class="tw-font-semibold tw-mb-0"><i class="fa fa-user-clock tw-mr-2 text-primary"></i>Shift Roster</h5>
+            <div class="tw-flex tw-items-center tw-gap-2">
+              <a href="?year=<?php echo $year; ?>&cal_year=<?php echo $cal_prev_year; ?>&cal_month=<?php echo $cal_prev_month; ?>"
+                 class="btn btn-default btn-sm"><i class="fa fa-chevron-left"></i></a>
+              <span class="tw-font-semibold"><?php echo date('F', $cal_first_ts) . ' ' . $cal_year; ?></span>
+              <a href="?year=<?php echo $year; ?>&cal_year=<?php echo $cal_next_year; ?>&cal_month=<?php echo $cal_next_month; ?>"
+                 class="btn btn-default btn-sm"><i class="fa fa-chevron-right"></i></a>
+            </div>
+          </div>
+          <div class="panel-body">
+            <div class="table-responsive">
+            <table class="table table-bordered tw-mb-0" style="table-layout:fixed">
+              <thead>
+                <tr>
+                  <?php foreach ($day_names as $idx => $dname): ?>
+                  <th class="text-center <?php echo in_array($idx, $weekly_off) ? 'tw-bg-neutral-100' : ''; ?>"><?php echo substr($dname, 0, 3); ?></th>
+                  <?php endforeach; ?>
+                </tr>
+              </thead>
+              <tbody>
+                <?php
+                $day_num = 1 - $cal_first_dow;
+                while ($day_num <= $cal_days_in_month):
+                ?>
+                <tr>
+                  <?php for ($dow = 0; $dow < 7; $dow++, $day_num++): ?>
+                    <?php if ($day_num < 1 || $day_num > $cal_days_in_month): ?>
+                    <td class="tw-bg-neutral-50"></td>
+                    <?php else: ?>
+                    <?php
+                      $cell_date = sprintf('%04d-%02d-%02d', $cal_year, $cal_month, $day_num);
+                      $is_off    = in_array($dow, $weekly_off);
+                      $on_shift  = $shifts_by_date[$cell_date] ?? [];
+                      $visible_shift = array_slice($on_shift, 0, 2);
+                      $hidden_shift  = array_slice($on_shift, 2);
+                    ?>
+                    <td class="<?php echo $is_off ? 'tw-bg-neutral-50' : ''; ?>" style="vertical-align:top;height:85px">
+                      <strong class="<?php echo $is_off ? 'text-muted' : ''; ?>"><?php echo $day_num; ?></strong>
+                      <?php foreach ($visible_shift as $sh): ?>
+                      <div class="tw-text-xs tw-mt-1">
+                        <span class="label label-info" title="<?php echo htmlspecialchars($sh->shift_name); ?>">
+                          <i class="fa fa-user tw-mr-1"></i><?php echo htmlspecialchars($sh->employee_name); ?>
+                        </span>
+                      </div>
+                      <?php endforeach; ?>
+                      <?php if (!empty($hidden_shift)): ?>
+                      <?php
+                        $hidden_html = '';
+                        foreach ($hidden_shift as $sh) {
+                            $hidden_html .= '<div class="tw-text-xs tw-mb-1"><i class="fa fa-user tw-mr-1"></i>' . htmlspecialchars($sh->employee_name) . ' - ' . htmlspecialchars($sh->shift_name) . '</div>';
+                        }
+                      ?>
+                      <div class="tw-text-xs tw-mt-1">
+                        <span class="label label-default pointer" data-toggle="popover" data-trigger="hover click"
+                              data-html="true" data-placement="top" data-container="body" title="On Shift"
+                              data-content="<?php echo htmlspecialchars($hidden_html); ?>">
+                          +<?php echo count($hidden_shift); ?> more
+                        </span>
+                      </div>
+                      <?php endif; ?>
+                    </td>
+                    <?php endif; ?>
+                  <?php endfor; ?>
+                </tr>
+                <?php endwhile; ?>
+              </tbody>
+            </table>
+            </div>
+            <?php if (empty($cal_shifts)): ?>
+            <p class="text-muted tw-text-sm tw-mt-3 tw-mb-0"><i class="fa fa-info-circle tw-mr-1"></i>No approved shift assignments for this month.</p>
+            <?php endif; ?>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Employees by Shift (specific date) ── -->
+    <div class="row">
+      <div class="col-md-12">
+        <div class="panel_s">
+          <div class="panel-heading tw-flex tw-items-center tw-justify-between tw-flex-wrap tw-gap-3">
+            <h5 class="tw-font-semibold tw-mb-0"><i class="fa fa-list-ul tw-mr-2 text-primary"></i><?php echo _l('hr_shift_roster_by_date'); ?></h5>
+            <form method="get" class="tw-flex tw-items-center tw-gap-2">
+              <input type="hidden" name="year" value="<?php echo $year; ?>">
+              <input type="hidden" name="cal_year" value="<?php echo $cal_year; ?>">
+              <input type="hidden" name="cal_month" value="<?php echo $cal_month; ?>">
+              <input type="date" name="roster_date" class="form-control input-sm" style="width:160px" value="<?php echo htmlspecialchars($roster_date); ?>">
+              <button type="submit" class="btn btn-default btn-sm">View</button>
+            </form>
+          </div>
+          <div class="panel-body panel-table-full">
+            <table class="table table-condensed tw-mb-0">
+              <thead>
+                <tr>
+                  <th style="width:220px">Shift</th>
+                  <th>Employees</th>
+                </tr>
+              </thead>
+              <tbody>
+                <?php foreach ($shift_roster as $type_id => $group): ?>
+                <?php if ($type_id === 0) continue; // default "Day Shift" bucket - not shown on the calendar page ?>
+                <tr>
+                  <td>
+                    <span class="label label-info">
+                      <?php echo htmlspecialchars($group['name']); ?>
+                    </span>
+                    <span class="text-muted tw-text-sm">(<?php echo count($group['employees']); ?>)</span>
+                  </td>
+                  <td>
+                    <?php echo !empty($group['employees']) ? htmlspecialchars(implode(', ', $group['employees'])) : '<span class="text-muted">-</span>'; ?>
+                  </td>
+                </tr>
+                <?php endforeach; ?>
+              </tbody>
+            </table>
           </div>
         </div>
       </div>

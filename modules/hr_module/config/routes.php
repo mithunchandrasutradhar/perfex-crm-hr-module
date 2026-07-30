@@ -7,6 +7,9 @@ $route['hr_module/dashboard']                     = 'hr_module/Hr_module/index';
 // Settings
 $route['hr_module/settings']                      = 'hr_module/Settings/index';
 $route['hr_module/settings/save']                 = 'hr_module/Settings/save';
+$route['hr_module/settings/add_shift']            = 'hr_module/Settings/add_shift';
+$route['hr_module/settings/edit_shift/(:num)']    = 'hr_module/Settings/edit_shift/$1';
+$route['hr_module/settings/delete_shift/(:num)']  = 'hr_module/Settings/delete_shift/$1';
 
 // Employees
 $route['hr_module/employees']                              = 'hr_module/Employees/index';
@@ -176,3 +179,11 @@ $route['hr_module/policies/approve/(:num)']            = 'hr_module/Policies/app
 $route['hr_module/policies/reject/(:num)']             = 'hr_module/Policies/reject/$1';
 $route['hr_module/policies/approve_revision/(:num)']   = 'hr_module/Policies/approve_revision/$1';
 $route['hr_module/policies/reject_revision/(:num)']    = 'hr_module/Policies/reject_revision/$1';
+
+// Shifts
+$route['hr_module/shifts']                  = 'hr_module/Shifts/index';
+$route['hr_module/shifts/apply']            = 'hr_module/Shifts/apply';
+$route['hr_module/shifts/view/(:num)']      = 'hr_module/Shifts/view/$1';
+$route['hr_module/shifts/approve/(:num)']   = 'hr_module/Shifts/approve/$1';
+$route['hr_module/shifts/reject/(:num)']    = 'hr_module/Shifts/reject/$1';
+$route['hr_module/shifts/delete/(:num)']    = 'hr_module/Shifts/delete/$1';
