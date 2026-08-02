@@ -111,6 +111,22 @@ class Email_templates_model extends App_Model
         return (object) ['subject' => $subject, 'body' => $body];
     }
 
+    // Same template + placeholders as render(), but returns plain text (no
+    // HTML escaping, no <br> conversion, real newlines kept intact) - used by
+    // the WhatsApp sender so it reuses the exact same admin-editable template
+    // as email, just without HTML markup. Returns null if the key doesn't exist.
+    public function render_plain($key, array $placeholders)
+    {
+        $tpl = $this->get_by_key($key);
+        if (!$tpl) {
+            return null;
+        }
+        return (object) [
+            'subject' => strtr($tpl->subject, $placeholders),
+            'body'    => strtr($tpl->body, $placeholders),
+        ];
+    }
+
     // Builds a readable [Sample Value] for every {placeholder} a template
     // declares (from its stored `placeholders` hint column), for the "Send
     // Test Email" preview - lets an admin see formatting/wording without a

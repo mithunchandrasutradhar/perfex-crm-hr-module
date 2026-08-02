@@ -78,7 +78,7 @@ class Leave extends AdminController
                     $req      = $this->Leave_model->get_request($result['id']);
                     $req_days = $this->Leave_model->get_request_days($result['id']);
 
-                    $tpl = $this->Email_templates_model->render('leave_apply', [
+                    $placeholders = [
                         '{employee_name}' => $req->employee_name . ' (' . $req->employee_code . ')',
                         '{department}'    => $req->department_name ?: '-',
                         '{designation}'   => $req->designation_name ?: '-',
@@ -86,12 +86,10 @@ class Leave extends AdminController
                         '{leave_dates}'   => $this->_leave_dates_plain($req_days),
                         '{total_days}'    => $req->total_days,
                         '{reason}'        => $req->reason ?: '-',
-                    ]);
-                    $this->Hr_module_model->send_notification_email(
-                        $tpl->subject,
-                        $tpl->body,
-                        admin_url('hr_module/leave/view/' . $result['id'])
-                    );
+                    ];
+                    $tpl  = $this->Email_templates_model->render('leave_apply', $placeholders);
+                    $link = admin_url('hr_module/leave/view/' . $result['id']);
+                    $this->Hr_module_model->send_notification_email($tpl->subject, $tpl->body, $link);
                     $this->Hr_module_model->notify_by_permission(
                         'approve', 'hr_leave',
                         'not_hr_leave_applied',
@@ -183,7 +181,7 @@ class Leave extends AdminController
 
         // This method is only ever called with $status === 'approved' (reject()
         // sends no email), so a single 'leave_approved' template covers it.
-        $tpl = $this->Email_templates_model->render('leave_approved', [
+        $placeholders = [
             '{employee_name}' => $req->employee_name,
             '{department}'    => $req->department_name ?: '-',
             '{designation}'   => $req->designation_name ?: '-',
@@ -191,14 +189,11 @@ class Leave extends AdminController
             '{leave_dates}'   => $this->_leave_dates_plain($req_days),
             '{total_days}'    => $req->total_days,
             '{notes}'         => $notes ?: '-',
-        ]);
+        ];
+        $tpl  = $this->Email_templates_model->render('leave_approved', $placeholders);
+        $link = admin_url('hr_module/leave/view/' . $id);
 
-        $this->Hr_module_model->send_employee_email(
-            $req->employee_email,
-            $tpl->subject,
-            $tpl->body,
-            admin_url('hr_module/leave/view/' . $id)
-        );
+        $this->Hr_module_model->send_employee_email($req->employee_email, $tpl->subject, $tpl->body, $link);
         $this->Hr_module_model->notify_staff($req->employee_staff_id, 'not_hr_leave_status', 'hr_module/leave/view/' . $id, [$status]);
     }
 
@@ -213,7 +208,7 @@ class Leave extends AdminController
 
         $req_days = $this->Leave_model->get_request_days($id);
 
-        $tpl = $this->Email_templates_model->render('leave_announcement', [
+        $placeholders = [
             '{employee_name}' => $req->employee_name,
             '{employee_code}' => $req->employee_code,
             '{department}'    => $req->department_name ?: '-',
@@ -221,9 +216,13 @@ class Leave extends AdminController
             '{leave_type}'    => $req->leave_type_name ?? '',
             '{leave_dates}'   => $this->_leave_dates_plain($req_days),
             '{total_days}'    => $req->total_days,
-        ]);
+        ];
+        $tpl  = $this->Email_templates_model->render('leave_announcement', $placeholders);
 
         $this->Hr_module_model->send_leave_announcement($tpl->subject, $tpl->body);
+        // No link on the WhatsApp message for leave announcements - unlike policy
+        // announcements, there's nothing an employee should click through to here.
+        $this->Hr_module_model->send_whatsapp_announcement('leave_announcement', $placeholders);
         $this->Hr_module_model->notify_staff_list(
             $this->Employees_model->get_active_staff_ids(),
             'not_hr_leave_announcement',
@@ -322,7 +321,7 @@ class Leave extends AdminController
 
         $req_days = $this->Leave_model->get_request_days($id);
 
-        $tpl = $this->Email_templates_model->render('leave_cancellation_request', [
+        $placeholders = [
             '{employee_name}' => $req->employee_name . ' (' . $req->employee_code . ')',
             '{department}'    => $req->department_name ?: '-',
             '{designation}'   => $req->designation_name ?: '-',
@@ -330,12 +329,10 @@ class Leave extends AdminController
             '{leave_dates}'   => $this->_leave_dates_plain($req_days),
             '{total_days}'    => $req->total_days,
             '{reason}'        => $reason ?: '-',
-        ]);
-        $this->Hr_module_model->send_notification_email(
-            $tpl->subject,
-            $tpl->body,
-            admin_url('hr_module/leave/view/' . $id)
-        );
+        ];
+        $tpl  = $this->Email_templates_model->render('leave_cancellation_request', $placeholders);
+        $link = admin_url('hr_module/leave/view/' . $id);
+        $this->Hr_module_model->send_notification_email($tpl->subject, $tpl->body, $link);
         $this->Hr_module_model->notify_by_permission(
             'approve', 'hr_leave',
             'not_hr_leave_cancellation_requested',
@@ -355,24 +352,19 @@ class Leave extends AdminController
 
         $req_days = $this->Leave_model->get_request_days($id);
 
-        $tpl = $this->Email_templates_model->render(
-            $status === 'approved' ? 'leave_cancellation_approved' : 'leave_cancellation_rejected',
-            [
-                '{employee_name}' => $req->employee_name,
-                '{department}'    => $req->department_name ?: '-',
-                '{designation}'   => $req->designation_name ?: '-',
-                '{leave_type}'    => $req->leave_type_name ?? '',
-                '{leave_dates}'   => $this->_leave_dates_plain($req_days),
-                '{total_days}'    => $req->total_days,
-            ]
-        );
+        $template_key = $status === 'approved' ? 'leave_cancellation_approved' : 'leave_cancellation_rejected';
+        $placeholders = [
+            '{employee_name}' => $req->employee_name,
+            '{department}'    => $req->department_name ?: '-',
+            '{designation}'   => $req->designation_name ?: '-',
+            '{leave_type}'    => $req->leave_type_name ?? '',
+            '{leave_dates}'   => $this->_leave_dates_plain($req_days),
+            '{total_days}'    => $req->total_days,
+        ];
+        $tpl  = $this->Email_templates_model->render($template_key, $placeholders);
+        $link = admin_url('hr_module/leave/view/' . $id);
 
-        $this->Hr_module_model->send_employee_email(
-            $req->employee_email,
-            $tpl->subject,
-            $tpl->body,
-            admin_url('hr_module/leave/view/' . $id)
-        );
+        $this->Hr_module_model->send_employee_email($req->employee_email, $tpl->subject, $tpl->body, $link);
         $this->Hr_module_model->notify_staff($req->employee_staff_id, 'not_hr_leave_cancellation_status', 'hr_module/leave/view/' . $id, [$status]);
     }
 
@@ -388,16 +380,19 @@ class Leave extends AdminController
 
         $req_days = $this->Leave_model->get_request_days($id);
 
-        $tpl = $this->Email_templates_model->render('leave_cancellation_announcement', [
+        $placeholders = [
             '{employee_name}' => $req->employee_name,
             '{employee_code}' => $req->employee_code,
             '{department}'    => $req->department_name ?: '-',
             '{designation}'   => $req->designation_name ?: '-',
             '{leave_type}'    => $req->leave_type_name ?? '',
             '{leave_dates}'   => $this->_leave_dates_plain($req_days),
-        ]);
+        ];
+        $tpl  = $this->Email_templates_model->render('leave_cancellation_announcement', $placeholders);
 
         $this->Hr_module_model->send_leave_announcement($tpl->subject, $tpl->body);
+        // No link on the WhatsApp message for leave announcements - see note above.
+        $this->Hr_module_model->send_whatsapp_announcement('leave_cancellation_announcement', $placeholders);
         $this->Hr_module_model->notify_staff_list(
             $this->Employees_model->get_active_staff_ids(),
             'not_hr_leave_cancellation_announcement',

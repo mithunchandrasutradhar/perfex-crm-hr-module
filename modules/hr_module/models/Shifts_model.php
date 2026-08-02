@@ -184,6 +184,22 @@ class Shifts_model extends App_Model
             'updated_at'  => date('Y-m-d H:i:s'),
         ]);
         log_activity('HR Shift Assignment Approved [ID: ' . $id . ']');
+
+        // If payroll for any month/year this assignment's range falls in was already
+        // generated (draft), reflect the just-approved shift allowance in it immediately -
+        // same pattern as Overtime_model::approve()'s sync_overtime_for_period() call.
+        $CI = &get_instance();
+        $CI->load->model('hr_module/Payroll_model');
+        $month = (int) date('n', strtotime($assignment->from_date));
+        $year  = (int) date('Y', strtotime($assignment->from_date));
+        $end_month = (int) date('n', strtotime($assignment->to_date));
+        $end_year  = (int) date('Y', strtotime($assignment->to_date));
+        while ($year < $end_year || ($year === $end_year && $month <= $end_month)) {
+            $CI->Payroll_model->sync_shift_allowance_for_period($assignment->employee_id, $month, $year);
+            $month++;
+            if ($month > 12) { $month = 1; $year++; }
+        }
+
         return ['success' => true];
     }
 
@@ -320,5 +336,31 @@ class Shifts_model extends App_Model
             $parts[] = $name . ' (' . $days . ')';
         }
         return implode(', ', $parts);
+    }
+
+    // Same clipped day-count as get_employee_shift_summary(), but returns the
+    // raw ['Shift Name' => days, ...] array instead of a formatted string -
+    // used by Payroll_model to compute per-shift-type allowances.
+    public function get_employee_shift_day_counts($employee_id, $from, $to)
+    {
+        $rows = $this->db->select('st.name as shift_name, a.from_date, a.to_date', false)
+            ->from($this->tbl_assignments . ' a')
+            ->join($this->tbl_types . ' st', 'st.id = a.shift_type_id', 'left')
+            ->where('a.employee_id', $employee_id)
+            ->where('a.status', 'approved')
+            ->where('a.from_date <=', $to)
+            ->where('a.to_date >=', $from)
+            ->get()->result();
+
+        $counts = [];
+        foreach ($rows as $r) {
+            $clip_from = max($r->from_date, $from);
+            $clip_to   = min($r->to_date, $to);
+            $days = (strtotime($clip_to) - strtotime($clip_from)) / 86400 + 1;
+            if ($days < 1) continue;
+            $name = $r->shift_name ?: 'Unknown Shift';
+            $counts[$name] = ($counts[$name] ?? 0) + $days;
+        }
+        return $counts;
     }
 }

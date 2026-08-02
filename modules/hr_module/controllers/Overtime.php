@@ -44,16 +44,14 @@ class Overtime extends AdminController
             if ($result['success']) {
                 if ($this->Hr_module_model->notifications_enabled('notify_overtime')) {
                     $emp = $this->Employees_model->get($employee_id);
-                    $tpl = $this->Email_templates_model->render('overtime_apply', [
+                    $placeholders = [
                         '{employee_name}' => $emp ? $emp->first_name . ' ' . $emp->last_name . ' (' . $emp->employee_code . ')' : 'Unknown',
                         '{dates}'         => implode(', ', array_map('_d', $dates)),
                         '{reason}'        => $this->input->post('reason', true) ?: '-',
-                    ]);
-                    $this->Hr_module_model->send_notification_email(
-                        $tpl->subject,
-                        $tpl->body,
-                        admin_url('hr_module/overtime/view/' . $result['id'])
-                    );
+                    ];
+                    $tpl  = $this->Email_templates_model->render('overtime_apply', $placeholders);
+                    $link = admin_url('hr_module/overtime/view/' . $result['id']);
+                    $this->Hr_module_model->send_notification_email($tpl->subject, $tpl->body, $link);
                     $this->Hr_module_model->notify_by_permission(
                         'edit', 'hr_overtime',
                         'not_hr_overtime_applied',

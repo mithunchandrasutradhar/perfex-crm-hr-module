@@ -43,12 +43,22 @@
         </div>
         <div class="panel_s">
           <div class="panel-body panel-table-full">
-            <?php render_datatable([
-              _l('hr_employee'), _l('hr_department'), _l('hr_shift_type'), _l('hr_payroll_period'),
-              _l('hr_payroll_gross_salary'), _l('hr_payroll_overtime'),
+            <?php
+              // One column per currently-active payroll item (Payroll Items list),
+              // in the same order table.php builds each row's cells in.
+              $CI = &get_instance();
+              $CI->load->model('hr_module/Payroll_model');
+              $payroll_item_headers = array_map(function ($item) {
+                  return htmlspecialchars($item->name);
+              }, $CI->Payroll_model->get_items(true));
+            ?>
+            <?php render_datatable(array_merge([
+              _l('hr_employee'), _l('hr_department'), _l('hr_payroll_period'), _l('hr_payroll_basic_salary'),
+            ], $payroll_item_headers, [
+              _l('hr_payroll_overtime'), _l('hr_shift_type'), _l('hr_payroll_gross_salary'),
               _l('hr_payroll_loan_deduction'),
               _l('hr_payroll_net_salary'), _l('hr_status'), 'Payment Date',
-            ], 'hr-payroll'); ?>
+            ]), 'hr-payroll'); ?>
           </div>
         </div>
       </div>
@@ -77,7 +87,10 @@
         </div>
         <div class="form-group">
           <label>Payment Date</label>
-          <input type="date" name="payment_date" id="mp_date" class="form-control" value="<?php echo date('Y-m-d'); ?>" required>
+          <div class="input-group date">
+            <input type="text" name="payment_date" id="mp_date" class="form-control datepicker" autocomplete="off" value="<?php echo _d(date('Y-m-d')); ?>" required>
+            <span class="input-group-addon"><i class="fa-regular fa-calendar calendar-icon"></i></span>
+          </div>
         </div>
       </div>
       <div class="modal-footer">
@@ -92,7 +105,10 @@
 <?php init_tail(); ?>
 <script>
 $(function(){
-    initDataTable('.table-hr-payroll', window.location.href, [], [3,'desc']);
+    // Sort column index 2 = Pay Period (shifted from 3 now that Basic Salary/
+    // item columns were inserted before it - keeps the same "most recent period
+    // first" default sort).
+    initDataTable('.table-hr-payroll', window.location.href, [], [2,'desc']);
     function reload() {
         var url = window.location.href.split('?')[0]
             + '?department_id=' + $('#f-dept').val()
@@ -106,7 +122,7 @@ $(function(){
     $(document).on('click', '.hr-mark-paid', function(e){
         e.preventDefault();
         $('#markPaidForm')[0].reset();
-        $('#mp_date').val('<?php echo date('Y-m-d'); ?>');
+        $('#mp_date').val('<?php echo _d(date('Y-m-d')); ?>');
         $('#mp_id').val($(this).data('id'));
         $('#markPaidModal').modal('show');
     });

@@ -6,11 +6,16 @@
       <div class="col-md-12">
         <div class="tw-mb-4 tw-flex tw-flex-wrap tw-items-center tw-justify-between tw-gap-3">
           <h4 class="tw-font-semibold tw-text-lg tw-text-neutral-700">
-            <i class="fa fa-envelope-o tw-mr-2"></i><?php echo _l('hr_email_templates'); ?>
+            <i class="fa-regular fa-envelope tw-mr-2"></i><?php echo _l('hr_email_templates'); ?>
           </h4>
-          <a href="<?php echo admin_url('hr_module/settings'); ?>" class="btn btn-default btn-sm">
-            <i class="fa fa-arrow-left tw-mr-1"></i><?php echo _l('hr_back_to_settings'); ?>
-          </a>
+          <div class="tw-flex tw-gap-2">
+            <a href="<?php echo admin_url('hr_module/whatsapp_templates'); ?>" class="btn btn-default btn-sm">
+              <i class="fa-brands fa-whatsapp tw-mr-1"></i><?php echo _l('hr_whatsapp_templates'); ?>
+            </a>
+            <a href="<?php echo admin_url('hr_module/settings'); ?>" class="btn btn-default btn-sm">
+              <i class="fa fa-arrow-left tw-mr-1"></i><?php echo _l('hr_back_to_settings'); ?>
+            </a>
+          </div>
         </div>
         <p class="text-muted tw-mb-3"><?php echo _l('hr_email_templates_hint'); ?></p>
 

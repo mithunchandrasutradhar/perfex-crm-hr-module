@@ -103,7 +103,7 @@ class Overtime_model extends App_Model
             return ['eligible' => false, 'message' => _l('hr_overtime_not_eligible_date')];
         }
         $multiplier = $this->_rate_multiplier($resolved['day_type']);
-        $amount     = $this->_calc_amount($employee_id, $multiplier);
+        $amount     = $this->_calc_amount($employee_id, $multiplier, (int) date('n', strtotime($date)), (int) date('Y', strtotime($date)));
         return [
             'eligible'     => true,
             'day_type'     => $resolved['day_type'],
@@ -139,7 +139,7 @@ class Overtime_model extends App_Model
                 'day_type'        => $resolved['day_type'],
                 'holiday_name'    => $resolved['holiday_name'],
                 'rate_multiplier' => $multiplier,
-                'total_amount'    => $this->_calc_amount($employee_id, $multiplier),
+                'total_amount'    => $this->_calc_amount($employee_id, $multiplier, (int) date('n', strtotime($date)), (int) date('Y', strtotime($date))),
             ];
         }
 
@@ -195,7 +195,7 @@ class Overtime_model extends App_Model
                 'day_type'        => $resolved['day_type'],
                 'holiday_name'    => $resolved['holiday_name'],
                 'rate_multiplier' => $multiplier,
-                'total_amount'    => $this->_calc_amount($employee_id, $multiplier),
+                'total_amount'    => $this->_calc_amount($employee_id, $multiplier, (int) date('n', strtotime($date)), (int) date('Y', strtotime($date))),
             ];
         }
 
@@ -304,13 +304,34 @@ class Overtime_model extends App_Model
         return (float) $CI->Hr_module_model->get_setting('overtime_holiday_rate', 2.0);
     }
 
-    // day rate = basic salary / 26 working days per month
-    private function _calc_amount($employee_id, $multiplier)
+    // day rate = projected gross salary (basic + fixed allowances + shift
+    // allowance for that month - see Payroll_model::get_projected_gross_salary())
+    // / configurable working-days-per-month divisor (Settings > Overtime Day
+    // Divisor, default 26 - the value this module used before it became
+    // configurable, so existing installs see no change unless an admin
+    // explicitly sets a different value).
+    private function _calc_amount($employee_id, $multiplier, $month = null, $year = null)
     {
-        $emp = $this->db->select('basic_salary')->where('id', $employee_id)
-                ->get(db_prefix() . 'hr_employees')->row();
-        if (!$emp || !$emp->basic_salary) return 0;
-        $daily_rate = (float) $emp->basic_salary / 26;
+        if ($month === null || $year === null) {
+            $month = (int) date('n');
+            $year  = (int) date('Y');
+        }
+
+        $CI = &get_instance();
+        if (!isset($CI->Hr_module_model)) {
+            $CI->load->model('hr_module/Hr_module_model');
+        }
+        if (!isset($CI->Payroll_model)) {
+            $CI->load->model('hr_module/Payroll_model');
+        }
+
+        $gross = $CI->Payroll_model->get_projected_gross_salary($employee_id, $month, $year);
+        if ($gross <= 0) return 0;
+
+        $divisor = (float) $CI->Hr_module_model->get_setting('overtime_day_divisor', 26);
+        if ($divisor <= 0) $divisor = 26;
+
+        $daily_rate = $gross / $divisor;
         return round($daily_rate * (float) $multiplier, 2);
     }
 }

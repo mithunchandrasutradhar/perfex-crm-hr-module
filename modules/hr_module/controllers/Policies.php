@@ -408,12 +408,13 @@ class Policies extends AdminController
         $policy = $this->Policies_model->get($id);
         if (!$policy) return;
 
-        $tpl = $this->Email_templates_model->render('policy_submitted_for_approval', [
+        $placeholders = [
             '{title}'        => $policy->title,
             '{visibility}'   => $policy->type === 'public' ? 'Public (all employees)' : 'Private - ' . ($policy->department_names ?: '-'),
             '{content}'      => $this->_content_summary($policy),
             '{submitted_by}' => $policy->created_by_name ?: '-',
-        ]);
+        ];
+        $tpl = $this->Email_templates_model->render('policy_submitted_for_approval', $placeholders);
         $this->_notify_approver(
             $tpl->subject,
             $tpl->body,
@@ -431,12 +432,13 @@ class Policies extends AdminController
         $revision = $this->Policies_model->get_revision($revision_id);
         if (!$policy || !$revision) return;
 
-        $tpl = $this->Email_templates_model->render('policy_revision_submitted', [
+        $placeholders = [
             '{title}'        => $policy->title,
             '{visibility}'   => $revision->type === 'public' ? 'Public (all employees)' : 'Private - ' . ($revision->department_names ?: '-'),
             '{content}'      => $this->_content_summary($revision),
             '{submitted_by}' => $revision->submitted_by_name ?: '-',
-        ]);
+        ];
+        $tpl = $this->Email_templates_model->render('policy_revision_submitted', $placeholders);
         $this->_notify_approver(
             $tpl->subject,
             $tpl->body,
@@ -455,27 +457,32 @@ class Policies extends AdminController
 
         $visibility = $policy->type === 'public' ? 'Public (all employees)' : 'Private - ' . ($policy->department_names ?: '-');
         if ($is_update) {
-            $tpl = $this->Email_templates_model->render('policy_updated', [
+            $template_key = 'policy_updated';
+            $placeholders = [
                 '{title}'        => $policy->title,
                 '{visibility}'   => $visibility,
                 '{content}'      => $this->_content_summary($policy),
                 '{updated_info}' => _dt($policy->updated_at),
-            ]);
+            ];
         } else {
-            $tpl = $this->Email_templates_model->render('policy_published', [
+            $template_key = 'policy_published';
+            $placeholders = [
                 '{title}'          => $policy->title,
                 '{visibility}'     => $visibility,
                 '{content}'        => $this->_content_summary($policy),
                 '{published_info}' => _dt($policy->published_at) . ' by ' . ($policy->approved_by_name ?: '-'),
-            ]);
+            ];
         }
+        $tpl  = $this->Email_templates_model->render($template_key, $placeholders);
+        $link = admin_url('hr_module/policies/view/' . $id);
 
         $this->Hr_module_model->send_policy_announcement(
             $tpl->subject,
             $tpl->body,
             $policy->type === 'public' ? null : $policy->department_id_list,
-            admin_url('hr_module/policies/view/' . $id)
+            $link
         );
+        $this->Hr_module_model->send_whatsapp_announcement($template_key, $placeholders, $link);
 
         $audience = $policy->type === 'public'
             ? $this->Employees_model->get_active_staff_ids()

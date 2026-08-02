@@ -10,11 +10,17 @@ $route['hr_module/settings/save']                 = 'hr_module/Settings/save';
 $route['hr_module/settings/add_shift']            = 'hr_module/Settings/add_shift';
 $route['hr_module/settings/edit_shift/(:num)']    = 'hr_module/Settings/edit_shift/$1';
 $route['hr_module/settings/delete_shift/(:num)']  = 'hr_module/Settings/delete_shift/$1';
+$route['hr_module/settings/send_whatsapp_test']   = 'hr_module/Settings/send_whatsapp_test';
 
 // Email Templates
 $route['hr_module/email_templates']               = 'hr_module/Email_templates/index';
 $route['hr_module/email_templates/edit/(:num)']   = 'hr_module/Email_templates/edit/$1';
 $route['hr_module/email_templates/send_test/(:num)'] = 'hr_module/Email_templates/send_test/$1';
+
+// WhatsApp Templates
+$route['hr_module/whatsapp_templates']               = 'hr_module/Whatsapp_templates/index';
+$route['hr_module/whatsapp_templates/edit/(:num)']   = 'hr_module/Whatsapp_templates/edit/$1';
+$route['hr_module/whatsapp_templates/send_test/(:num)'] = 'hr_module/Whatsapp_templates/send_test/$1';
 
 // Employees
 $route['hr_module/employees']                              = 'hr_module/Employees/index';
@@ -86,6 +92,7 @@ $route['hr_module/payroll']                       = 'hr_module/Payroll/index';
 $route['hr_module/payroll/generate']              = 'hr_module/Payroll/generate';
 $route['hr_module/payroll/view/(:num)']           = 'hr_module/Payroll/view/$1';
 $route['hr_module/payroll/mark_paid/(:num)']      = 'hr_module/Payroll/mark_paid/$1';
+$route['hr_module/payroll/revert_to_draft/(:num)'] = 'hr_module/Payroll/revert_to_draft/$1';
 $route['hr_module/payroll/delete/(:num)']         = 'hr_module/Payroll/delete/$1';
 $route['hr_module/payroll/slip/(:num)']           = 'hr_module/Payroll/slip/$1';
 

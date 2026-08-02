@@ -6,6 +6,10 @@ $CI->load->model('hr_module/Payroll_model');
 $CI->load->model('hr_module/Loans_model');
 $CI->load->model('hr_module/Shifts_model');
 
+// Same active-items list (and order) views/payroll/index.php built its extra
+// column headers from - one cell per item, per row, below.
+$payroll_items = $CI->Payroll_model->get_items(true);
+
 $filters = [];
 foreach (['employee_id', 'department_id', 'pay_month', 'pay_year', 'status'] as $key) {
     $v = $CI->input->get($key);
@@ -87,26 +91,63 @@ foreach ($rows as $r) {
     }
     $loan_deduction_cell .= '</div>';
 
-    $overtime_cell = $r->overtime_days > 0
-        ? $r->overtime_days . ' ' . ($r->overtime_days == 1 ? 'day' : 'days') . '<br><small class="text-muted">' . number_format($r->overtime_amount, 2) . '</small>'
+    // Once paid, nothing on this row should move again - it's an actual, already
+    // -disbursed financial record, so Overtime/Shift/Gross/Net show exactly what
+    // was frozen at mark_paid() time. Only a still-draft payroll (nothing paid
+    // out yet) previews live figures from the CURRENT Settings (Weekend/Holiday
+    // Overtime Rate, Overtime Day Divisor, Shift Allowance amounts) - none of
+    // this is ever written back to the hr_payroll row either way.
+    if ($r->status === 'paid') {
+        $overtime_days   = (int) $r->overtime_days;
+        $overtime_amount = (float) $r->overtime_amount;
+        $shift_allowance = $CI->Payroll_model->get_shift_allowance_total($r->id);
+        $live_totals     = ['gross' => (float) $r->gross_salary, 'net' => (float) $r->net_salary];
+    } else {
+        $live_overtime   = $CI->Payroll_model->calculate_live_overtime($r->employee_id, $r->pay_month, $r->pay_year);
+        $overtime_days   = $live_overtime['days'];
+        $overtime_amount = $live_overtime['amount'];
+        $shift_allowance = $CI->Payroll_model->calculate_live_shift_allowance($r->employee_id, $r->pay_month, $r->pay_year);
+        $live_totals     = $CI->Payroll_model->calculate_live_gross_net($r, $overtime_amount, $shift_allowance);
+    }
+
+    $overtime_cell = $overtime_days > 0
+        ? $overtime_days . ' ' . ($overtime_days == 1 ? 'day' : 'days') . '<br><small class="text-muted">+' . number_format($overtime_amount, 2) . '</small>'
         : '-';
 
     $period_from = sprintf('%04d-%02d-01', $r->pay_year, $r->pay_month);
     $period_to   = date('Y-m-t', strtotime($period_from));
     $shift_cell  = htmlspecialchars($CI->Shifts_model->get_employee_shift_summary($r->employee_id, $period_from, $period_to));
+    if ($shift_allowance > 0) {
+        $shift_cell .= '<br><small class="text-muted">+' . number_format($shift_allowance, 2) . '</small>';
+    }
 
-    $row = [
+    // One cell per active payroll item - this employee's actual detail-row amount
+    // for that item if it applied to their payroll, '-' if it didn't.
+    $details_by_item = [];
+    foreach ($CI->Payroll_model->get_details($r->id) as $d) {
+        if ($d->payroll_item_id) $details_by_item[$d->payroll_item_id] = $d->amount;
+    }
+    $item_cells = [];
+    foreach ($payroll_items as $item) {
+        $item_cells[] = isset($details_by_item[$item->id])
+            ? ($item->type === 'deduction' ? '-' : '') . number_format($details_by_item[$item->id], 2)
+            : '-';
+    }
+
+    $row = array_merge([
         $employee_cell,
         $r->department_name ? htmlspecialchars($r->department_name) : '-',
-        $shift_cell,
         $period,
-        number_format($r->gross_salary, 2),
+        number_format($r->basic_salary, 2),
+    ], $item_cells, [
         $overtime_cell,
+        $shift_cell,
+        number_format($live_totals['gross'], 2),
         $loan_deduction_cell,
-        '<strong>' . number_format($r->net_salary, 2) . '</strong>',
+        '<strong>' . number_format($live_totals['net'], 2) . '</strong>',
         $status,
         $r->payment_date ? date('d M Y', strtotime($r->payment_date)) : '-',
-    ];
+    ]);
     $row['DT_RowClass'] = 'has-row-options';
     $output['aaData'][] = $row;
 }

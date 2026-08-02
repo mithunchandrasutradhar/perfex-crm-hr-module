@@ -189,19 +189,17 @@ class Shifts extends AdminController
         if (!$a) return;
 
         $range = _d($a->from_date) . ($a->to_date !== $a->from_date ? ' - ' . _d($a->to_date) : '');
-        $tpl = $this->Email_templates_model->render('shift_applied', [
+        $placeholders = [
             '{employee_name}' => $a->employee_name . ' (' . $a->employee_code . ')',
             '{department}'    => $a->department_name ?: '-',
             '{designation}'   => $a->designation_name ?: '-',
             '{shift_name}'    => $a->shift_name,
             '{date_range}'    => $range,
             '{reason}'        => $a->reason ?: '-',
-        ]);
-        $this->Hr_module_model->send_notification_email(
-            $tpl->subject,
-            $tpl->body,
-            admin_url('hr_module/shifts/view/' . $id)
-        );
+        ];
+        $tpl  = $this->Email_templates_model->render('shift_applied', $placeholders);
+        $link = admin_url('hr_module/shifts/view/' . $id);
+        $this->Hr_module_model->send_notification_email($tpl->subject, $tpl->body, $link);
         $this->Hr_module_model->notify_by_permission(
             'approve', 'hr_shifts',
             'not_hr_shift_applied',
@@ -221,25 +219,24 @@ class Shifts extends AdminController
 
         if (!empty($a->employee_email)) {
             if ($status === 'approved') {
-                $tpl = $this->Email_templates_model->render('shift_approved', [
+                $template_key = 'shift_approved';
+                $placeholders = [
                     '{employee_name}' => $a->employee_name,
                     '{shift_name}'    => $a->shift_name,
                     '{date_range}'    => $range,
-                ]);
+                ];
             } else {
-                $tpl = $this->Email_templates_model->render('shift_rejected', [
+                $template_key = 'shift_rejected';
+                $placeholders = [
                     '{employee_name}' => $a->employee_name,
                     '{shift_name}'    => $a->shift_name,
                     '{date_range}'    => $range,
                     '{reason}'        => $a->rejection_reason ?: '-',
-                ]);
+                ];
             }
-            $this->Hr_module_model->send_employee_email(
-                $a->employee_email,
-                $tpl->subject,
-                $tpl->body,
-                admin_url('hr_module/shifts/view/' . $id)
-            );
+            $tpl  = $this->Email_templates_model->render($template_key, $placeholders);
+            $link = admin_url('hr_module/shifts/view/' . $id);
+            $this->Hr_module_model->send_employee_email($a->employee_email, $tpl->subject, $tpl->body, $link);
         }
         $this->Hr_module_model->notify_staff($a->employee_staff_id, 'not_hr_shift_status', 'hr_module/shifts/view/' . $id, [$status]);
     }

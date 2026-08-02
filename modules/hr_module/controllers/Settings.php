@@ -37,6 +37,51 @@ class Settings extends AdminController
         $this->load->view('hr_module/settings/index', $data);
     }
 
+    // Sends a canned test message using whatever is currently typed into the
+    // WhatsApp fields (even if not saved yet), so the admin can verify
+    // credentials/targets without waiting for a real event.
+    public function send_whatsapp_test()
+    {
+        if (!$this->input->is_ajax_request()) show_404();
+        if (staff_cant('edit', 'hr_settings') && !is_admin()) {
+            echo json_encode(['success' => false, 'message' => _l('hr_error_permission')]);
+            return;
+        }
+
+        $base_url = trim($this->input->post('base_url')) ?: 'https://waha.abutalha.com.bd';
+        $session  = trim($this->input->post('session')) ?: 'default';
+        $api_key  = trim($this->input->post('api_key'));
+        $group_id = trim($this->input->post('group_id'));
+        $phone    = trim($this->input->post('phone'));
+        $targets  = array_filter([$group_id, $phone]);
+
+        if (empty($targets)) {
+            echo json_encode(['success' => false, 'message' => _l('hr_settings_whatsapp_no_target')]);
+            return;
+        }
+
+        $this->load->library('hr_module/Waha_lib');
+        $text = "*HR Module Test Message*\n\nThis is a test message from " . get_option('companyname') . "'s HR module to verify your WhatsApp notification settings.";
+
+        $sent_any = false;
+        $errors   = [];
+        foreach ($targets as $target) {
+            $result = $this->waha_lib->send_text($base_url, $session, $api_key, $target, $text);
+            if ($result['success']) {
+                $sent_any = true;
+            } else {
+                $errors[] = $target . ': ' . $result['message'];
+            }
+        }
+
+        echo json_encode([
+            'success' => $sent_any,
+            'message' => $sent_any
+                ? _l('hr_settings_whatsapp_test_sent')
+                : (_l('hr_settings_whatsapp_test_failed') . (empty($errors) ? '' : ' (' . implode('; ', $errors) . ')')),
+        ]);
+    }
+
     // ── Shift Types (name + start/end time) ─────────────────────────────
 
     public function add_shift()
@@ -127,6 +172,9 @@ class Settings extends AdminController
             'late_threshold_minutes',
             'default_overtime_rate',
             'overtime_holiday_rate',
+            'overtime_day_divisor',
+            'shift_allowance_evening_amount',
+            'shift_allowance_night_amount',
             'employee_id_prefix',
             'fiscal_year_start_month',
             'payroll_generation_day',
@@ -148,6 +196,16 @@ class Settings extends AdminController
             'zkteco_sync_interval',
             'holiday_reminder_enabled',
             'holiday_reminder_time',
+            'whatsapp_enabled',
+            'whatsapp_base_url',
+            'whatsapp_session',
+            'whatsapp_api_key',
+            'whatsapp_group_id',
+            'whatsapp_phone_number',
+            'whatsapp_notify_leave_announcement',
+            'whatsapp_notify_leave_cancellation_announcement',
+            'whatsapp_notify_holiday_reminder',
+            'whatsapp_notify_policy_announcement',
         ];
 
         // input->post() returns NULL (not false) for a key absent from the

@@ -105,22 +105,75 @@ class Holidays extends AdminController
             echo json_encode(['success' => false, 'message' => _l('hr_error_permission')]);
             return;
         }
-        $name = trim($this->input->post('name', true));
-        $date = to_sql_date($this->input->post('holiday_date'));
-        $type = $this->input->post('type');
+        $name         = trim($this->input->post('name', true));
+        $date         = to_sql_date($this->input->post('holiday_date'));
+        $end_date_raw = trim($this->input->post('end_date'));
+        $end_date     = $end_date_raw !== '' ? to_sql_date($end_date_raw) : null;
+        $type         = $this->input->post('type');
 
         if (!$name || !$date) {
             echo json_encode(['success' => false, 'message' => 'Name and date are required.']);
+            return;
+        }
+        if ($end_date && $end_date < $date) {
+            echo json_encode(['success' => false, 'message' => 'End date cannot be before the start date.']);
             return;
         }
 
         $id = $this->Holidays_model->add([
             'name'         => $name,
             'holiday_date' => $date,
+            'end_date'     => $end_date,
             'type'         => in_array($type, ['government', 'company']) ? $type : 'government',
         ]);
 
         echo json_encode(['success' => (bool) $id, 'id' => $id]);
+    }
+
+    public function edit($id)
+    {
+        if (!$this->input->is_ajax_request()) show_404();
+        if (!is_admin() && staff_cant('edit', 'hr_holidays')) {
+            echo json_encode(['success' => false, 'message' => _l('hr_error_permission')]);
+            return;
+        }
+
+        if (!$this->input->post()) {
+            $holiday = $this->Holidays_model->get($id);
+            if (!$holiday) { echo json_encode(null); return; }
+            echo json_encode([
+                'id'           => $holiday->id,
+                'name'         => $holiday->name,
+                'holiday_date' => _d($holiday->holiday_date),
+                'end_date'     => $holiday->end_date ? _d($holiday->end_date) : '',
+                'type'         => $holiday->type,
+            ]);
+            return;
+        }
+
+        $name         = trim($this->input->post('name', true));
+        $date         = to_sql_date($this->input->post('holiday_date'));
+        $end_date_raw = trim($this->input->post('end_date'));
+        $end_date     = $end_date_raw !== '' ? to_sql_date($end_date_raw) : null;
+        $type         = $this->input->post('type');
+
+        if (!$name || !$date) {
+            echo json_encode(['success' => false, 'message' => 'Name and date are required.']);
+            return;
+        }
+        if ($end_date && $end_date < $date) {
+            echo json_encode(['success' => false, 'message' => 'End date cannot be before the start date.']);
+            return;
+        }
+
+        $updated = $this->Holidays_model->update($id, [
+            'name'         => $name,
+            'holiday_date' => $date,
+            'end_date'     => $end_date,
+            'type'         => in_array($type, ['government', 'company']) ? $type : 'government',
+        ]);
+
+        echo json_encode(['success' => (bool) $updated]);
     }
 
     // Manually (re-)sends the same day-before holiday announcement the cron job
@@ -141,21 +194,31 @@ class Holidays extends AdminController
         }
 
         $this->load->model('hr_module/Email_templates_model');
-        $day_name   = date('l', strtotime($holiday->holiday_date));
-        $date_label = _d($holiday->holiday_date);
+        $day_name   = $this->Holidays_model->day_name_label($holiday);
+        $date_label = $this->Holidays_model->date_label($holiday);
 
-        $tpl = $this->Email_templates_model->render('holiday_reminder', [
+        $placeholders = [
             '{holiday_name}' => $holiday->name,
             '{day_name}'     => $day_name,
             '{date}'         => $date_label,
-        ]);
+        ];
+        $tpl = $this->Email_templates_model->render('holiday_reminder', $placeholders);
 
         $sent = $this->Hr_module_model->send_leave_announcement($tpl->subject, $tpl->body);
+        $this->Hr_module_model->send_whatsapp_announcement('holiday_reminder', $placeholders);
+
+        $sent_at_label = null;
+        if ($sent) {
+            $this->Holidays_model->mark_announcement_sent($id);
+            $sent_at_label = _d(date('Y-m-d')) . ' ' . date('g:i A');
+        }
+
         echo json_encode([
-            'success' => $sent,
-            'message' => $sent
+            'success'  => $sent,
+            'message'  => $sent
                 ? _l('hr_holiday_announcement_sent')
                 : _l('hr_holiday_announcement_failed'),
+            'sent_at_label' => $sent_at_label,
         ]);
     }
 

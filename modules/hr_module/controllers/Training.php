@@ -358,21 +358,18 @@ class Training extends AdminController
                 ->get(db_prefix() . 'staff')->row();
             if (!$staff || empty($staff->email)) return;
 
-            $tpl = $this->Email_templates_model->render('training_instructor_assigned', [
+            $placeholders = [
                 '{instructor_name}' => $staff->name,
                 '{training_title}'  => $training->title,
                 '{venue}'           => $training->venue ?: '-',
                 '{schedule}'        => $this->_training_schedule_label($training_id, $training),
                 '{status}'          => ucfirst($training->status),
                 '{description}'     => $training->description ?: '-',
-            ]);
+            ];
+            $tpl  = $this->Email_templates_model->render('training_instructor_assigned', $placeholders);
+            $link = admin_url('hr_module/training/view/' . $training_id);
 
-            $this->Hr_module_model->send_employee_email(
-                $staff->email,
-                $tpl->subject,
-                $tpl->body,
-                admin_url('hr_module/training/view/' . $training_id)
-            );
+            $this->Hr_module_model->send_employee_email($staff->email, $tpl->subject, $tpl->body, $link);
         } catch (Exception $e) {
             log_activity('HR Training instructor-assigned email failed: ' . $e->getMessage());
         }
@@ -392,21 +389,18 @@ class Training extends AdminController
                 ->get(db_prefix() . 'hr_employees')->result();
 
             foreach ($employees as $emp) {
-                $tpl = $this->Email_templates_model->render('training_enrolled', [
+                $placeholders = [
                     '{employee_name}'   => $emp->name,
                     '{training_title}'  => $training->title,
                     '{instructor_name}' => $training->instructor_name ?: $training->trainer ?: '-',
                     '{venue}'           => $training->venue ?: '-',
                     '{schedule}'        => $this->_training_schedule_label($training_id, $training),
                     '{description}'     => $training->description ?: '-',
-                ]);
+                ];
+                $tpl  = $this->Email_templates_model->render('training_enrolled', $placeholders);
+                $link = admin_url('hr_module/training/view/' . $training_id);
 
-                $this->Hr_module_model->send_employee_email(
-                    $emp->email,
-                    $tpl->subject,
-                    $tpl->body,
-                    admin_url('hr_module/training/view/' . $training_id)
-                );
+                $this->Hr_module_model->send_employee_email($emp->email, $tpl->subject, $tpl->body, $link);
             }
         } catch (Exception $e) {
             log_activity('HR Training enrollment email failed: ' . $e->getMessage());

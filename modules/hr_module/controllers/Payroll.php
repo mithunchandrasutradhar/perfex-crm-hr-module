@@ -82,7 +82,7 @@ class Payroll extends AdminController
         if (staff_cant('edit', 'hr_payroll')) access_denied('hr_payroll');
         if ($this->input->post()) {
             $method = $this->input->post('payment_method');
-            $date   = $this->input->post('payment_date') ?: date('Y-m-d');
+            $date   = $this->input->post('payment_date') ? to_sql_date($this->input->post('payment_date')) : date('Y-m-d');
             $result = $this->Payroll_model->mark_paid($id, $method, $date);
             if ($this->input->is_ajax_request()) {
                 echo json_encode($result);
@@ -90,6 +90,21 @@ class Payroll extends AdminController
             }
             set_alert($result['success'] ? 'success' : 'danger', $result['message']);
         }
+        redirect(admin_url('hr_module/payroll/view/' . $id));
+    }
+
+    // Undoes mark_paid() - only ever needed to correct a mistaken/incorrect
+    // payment (e.g. it was finalized against since-changed settings). Reverses
+    // the loan repayment it actually applied and sends it back to draft.
+    public function revert_to_draft($id)
+    {
+        if (staff_cant('edit', 'hr_payroll')) access_denied('hr_payroll');
+        $result = $this->Payroll_model->revert_to_draft($id);
+        if ($this->input->is_ajax_request()) {
+            echo json_encode($result);
+            return;
+        }
+        set_alert($result['success'] ? 'success' : 'danger', $result['message']);
         redirect(admin_url('hr_module/payroll/view/' . $id));
     }
 
@@ -119,17 +134,15 @@ class Payroll extends AdminController
     {
         $period = date('F', mktime(0, 0, 0, $month, 1)) . ' ' . $year;
 
-        $tpl = $this->Email_templates_model->render('payroll_generated', [
+        $placeholders = [
             '{period}'         => $period,
             '{success_count}'  => $success,
             '{skipped_count}'  => $skipped,
-        ]);
+        ];
+        $tpl  = $this->Email_templates_model->render('payroll_generated', $placeholders);
+        $link = admin_url('hr_module/payroll');
 
-        $this->Hr_module_model->send_notification_email(
-            $tpl->subject,
-            $tpl->body,
-            admin_url('hr_module/payroll')
-        );
+        $this->Hr_module_model->send_notification_email($tpl->subject, $tpl->body, $link);
         $this->Hr_module_model->notify_by_permission(
             'view', 'hr_payroll',
             'not_hr_payroll_generated',

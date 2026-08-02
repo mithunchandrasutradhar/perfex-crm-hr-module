@@ -174,6 +174,73 @@ class Hr_module_model extends App_Model
         return $this->_send_hr_email($to, $subject, $message . ($link_url ? $this->_notification_link_block($link_url) : ''));
     }
 
+    // ─── WhatsApp notifications (via WAHA) ──────────────────────────────────
+    // Only ever used for public, broadcast-style team announcements (leave
+    // announcement, leave cancellation announcement, holiday reminder, policy
+    // published/updated) - never for individual/HR-only notifications, and
+    // never to a personal phone number, only the configured WhatsApp group.
+    // Uses its own admin-editable template store (Whatsapp_templates_model),
+    // independent from the email wording - see hr_module/whatsapp_templates.
+    // No-op unless whatsapp_enabled is on AND a group is configured. Never
+    // throws - a WAHA outage must never break the real workflow that
+    // triggered it, same rule every other sender here follows.
+    // Which per-event "Notify on..." checkbox (WhatsApp Notifications panel)
+    // gates each announcement template - lets an admin turn off WhatsApp for
+    // one specific event without touching the master whatsapp_enabled switch
+    // or the separate email-side notify_* toggles.
+    private $whatsapp_event_settings = [
+        'leave_announcement'              => 'whatsapp_notify_leave_announcement',
+        'leave_cancellation_announcement' => 'whatsapp_notify_leave_cancellation_announcement',
+        'holiday_reminder'                => 'whatsapp_notify_holiday_reminder',
+        'policy_published'                => 'whatsapp_notify_policy_announcement',
+        'policy_updated'                   => 'whatsapp_notify_policy_announcement',
+    ];
+
+    public function send_whatsapp_announcement($template_key, array $placeholders, $link_url = null)
+    {
+        try {
+            if ($this->get_setting('whatsapp_enabled') != '1') {
+                return false;
+            }
+
+            $event_setting = $this->whatsapp_event_settings[$template_key] ?? null;
+            if ($event_setting && $this->get_setting($event_setting, '1') != '1') {
+                return false;
+            }
+
+            $group = trim($this->get_setting('whatsapp_group_id'));
+            if ($group === '') {
+                return false;
+            }
+
+            $CI = &get_instance();
+            $CI->load->model('hr_module/Whatsapp_templates_model');
+            $tpl = $CI->Whatsapp_templates_model->render($template_key, $placeholders);
+            if (!$tpl) {
+                return false;
+            }
+
+            $text = '*' . $tpl->subject . "*\n\n" . $tpl->body;
+            if ($link_url) {
+                $text .= "\n\n" . $link_url;
+            }
+
+            $base_url = $this->get_setting('whatsapp_base_url', 'https://waha.abutalha.com.bd');
+            $session  = $this->get_setting('whatsapp_session', 'default');
+            $api_key  = $this->get_setting('whatsapp_api_key');
+
+            $CI->load->library('hr_module/Waha_lib');
+            $result = $CI->waha_lib->send_text($base_url, $session, $api_key, $group, $text);
+            if (!$result['success']) {
+                log_activity('HR WhatsApp announcement failed [' . $template_key . ']: ' . $result['message']);
+            }
+            return $result['success'];
+        } catch (Exception $e) {
+            log_activity('HR WhatsApp announcement failed [' . $template_key . ']: ' . $e->getMessage());
+            return false;
+        }
+    }
+
     private function _notification_link_block($link_url)
     {
         return '<p><a href="' . htmlspecialchars($link_url) . '" style="display:inline-block;padding:8px 16px;background:#4f46e5;color:#fff;text-decoration:none;border-radius:4px">View Details</a></p>'
@@ -538,22 +605,31 @@ class Hr_module_model extends App_Model
         $CI = &get_instance();
         $CI->load->model('hr_module/Holidays_model');
         $tomorrow = (clone $now_bd)->modify('+1 day')->format('Y-m-d');
-        $holiday  = $CI->Holidays_model->get_holiday_on_date($tomorrow);
+        // Only the FIRST day of a holiday's range triggers this - a multi-day
+        // holiday (e.g. a 6-day Eid period stored as one row) must only ever
+        // fire one "day before" reminder, not once per day of the range.
+        $holiday  = $CI->Holidays_model->get_holiday_starting_on($tomorrow);
         if (!$holiday) {
             return false;
         }
 
-        $day_name   = date('l', strtotime($tomorrow));
-        $date_label = _d($tomorrow);
+        $day_name   = $CI->Holidays_model->day_name_label($holiday);
+        $date_label = $CI->Holidays_model->date_label($holiday);
 
         $CI->load->model('hr_module/Email_templates_model');
-        $tpl = $CI->Email_templates_model->render('holiday_reminder', [
+        $placeholders = [
             '{holiday_name}' => $holiday->name,
             '{day_name}'     => $day_name,
             '{date}'         => $date_label,
-        ]);
+        ];
+        $tpl = $CI->Email_templates_model->render('holiday_reminder', $placeholders);
 
-        return $this->send_leave_announcement($tpl->subject, $tpl->body);
+        $result = $this->send_leave_announcement($tpl->subject, $tpl->body);
+        $this->send_whatsapp_announcement('holiday_reminder', $placeholders);
+        if ($result) {
+            $CI->Holidays_model->mark_announcement_sent($holiday->id);
+        }
+        return $result;
     }
 
     // ─── Helpers ──────────────────────────────────────────────────────────

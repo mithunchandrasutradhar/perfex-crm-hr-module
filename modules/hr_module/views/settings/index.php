@@ -11,9 +11,14 @@ $can_edit = staff_can('edit', 'hr_settings') || is_admin();
                     <h4 class="tw-font-semibold tw-text-lg tw-text-neutral-700">
                         <?php echo _l('hr_module_settings'); ?>
                     </h4>
-                    <a href="<?php echo admin_url('hr_module/email_templates'); ?>" class="btn btn-default btn-sm">
-                        <i class="fa fa-envelope-o tw-mr-1"></i><?php echo _l('hr_email_templates'); ?>
-                    </a>
+                    <div class="tw-flex tw-gap-2">
+                        <a href="<?php echo admin_url('hr_module/email_templates'); ?>" class="btn btn-default btn-sm">
+                            <i class="fa-regular fa-envelope tw-mr-1"></i><?php echo _l('hr_email_templates'); ?>
+                        </a>
+                        <a href="<?php echo admin_url('hr_module/whatsapp_templates'); ?>" class="btn btn-default btn-sm">
+                            <i class="fa-brands fa-whatsapp tw-mr-1"></i><?php echo _l('hr_whatsapp_templates'); ?>
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>
@@ -72,34 +77,22 @@ $can_edit = staff_can('edit', 'hr_settings') || is_admin();
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <?php if (staff_can('view', 'hr_departments')): ?>
-            <!-- Company Structure -->
-            <div class="row">
-                <div class="col-md-12">
-                    <div class="panel_s">
-                        <div class="panel-body">
-                            <h5 class="tw-font-semibold tw-border-b tw-pb-2 tw-mb-4">
-                                <i class="fa fa-sitemap tw-mr-2"></i><?php echo _l('hr_settings_company_structure'); ?>
-                            </h5>
+                            <?php if (staff_can('view', 'hr_departments')): ?>
                             <div class="row">
                                 <div class="col-md-3 col-sm-6">
-                                    <div class="form-group">
-                                        <a href="<?php echo admin_url('hr_module/designations'); ?>" class="btn btn-default btn-sm">
-                                            <i class="fa fa-id-badge"></i> <?php echo _l('hr_menu_designations'); ?>
+                                    <div class="form-group tw-mb-0">
+                                        <label><?php echo _l('hr_settings_company_structure'); ?></label>
+                                        <a href="<?php echo admin_url('hr_module/designations'); ?>" class="btn btn-default btn-sm btn-block">
+                                            <i class="fa fa-id-badge tw-mr-1"></i><?php echo _l('hr_menu_designations'); ?>
                                         </a>
                                     </div>
                                 </div>
                             </div>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </div>
             </div>
-            <?php endif; ?>
 
             <!-- Attendance Settings -->
             <div class="row">
@@ -166,6 +159,14 @@ $can_edit = staff_can('edit', 'hr_settings') || is_admin();
                                             <?php echo !$can_edit ? 'readonly' : ''; ?>>
                                     </div>
                                 </div>
+                                <div class="col-md-3 col-sm-6">
+                                    <div class="form-group">
+                                        <label><?php echo _l('hr_settings_overtime_day_divisor'); ?> <i class="fa-solid fa-circle-info tw-text-neutral-400" data-toggle="tooltip" data-title="<?php echo _l('hr_settings_overtime_day_divisor_hint'); ?>" style="cursor:help;"></i></label>
+                                        <input type="number" name="overtime_day_divisor" class="form-control" step="1" min="1" max="31"
+                                            value="<?php echo isset($settings['overtime_day_divisor']) ? $settings['overtime_day_divisor'] : '26'; ?>"
+                                            <?php echo !$can_edit ? 'readonly' : ''; ?>>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -223,6 +224,30 @@ $can_edit = staff_can('edit', 'hr_settings') || is_admin();
                                 </tbody>
                             </table>
                             <?php endif; ?>
+
+                            <hr>
+                            <p class="tw-text-sm tw-font-semibold tw-mb-2">
+                                <?php echo _l('hr_settings_shift_allowances_title'); ?>
+                                <i class="fa-solid fa-circle-info tw-text-neutral-400" data-toggle="tooltip" data-title="<?php echo _l('hr_settings_shift_allowance_hint'); ?>" style="cursor:help;"></i>
+                            </p>
+                            <div class="row">
+                                <div class="col-md-3 col-sm-6">
+                                    <div class="form-group tw-mb-0">
+                                        <label><?php echo _l('hr_settings_shift_allowance_evening'); ?></label>
+                                        <input type="number" name="shift_allowance_evening_amount" class="form-control" step="0.01" min="0"
+                                            value="<?php echo isset($settings['shift_allowance_evening_amount']) ? $settings['shift_allowance_evening_amount'] : '0'; ?>"
+                                            <?php echo !$can_edit ? 'readonly' : ''; ?>>
+                                    </div>
+                                </div>
+                                <div class="col-md-3 col-sm-6">
+                                    <div class="form-group tw-mb-0">
+                                        <label><?php echo _l('hr_settings_shift_allowance_night'); ?></label>
+                                        <input type="number" name="shift_allowance_night_amount" class="form-control" step="0.01" min="0"
+                                            value="<?php echo isset($settings['shift_allowance_night_amount']) ? $settings['shift_allowance_night_amount'] : '0'; ?>"
+                                            <?php echo !$can_edit ? 'readonly' : ''; ?>>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -239,17 +264,16 @@ $can_edit = staff_can('edit', 'hr_settings') || is_admin();
                             <div class="row">
                                 <div class="col-md-6">
                                     <div class="form-group">
-                                        <label><?php echo _l('hr_settings_notification_email'); ?></label>
+                                        <label><?php echo _l('hr_settings_notification_email'); ?> <i class="fa-solid fa-circle-info tw-text-neutral-400" data-toggle="tooltip" data-title="<?php echo _l('hr_settings_notification_email_hint'); ?>" style="cursor:help;"></i></label>
                                         <input type="email" name="hr_notification_email" class="form-control"
                                             value="<?php echo isset($settings['hr_notification_email']) ? htmlspecialchars($settings['hr_notification_email']) : ''; ?>"
                                             placeholder="hr@example.com"
                                             <?php echo !$can_edit ? 'readonly' : ''; ?>>
-                                        <p class="text-muted tw-mt-1 tw-mb-0"><?php echo _l('hr_settings_notification_email_hint'); ?></p>
                                     </div>
                                 </div>
                                 <div class="col-md-6">
                                     <div class="form-group">
-                                        <label><?php echo _l('hr_settings_policy_approver'); ?></label>
+                                        <label><?php echo _l('hr_settings_policy_approver'); ?> <i class="fa-solid fa-circle-info tw-text-neutral-400" data-toggle="tooltip" data-title="<?php echo _l('hr_settings_policy_approver_hint'); ?>" style="cursor:help;"></i></label>
                                         <select name="policy_approver_ids[]" multiple class="form-control selectpicker" data-live-search="true" data-actions-box="true"
                                             <?php echo !$can_edit ? 'disabled' : ''; ?>>
                                             <?php
@@ -263,7 +287,6 @@ $can_edit = staff_can('edit', 'hr_settings') || is_admin();
                                             </option>
                                             <?php endforeach; ?>
                                         </select>
-                                        <p class="text-muted tw-mt-1 tw-mb-0"><?php echo _l('hr_settings_policy_approver_hint'); ?></p>
                                     </div>
                                 </div>
                             </div>
@@ -305,6 +328,146 @@ $can_edit = staff_can('edit', 'hr_settings') || is_admin();
                 </div>
             </div>
 
+            <!-- WhatsApp Notifications -->
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="panel_s">
+                        <div class="panel-body">
+                            <h5 class="tw-font-semibold tw-border-b tw-pb-2 tw-mb-4">
+                                <i class="fa-brands fa-whatsapp tw-mr-2"></i><?php echo _l('hr_settings_whatsapp'); ?>
+                            </h5>
+                            <p class="text-muted tw-mb-3" style="font-size:0.85rem"><?php echo _l('hr_settings_whatsapp_hint'); ?></p>
+                            <div class="row">
+                                <div class="col-md-12">
+                                    <div class="form-group">
+                                        <div class="checkbox checkbox-primary">
+                                            <input type="checkbox" name="whatsapp_enabled" id="setting_whatsapp_enabled" value="1"
+                                                <?php echo isset($settings['whatsapp_enabled']) && $settings['whatsapp_enabled'] == '1' ? 'checked' : ''; ?>
+                                                <?php echo !$can_edit ? 'disabled' : ''; ?>>
+                                            <label for="setting_whatsapp_enabled"><?php echo _l('hr_settings_whatsapp_enabled'); ?></label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <p class="tw-text-sm tw-font-semibold tw-mb-2"><?php echo _l('hr_settings_whatsapp_events_title'); ?></p>
+                            <div class="row">
+                                <?php
+                                $whatsapp_notif_settings = [
+                                    'whatsapp_notify_leave_announcement'              => _l('hr_settings_whatsapp_notify_leave_announcement'),
+                                    'whatsapp_notify_leave_cancellation_announcement' => _l('hr_settings_whatsapp_notify_leave_cancellation_announcement'),
+                                    'whatsapp_notify_holiday_reminder'                => _l('hr_settings_whatsapp_notify_holiday_reminder'),
+                                    'whatsapp_notify_policy_announcement'             => _l('hr_settings_whatsapp_notify_policy_announcement'),
+                                ];
+                                foreach ($whatsapp_notif_settings as $key => $label):
+                                    // Defaults to checked when never saved, matching
+                                    // send_whatsapp_announcement()'s "enabled unless
+                                    // explicitly turned off" default.
+                                    $checked = (!isset($settings[$key]) || $settings[$key] == '1') ? 'checked' : '';
+                                ?>
+                                <div class="col-md-3 col-sm-6">
+                                    <div class="form-group">
+                                        <div class="checkbox checkbox-primary">
+                                            <input type="checkbox" name="<?php echo $key; ?>" id="setting_<?php echo $key; ?>" value="1" <?php echo $checked; ?>
+                                                <?php echo !$can_edit ? 'disabled' : ''; ?>>
+                                            <label for="setting_<?php echo $key; ?>"><?php echo $label; ?></label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <?php endforeach; ?>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-4 col-sm-6">
+                                    <div class="form-group">
+                                        <label><?php echo _l('hr_settings_whatsapp_base_url'); ?></label>
+                                        <input type="text" name="whatsapp_base_url" class="form-control"
+                                            value="<?php echo isset($settings['whatsapp_base_url']) ? htmlspecialchars($settings['whatsapp_base_url']) : 'https://waha.abutalha.com.bd'; ?>"
+                                            <?php echo !$can_edit ? 'readonly' : ''; ?>>
+                                    </div>
+                                </div>
+                                <div class="col-md-2 col-sm-6">
+                                    <div class="form-group">
+                                        <label><?php echo _l('hr_settings_whatsapp_session'); ?></label>
+                                        <input type="text" name="whatsapp_session" class="form-control"
+                                            value="<?php echo isset($settings['whatsapp_session']) ? htmlspecialchars($settings['whatsapp_session']) : 'default'; ?>"
+                                            <?php echo !$can_edit ? 'readonly' : ''; ?>>
+                                    </div>
+                                </div>
+                                <div class="col-md-3 col-sm-6">
+                                    <div class="form-group">
+                                        <label><?php echo _l('hr_settings_whatsapp_api_key'); ?></label>
+                                        <input type="password" name="whatsapp_api_key" class="form-control" autocomplete="new-password"
+                                            value="<?php echo isset($settings['whatsapp_api_key']) ? htmlspecialchars($settings['whatsapp_api_key']) : ''; ?>"
+                                            <?php echo !$can_edit ? 'readonly' : ''; ?>>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-4 col-sm-6">
+                                    <div class="form-group">
+                                        <label><?php echo _l('hr_settings_whatsapp_group_id'); ?> <i class="fa-solid fa-circle-info tw-text-neutral-400" data-toggle="tooltip" data-title="<?php echo _l('hr_settings_whatsapp_group_id_hint'); ?>" style="cursor:help;"></i></label>
+                                        <input type="text" name="whatsapp_group_id" class="form-control" placeholder="e.g. 1203xxxxxxxxx@g.us"
+                                            value="<?php echo isset($settings['whatsapp_group_id']) ? htmlspecialchars($settings['whatsapp_group_id']) : ''; ?>"
+                                            <?php echo !$can_edit ? 'readonly' : ''; ?>>
+                                    </div>
+                                </div>
+                                <div class="col-md-3 col-sm-6">
+                                    <div class="form-group">
+                                        <label><?php echo _l('hr_settings_whatsapp_phone'); ?> <i class="fa-solid fa-circle-info tw-text-neutral-400" data-toggle="tooltip" data-title="<?php echo _l('hr_settings_whatsapp_phone_hint'); ?>" style="cursor:help;"></i></label>
+                                        <input type="text" name="whatsapp_phone_number" class="form-control" placeholder="e.g. 01765447530"
+                                            value="<?php echo isset($settings['whatsapp_phone_number']) ? htmlspecialchars($settings['whatsapp_phone_number']) : ''; ?>"
+                                            <?php echo !$can_edit ? 'readonly' : ''; ?>>
+                                    </div>
+                                </div>
+                                <?php if ($can_edit): ?>
+                                <div class="col-md-3 col-sm-6">
+                                    <div class="form-group tw-mb-0">
+                                        <label class="tw-block">&nbsp;</label>
+                                        <button type="button" class="btn btn-default btn-sm" id="btn-whatsapp-test">
+                                            <i class="fa fa-paper-plane tw-mr-1"></i><?php echo _l('hr_settings_whatsapp_send_test'); ?>
+                                        </button>
+                                    </div>
+                                </div>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Holiday Reminder -->
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="panel_s">
+                        <div class="panel-body">
+                            <h5 class="tw-font-semibold tw-border-b tw-pb-2 tw-mb-4">
+                                <i class="fa-regular fa-calendar-check tw-mr-2"></i><?php echo _l('hr_settings_holiday_reminder'); ?>
+                            </h5>
+                            <p class="text-muted tw-mb-3" style="font-size:0.85rem"><?php echo _l('hr_settings_holiday_reminder_hint'); ?></p>
+                            <div class="row">
+                                <div class="col-md-6 col-sm-6">
+                                    <div class="form-group">
+                                        <div class="checkbox checkbox-primary">
+                                            <input type="checkbox" name="holiday_reminder_enabled" id="setting_holiday_reminder_enabled" value="1"
+                                                <?php echo isset($settings['holiday_reminder_enabled']) && $settings['holiday_reminder_enabled'] == '1' ? 'checked' : ''; ?>
+                                                <?php echo !$can_edit ? 'disabled' : ''; ?>>
+                                            <label for="setting_holiday_reminder_enabled"><?php echo _l('hr_settings_holiday_reminder_enabled'); ?></label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3 col-sm-6">
+                                    <div class="form-group">
+                                        <label><?php echo _l('hr_settings_holiday_reminder_time'); ?></label>
+                                        <input type="time" name="holiday_reminder_time" class="form-control"
+                                            value="<?php echo isset($settings['holiday_reminder_time']) ? htmlspecialchars($settings['holiday_reminder_time']) : '09:00'; ?>"
+                                            <?php echo !$can_edit ? 'disabled' : ''; ?>>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- ZKTeco Settings -->
             <div class="row">
                 <div class="col-md-12">
@@ -332,45 +495,12 @@ $can_edit = staff_can('edit', 'hr_settings') || is_admin();
                                             <?php echo !$can_edit ? 'readonly' : ''; ?>>
                                     </div>
                                 </div>
-                                <div class="col-md-3 col-sm-6 tw-flex tw-items-end">
+                                <div class="col-md-3 col-sm-6">
                                     <div class="form-group">
+                                        <label class="tw-block">&nbsp;</label>
                                         <a href="<?php echo admin_url('hr_module/zkteco'); ?>" class="btn btn-default btn-sm">
                                             <i class="fa fa-microchip"></i> <?php echo _l('hr_zkteco_devices'); ?>
                                         </a>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Holiday Reminder -->
-            <div class="row">
-                <div class="col-md-12">
-                    <div class="panel_s">
-                        <div class="panel-body">
-                            <h5 class="tw-font-semibold tw-border-b tw-pb-2 tw-mb-4">
-                                <i class="fa fa-calendar-check-o tw-mr-2"></i><?php echo _l('hr_settings_holiday_reminder'); ?>
-                            </h5>
-                            <p class="text-muted tw-mb-3" style="font-size:0.85rem"><?php echo _l('hr_settings_holiday_reminder_hint'); ?></p>
-                            <div class="row">
-                                <div class="col-md-6 col-sm-6">
-                                    <div class="form-group">
-                                        <div class="checkbox checkbox-primary">
-                                            <input type="checkbox" name="holiday_reminder_enabled" id="setting_holiday_reminder_enabled" value="1"
-                                                <?php echo isset($settings['holiday_reminder_enabled']) && $settings['holiday_reminder_enabled'] == '1' ? 'checked' : ''; ?>
-                                                <?php echo !$can_edit ? 'disabled' : ''; ?>>
-                                            <label for="setting_holiday_reminder_enabled"><?php echo _l('hr_settings_holiday_reminder_enabled'); ?></label>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="col-md-3 col-sm-6">
-                                    <div class="form-group">
-                                        <label><?php echo _l('hr_settings_holiday_reminder_time'); ?></label>
-                                        <input type="time" name="holiday_reminder_time" class="form-control"
-                                            value="<?php echo isset($settings['holiday_reminder_time']) ? htmlspecialchars($settings['holiday_reminder_time']) : '09:00'; ?>"
-                                            <?php echo !$can_edit ? 'disabled' : ''; ?>>
                                     </div>
                                 </div>
                             </div>
@@ -474,6 +604,28 @@ $(document).ready(function(){
             }
         }, 'json').always(function(){
             $btn.prop('disabled', false).html('<?php echo _l('hr_save'); ?>');
+        });
+    });
+
+    // WhatsApp "Send Test" - uses whatever is currently in the base URL/session/
+    // API key/group/phone fields (even if not saved yet), same UX as the Email
+    // Templates page's test-send.
+    $('#btn-whatsapp-test').on('click', function(){
+        var $btn = $(this).prop('disabled', true);
+        var originalHtml = $btn.html();
+        $btn.html('<i class="fa fa-spinner fa-spin"></i>');
+        var $form = $('#hr-settings-form');
+        $.post('<?php echo admin_url('hr_module/settings/send_whatsapp_test'); ?>', {
+            base_url: $form.find('[name="whatsapp_base_url"]').val(),
+            session:  $form.find('[name="whatsapp_session"]').val(),
+            api_key:  $form.find('[name="whatsapp_api_key"]').val(),
+            group_id: $form.find('[name="whatsapp_group_id"]').val(),
+            phone:    $form.find('[name="whatsapp_phone_number"]').val(),
+            [csrfName]: csrfHash
+        }, function(r){
+            alert_float(r.success ? 'success' : 'danger', r.message);
+        }, 'json').always(function(){
+            $btn.prop('disabled', false).html(originalHtml);
         });
     });
 

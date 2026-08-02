@@ -52,18 +52,16 @@ class Helpdesk extends AdminController
                         $emp = $this->Employees_model->get($data['employee_id']);
                         $employee_name = $emp ? $emp->first_name . ' ' . $emp->last_name . ' (' . $emp->employee_code . ')' : 'Unknown';
                     }
-                    $tpl = $this->Email_templates_model->render('helpdesk_ticket_submitted', [
+                    $placeholders = [
                         '{employee_name}' => $employee_name,
                         '{subject}'       => $data['subject'],
                         '{category}'      => $data['category'] ?: '-',
                         '{priority}'      => ucfirst($data['priority'] ?: '-'),
                         '{message}'       => mb_strimwidth($data['message'] ?: '', 0, 300, '...'),
-                    ]);
-                    $this->Hr_module_model->send_notification_email(
-                        $tpl->subject,
-                        $tpl->body,
-                        admin_url('hr_module/helpdesk/view/' . $result['id'])
-                    );
+                    ];
+                    $tpl  = $this->Email_templates_model->render('helpdesk_ticket_submitted', $placeholders);
+                    $link = admin_url('hr_module/helpdesk/view/' . $result['id']);
+                    $this->Hr_module_model->send_notification_email($tpl->subject, $tpl->body, $link);
                     $this->Hr_module_model->notify_by_permission(
                         'edit', 'hr_helpdesk',
                         'not_hr_helpdesk_submitted',

@@ -63,17 +63,26 @@ $day_names = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Satur
           <?php if ($can_edit): ?>
           <div id="add-holiday-form" style="display:none" class="tw-px-4 tw-py-3 tw-bg-neutral-50 tw-border-b">
             <div class="row">
-              <div class="col-md-5">
+              <div class="col-md-4">
                 <div class="form-group tw-mb-2">
                   <label class="tw-text-sm">Holiday Name <span class="text-danger">*</span></label>
                   <input type="text" id="new-holiday-name" class="form-control input-sm" placeholder="e.g. Eid Ul Fitr">
                 </div>
               </div>
-              <div class="col-md-3">
+              <div class="col-md-2">
                 <div class="form-group tw-mb-2">
                   <label class="tw-text-sm">Date <span class="text-danger">*</span></label>
                   <div class="input-group date">
                     <input type="text" id="new-holiday-date" class="form-control input-sm datepicker" autocomplete="off" value="">
+                    <span class="input-group-addon"><i class="fa-regular fa-calendar calendar-icon"></i></span>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-2">
+                <div class="form-group tw-mb-2">
+                  <label class="tw-text-sm">End Date <span class="text-muted">(optional)</span></label>
+                  <div class="input-group date">
+                    <input type="text" id="new-holiday-end-date" class="form-control input-sm datepicker" autocomplete="off" value="">
                     <span class="input-group-addon"><i class="fa-regular fa-calendar calendar-icon"></i></span>
                   </div>
                 </div>
@@ -87,12 +96,16 @@ $day_names = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Satur
                   </select>
                 </div>
               </div>
-              <div class="col-md-2 tw-flex tw-items-end tw-pb-2">
-                <button class="btn btn-success btn-sm btn-block" id="btn-save-holiday">
-                  Save
-                </button>
+              <div class="col-md-2">
+                <div class="form-group tw-mb-2">
+                  <label class="tw-text-sm">&nbsp;</label>
+                  <button class="btn btn-success btn-sm btn-block" id="btn-save-holiday">
+                    Save
+                  </button>
+                </div>
               </div>
             </div>
+            <p class="text-muted tw-text-sm tw-mb-0">Leave End Date blank for a single-day holiday, or set it to enter a multi-day range (e.g. a 6-day Eid period) as one entry.</p>
           </div>
           <?php endif; ?>
 
@@ -106,19 +119,32 @@ $day_names = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Satur
             <table class="table table-condensed table-hover tw-mb-0">
               <thead>
                 <tr>
-                  <th style="width:130px">Date</th>
+                  <th style="width:190px">Date</th>
                   <th>Holiday Name</th>
-                  <th style="width:100px">Day</th>
+                  <th style="width:120px">Day</th>
                   <th style="width:100px">Type</th>
+                  <th style="width:110px"><?php echo _l('hr_holiday_announcement_status'); ?></th>
                   <?php if ($can_edit): ?><th style="width:90px"></th><?php endif; ?>
                 </tr>
               </thead>
               <tbody>
                 <?php foreach ($holidays as $h): ?>
+                <?php $is_range = !empty($h->end_date) && $h->end_date !== $h->holiday_date; ?>
                 <tr>
-                  <td><strong><?php echo date('d M Y', strtotime($h->holiday_date)); ?></strong></td>
+                  <td>
+                    <strong>
+                      <?php echo date('d M Y', strtotime($h->holiday_date)); ?>
+                      <?php if ($is_range): ?> - <?php echo date('d M Y', strtotime($h->end_date)); ?><?php endif; ?>
+                    </strong>
+                  </td>
                   <td><?php echo htmlspecialchars($h->name); ?></td>
-                  <td class="text-muted"><?php echo date('l', strtotime($h->holiday_date)); ?></td>
+                  <td class="text-muted">
+                    <?php if ($is_range): ?>
+                      <?php echo date('D', strtotime($h->holiday_date)); ?> - <?php echo date('D', strtotime($h->end_date)); ?>
+                    <?php else: ?>
+                      <?php echo date('l', strtotime($h->holiday_date)); ?>
+                    <?php endif; ?>
+                  </td>
                   <td>
                     <?php if ($h->type === 'government'): ?>
                       <span class="label label-danger">Government</span>
@@ -126,8 +152,19 @@ $day_names = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Satur
                       <span class="label label-info">Company</span>
                     <?php endif; ?>
                   </td>
+                  <td class="announcement-status-cell">
+                    <?php if (!empty($h->announcement_sent_at)): ?>
+                      <span class="label label-success" title="<?php echo htmlspecialchars(_dt($h->announcement_sent_at)); ?>">
+                        <i class="fa fa-check tw-mr-1"></i><?php echo _l('hr_holiday_announcement_sent_label'); ?>
+                      </span>
+                    <?php else: ?>
+                      <span class="label label-default"><?php echo _l('hr_holiday_announcement_not_sent_label'); ?></span>
+                    <?php endif; ?>
+                  </td>
                   <?php if ($can_edit): ?>
                   <td>
+                    <a href="#" class="text-muted btn-edit-holiday tw-text-sm tw-mr-2" data-id="<?php echo $h->id; ?>"
+                       title="<?php echo _l('hr_edit'); ?>"><i class="fa fa-pencil"></i></a>
                     <a href="#" class="text-primary btn-send-announcement tw-text-sm tw-mr-2" data-id="<?php echo $h->id; ?>"
                        title="<?php echo _l('hr_holiday_send_announcement'); ?>"><i class="fa fa-paper-plane"></i></a>
                     <a href="#" class="text-danger btn-delete-holiday tw-text-sm" data-id="<?php echo $h->id; ?>"
@@ -183,21 +220,32 @@ $day_names = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Satur
           </div>
           <div class="panel-body">
             <?php
-            $govt_count    = count(array_filter($holidays, fn($h) => $h->type === 'government'));
-            $company_count = count($holidays) - $govt_count;
+            // Counts actual calendar DAYS, not entries - a multi-day range
+            // (e.g. a 6-day Eid period stored as one row) counts as 6, not 1.
+            $govt_days    = 0;
+            $company_days = 0;
+            foreach ($holidays as $h) {
+                $end  = !empty($h->end_date) ? $h->end_date : $h->holiday_date;
+                $days = (int) round((strtotime($end) - strtotime($h->holiday_date)) / 86400) + 1;
+                if ($h->type === 'government') {
+                    $govt_days += $days;
+                } else {
+                    $company_days += $days;
+                }
+            }
             ?>
             <table class="table table-condensed tw-mb-0">
               <tr>
                 <td>Government Holidays</td>
-                <td class="tw-text-right"><strong class="text-danger"><?php echo $govt_count; ?></strong></td>
+                <td class="tw-text-right"><strong class="text-danger"><?php echo $govt_days; ?></strong></td>
               </tr>
               <tr>
                 <td>Company Holidays</td>
-                <td class="tw-text-right"><strong class="text-info"><?php echo $company_count; ?></strong></td>
+                <td class="tw-text-right"><strong class="text-info"><?php echo $company_days; ?></strong></td>
               </tr>
               <tr>
                 <td>Total Holidays</td>
-                <td class="tw-text-right"><strong><?php echo count($holidays); ?></strong></td>
+                <td class="tw-text-right"><strong><?php echo $govt_days + $company_days; ?></strong></td>
               </tr>
               <tr>
                 <td>Weekly Off Days</td>
@@ -278,6 +326,57 @@ $day_names = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Satur
   </div>
 </div>
 
+<?php if ($can_edit): ?>
+<div class="modal fade" id="editHolidayModal" tabindex="-1">
+  <div class="modal-dialog"><div class="modal-content">
+    <div class="modal-header">
+      <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+      <h4 class="modal-title">Edit Holiday</h4>
+    </div>
+    <form id="editHolidayForm">
+      <input type="hidden" name="id" value="">
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Holiday Name <span class="text-danger">*</span></label>
+          <input type="text" name="name" class="form-control" required>
+        </div>
+        <div class="row">
+          <div class="col-md-6">
+            <div class="form-group">
+              <label>Date <span class="text-danger">*</span></label>
+              <div class="input-group date">
+                <input type="text" name="holiday_date" class="form-control datepicker" autocomplete="off" required>
+                <span class="input-group-addon"><i class="fa-regular fa-calendar calendar-icon"></i></span>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="form-group">
+              <label>End Date <span class="text-muted">(optional)</span></label>
+              <div class="input-group date">
+                <input type="text" name="end_date" class="form-control datepicker" autocomplete="off">
+                <span class="input-group-addon"><i class="fa-regular fa-calendar calendar-icon"></i></span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="form-group tw-mb-0">
+          <label>Type</label>
+          <select name="type" class="form-control selectpicker">
+            <option value="government">Government</option>
+            <option value="company">Company</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default" data-dismiss="modal"><?php echo _l('hr_cancel'); ?></button>
+        <button type="submit" class="btn btn-primary" id="save-edit-holiday-btn"><?php echo _l('hr_save'); ?></button>
+      </div>
+    </form>
+  </div></div>
+</div>
+<?php endif; ?>
+
 <?php init_tail(); ?>
 <script>
 $(function(){
@@ -295,18 +394,20 @@ $(function(){
         var today = new Date();
         var defDate = today.getFullYear() === y ? defaultDateToday : defaultDateJan1;
         $('#new-holiday-date').val(defDate);
+        $('#new-holiday-end-date').val('');
         $('#new-holiday-name').focus();
     });
 
     // Add holiday
     $('#btn-save-holiday').on('click', function(){
-        var name = $.trim($('#new-holiday-name').val());
-        var date = $('#new-holiday-date').val();
-        var type = $('#new-holiday-type').val();
+        var name    = $.trim($('#new-holiday-name').val());
+        var date    = $('#new-holiday-date').val();
+        var endDate = $('#new-holiday-end-date').val();
+        var type    = $('#new-holiday-type').val();
         if (!name || !date) { alert('Name and date are required.'); return; }
 
         $.post(baseUrl + '/add', {
-            name: name, holiday_date: date, type: type,
+            name: name, holiday_date: date, end_date: endDate, type: type,
             [csrfName]: csrfHash
         }, function(r){
             if (r.success) {
@@ -315,6 +416,45 @@ $(function(){
                 alert(r.message || 'Error saving holiday.');
             }
         }, 'json');
+    });
+
+    // Edit holiday
+    $(document).on('click', '.btn-edit-holiday', function(e){
+        e.preventDefault();
+        var id = $(this).data('id');
+        $.getJSON(baseUrl + '/edit/' + id, function(d){
+            if (!d) return;
+            var $form = $('#editHolidayForm');
+            $form.find('input[name="id"]').val(d.id);
+            $form.find('input[name="name"]').val(d.name);
+            $form.find('input[name="holiday_date"]').val(d.holiday_date);
+            $form.find('input[name="end_date"]').val(d.end_date);
+            $form.find('select[name="type"]').val(d.type).selectpicker('refresh');
+            $('#editHolidayModal').modal('show');
+        });
+    });
+
+    $('#editHolidayForm').on('submit', function(e){
+        e.preventDefault();
+        var id      = $(this).find('input[name="id"]').val();
+        var name    = $.trim($(this).find('input[name="name"]').val());
+        var date    = $(this).find('input[name="holiday_date"]').val();
+        var endDate = $(this).find('input[name="end_date"]').val();
+        var type    = $(this).find('select[name="type"]').val();
+        if (!name || !date) { alert('Name and date are required.'); return; }
+
+        var $btn = $('#save-edit-holiday-btn').prop('disabled', true);
+        $.post(baseUrl + '/edit/' + id, {
+            name: name, holiday_date: date, end_date: endDate, type: type,
+            [csrfName]: csrfHash
+        }, function(r){
+            if (r.success) {
+                location.reload();
+            } else {
+                alert(r.message || 'Error saving holiday.');
+                $btn.prop('disabled', false);
+            }
+        }, 'json').fail(function(){ $btn.prop('disabled', false); });
     });
 
     // Delete holiday
@@ -350,10 +490,23 @@ $(function(){
     $(document).on('click', '.btn-send-announcement', function(e){
         e.preventDefault();
         if (!confirm('Send the holiday announcement email now?')) return;
-        var id = $(this).data('id');
+        var $btn = $(this).addClass('disabled');
+        var originalHtml = $btn.html();
+        $btn.html('<i class="fa fa-spinner fa-spin"></i>');
+        var id = $btn.data('id');
         $.post(baseUrl + '/send_announcement/' + id, { [csrfName]: csrfHash }, function(r){
             alert_float(r.success ? 'success' : 'danger', r.message);
-        }, 'json');
+            if (r.success) {
+                var $statusCell = $btn.closest('tr').find('.announcement-status-cell');
+                $statusCell.html(
+                    '<span class="label label-success" title="' + (r.sent_at_label || '') + '">'
+                        + '<i class="fa fa-check tw-mr-1"></i><?php echo _l('hr_holiday_announcement_sent_label'); ?>'
+                    + '</span>'
+                );
+            }
+        }, 'json').always(function(){
+            $btn.removeClass('disabled').html(originalHtml);
+        });
     });
 
     // Team calendar month navigation - loads just the calendar panel via AJAX
