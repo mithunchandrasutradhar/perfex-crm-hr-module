@@ -40,12 +40,32 @@ EMP0004,2026-06-01,09:00,13:00,half_day</pre>
               </a>
             </div>
 
+            <!-- Format instructions: ZKTeco attlog.dat -->
+            <div class="alert alert-info">
+              <p class="tw-font-semibold tw-mb-2"><i class="fa fa-info-circle tw-mr-1"></i>ZKTeco Device Export (.dat) Instructions</p>
+              <ul class="tw-pl-5 tw-mb-2">
+                <li>On the device's own web portal (e.g. <code>http://&lt;device-ip&gt;/</code>), go to <strong>Terminal &rarr; Download</strong>, pick a date range, and click Download to get <code>attlog.dat</code>.</li>
+                <li>Each device user must be mapped to an employee first, under <a href="<?php echo admin_url('hr_module/zkteco/mapping'); ?>">ZKTeco &rarr; Employee Mapping</a> - unmapped device users are skipped and reported after import.</li>
+                <li>This is raw punch data (every door unlock/check-in event, no in/out flag) - the earliest and latest punch of each day are used as the day's in/out time, and working hours are calculated from that span.</li>
+                <li>Select which device the file came from below, so device user IDs resolve against the right mapping.</li>
+              </ul>
+            </div>
+
             <!-- Upload form -->
             <?php echo form_open_multipart(admin_url('hr_module/attendance/import'), ['id' => 'importForm']); ?>
               <div class="form-group">
-                <label class="tw-font-semibold">Select CSV File <span class="text-danger">*</span></label>
-                <input type="file" name="csv_file" id="csv_file" accept=".csv" class="form-control" required>
-                <p class="help-block">Max size: 2 MB. Only .csv files accepted.</p>
+                <label class="tw-font-semibold">Select File <span class="text-danger">*</span></label>
+                <input type="file" name="import_file" id="import_file" accept=".csv,.dat,.txt" class="form-control" required>
+                <p class="help-block">Max size: 2 MB. Accepts .csv (manual template) or .dat/.txt (ZKTeco device export).</p>
+              </div>
+              <div class="form-group">
+                <label>Device <small class="text-muted">(only needed for a .dat/.txt device export)</small></label>
+                <select name="device_id" class="form-control">
+                  <option value="">-- <?php echo _l('hr_select'); ?> --</option>
+                  <?php foreach ($devices as $d): ?>
+                  <option value="<?php echo $d->id; ?>"><?php echo htmlspecialchars($d->name); ?> (<?php echo $d->ip_address; ?>)</option>
+                  <?php endforeach; ?>
+                </select>
               </div>
               <div class="tw-flex tw-gap-2">
                 <button type="submit" class="btn btn-primary" id="import-btn">

@@ -11,6 +11,7 @@ class Attendance extends AdminController
         $this->load->model('hr_module/Employees_model');
         $this->load->model('hr_module/Departments_model');
         $this->load->model('hr_module/Holidays_model');
+        $this->load->model('hr_module/Zkteco_model');
     }
 
     public function index()
@@ -151,24 +152,48 @@ class Attendance extends AdminController
         if ($this->input->post()) {
             $upload_path = FCPATH . 'uploads/hr_module/temp/';
             if (!is_dir($upload_path)) mkdir($upload_path, 0755, true);
-            $this->load->library('upload', [
-                'upload_path'   => $upload_path,
-                'allowed_types' => 'csv',
-                'max_size'      => 2048,
-                'encrypt_name'  => true,
-            ]);
-            if (!$this->upload->do_upload('csv_file')) {
-                set_alert('danger', $this->upload->display_errors('', ''));
+
+            // CI's Upload library rejects any extension not registered in
+            // application/config/mimes.php (a core file) regardless of the
+            // detect_mime setting, and .dat isn't in there - so this handles
+            // the upload with plain PHP instead of the library.
+            $orig_name = $_FILES['import_file']['name'] ?? '';
+            $ext       = strtolower(pathinfo($orig_name, PATHINFO_EXTENSION));
+
+            if (empty($_FILES['import_file']['tmp_name']) || !in_array($ext, ['csv', 'dat', 'txt'], true)) {
+                set_alert('danger', 'Please select a .csv, .dat, or .txt file.');
                 redirect(admin_url('hr_module/attendance/import'));
             }
-            $file    = $this->upload->data('full_path');
-            $records = $this->_parse_csv($file);
-            @unlink($file);
-            $result = $this->Attendance_model->bulk_import($records);
-            set_alert('success', 'Imported: ' . $result['saved'] . ' records. Skipped (duplicates): ' . $result['skipped']);
+            if ($_FILES['import_file']['size'] > 2 * 1024 * 1024) {
+                set_alert('danger', 'File exceeds the 2 MB size limit.');
+                redirect(admin_url('hr_module/attendance/import'));
+            }
+            $file = $upload_path . uniqid('att_', true) . '.' . $ext;
+            if (!is_uploaded_file($_FILES['import_file']['tmp_name']) || !move_uploaded_file($_FILES['import_file']['tmp_name'], $file)) {
+                set_alert('danger', 'Upload failed.');
+                redirect(admin_url('hr_module/attendance/import'));
+            }
+
+            if ($ext === 'dat' || $ext === 'txt') {
+                $device_id = (int) $this->input->post('device_id');
+                $parsed    = $this->_parse_attlog($file, $device_id);
+                @unlink($file);
+                $result = $this->Attendance_model->bulk_import($parsed['records']);
+                $message = 'Imported: ' . $result['saved'] . ' day-records. Skipped (already existed): ' . $result['skipped'] . '.';
+                if ($parsed['unmatched'] > 0) {
+                    $message .= ' ' . $parsed['unmatched'] . ' punch(es) skipped - no employee mapping for that device user ID (set one up under ZKTeco > Employee Mapping).';
+                }
+                set_alert('success', $message);
+            } else {
+                $records = $this->_parse_csv($file);
+                @unlink($file);
+                $result = $this->Attendance_model->bulk_import($records);
+                set_alert('success', 'Imported: ' . $result['saved'] . ' records. Skipped (duplicates): ' . $result['skipped']);
+            }
             redirect(admin_url('hr_module/attendance'));
         }
-        $data['title'] = _l('hr_attendance_import');
+        $data['title']   = _l('hr_attendance_import');
+        $data['devices'] = $this->Zkteco_model->get_devices();
         $this->load->view('hr_module/attendance/import', $data);
     }
 
@@ -208,5 +233,56 @@ class Attendance extends AdminController
         }
         fclose($fh);
         return $records;
+    }
+
+    // Parses the plain tab-separated attlog.dat export from a ZKTeco device's
+    // own web portal (Download page): device_user_id, name, timestamp, verify
+    // method, work code - one row per raw punch, no in/out flag. Groups punches
+    // by employee+date and uses the earliest/latest punch of the day as
+    // in_time/out_time, since a door-access device can log many punches a day
+    // (official-work trips out and back) with no way to tell which is which.
+    private function _parse_attlog($filepath, $device_id)
+    {
+        $punches   = [];
+        $unmatched = 0;
+
+        if (($fh = fopen($filepath, 'r')) !== false) {
+            while (($line = fgets($fh)) !== false) {
+                $line = rtrim($line, "\r\n");
+                if ($line === '') continue;
+                $cols = explode("\t", $line);
+                if (count($cols) < 3) continue;
+
+                $device_user_id = trim($cols[0]);
+                $timestamp      = trim($cols[2]);
+                if ($device_user_id === '' || !$timestamp) continue;
+
+                $employee_id = $this->Zkteco_model->resolve_employee($device_id, $device_user_id);
+                if (!$employee_id) {
+                    $unmatched++;
+                    continue;
+                }
+
+                $date = substr($timestamp, 0, 10);
+                $punches[$employee_id][$date][] = $timestamp;
+            }
+            fclose($fh);
+        }
+
+        $records = [];
+        foreach ($punches as $employee_id => $dates) {
+            foreach ($dates as $date => $times) {
+                sort($times);
+                $records[] = [
+                    'employee_id'     => $employee_id,
+                    'attendance_date' => $date,
+                    'in_time'         => date('H:i:s', strtotime($times[0])),
+                    'out_time'        => count($times) > 1 ? date('H:i:s', strtotime(end($times))) : null,
+                    'source'          => 'zkteco',
+                ];
+            }
+        }
+
+        return ['records' => $records, 'unmatched' => $unmatched];
     }
 }

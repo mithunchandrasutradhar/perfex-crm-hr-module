@@ -99,7 +99,7 @@ class Zkteco_model extends App_Model
         $records_saved   = 0;
 
         foreach ($result['records'] as $rec) {
-            $employee_id = $this->_resolve_employee($device_id, $rec['user_id']);
+            $employee_id = $this->resolve_employee($device_id, $rec['user_id']);
             if (!$employee_id) continue;
 
             $check_date = date('Y-m-d', strtotime($rec['timestamp']));
@@ -209,7 +209,10 @@ class Zkteco_model extends App_Model
 
     // ── Private Helpers ───────────────────────────────────────────────────────
 
-    private function _resolve_employee($device_id, $device_user_id)
+    // Public so file-based imports (e.g. Attendance::_parse_attlog()) can
+    // resolve the same device-user-id -> employee mappings set up on the
+    // Employee Mapping screen, without duplicating the lookup.
+    public function resolve_employee($device_id, $device_user_id)
     {
         $map = $this->db
             ->where('device_id', $device_id)

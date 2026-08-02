@@ -23,6 +23,7 @@ class Zkteco_lib
     const CMD_ACK_OK       = 2000;
     const CMD_ACK_ERROR    = 2001;
     const USHRT_MAX        = 65535;
+    const TCP_HEADER_MAGIC = "\x50\x50\x82\x7d";
 
     /**
      * Fetch attendance logs from device.
@@ -59,8 +60,8 @@ class Zkteco_lib
         $this->session = 0;
         $this->reply   = 0;
         $buf = $this->_build_packet(self::CMD_CONNECT, '');
-        fwrite($this->socket, $buf);
-        $response = fread($this->socket, 1024);
+        fwrite($this->socket, $this->_wrap_tcp($buf));
+        $response = $this->_unwrap_tcp(fread($this->socket, 1024));
         if (!$response) return false;
 
         $cmd = $this->_parse_cmd($response);
@@ -74,7 +75,7 @@ class Zkteco_lib
     {
         if ($this->socket) {
             $buf = $this->_build_packet(self::CMD_DISCONNECT, '');
-            @fwrite($this->socket, $buf);
+            @fwrite($this->socket, $this->_wrap_tcp($buf));
             @fclose($this->socket);
             $this->socket = null;
         }
@@ -86,16 +87,16 @@ class Zkteco_lib
 
         // Request free buffer
         $buf = $this->_build_packet(self::CMD_FREE_DATA, '');
-        fwrite($this->socket, $buf);
+        fwrite($this->socket, $this->_wrap_tcp($buf));
         fread($this->socket, 1024);
 
         // Request attendance log file
         $payload = pack('a8', 'ATTLOG.DAT');
         $buf = $this->_build_packet(self::CMD_READ_FILE, $payload);
-        fwrite($this->socket, $buf);
+        fwrite($this->socket, $this->_wrap_tcp($buf));
 
         $data = '';
-        $size_buf = fread($this->socket, 1024);
+        $size_buf = $this->_unwrap_tcp(fread($this->socket, 1024));
         if (!$size_buf) return $records;
 
         $cmd = $this->_parse_cmd($size_buf);
@@ -109,8 +110,8 @@ class Zkteco_lib
 
             $received = 0;
             while ($received < $total) {
-                $chunk = fread($this->socket, 65536);
-                if ($chunk === false) break;
+                $chunk = $this->_unwrap_tcp(fread($this->socket, 65536));
+                if ($chunk === false || $chunk === '') break;
                 // Strip 8-byte header from data packets
                 $data .= (strlen($chunk) > 8) ? substr($chunk, 8) : $chunk;
                 $received += strlen($chunk);
@@ -140,11 +141,62 @@ class Zkteco_lib
         return $records;
     }
 
+    // Real devices wrap every packet sent/received over a TCP socket in an
+    // extra 8-byte transport header (4-byte magic + 4-byte little-endian
+    // payload length) on top of the normal 8-byte command header used below -
+    // without it the device never recognises our packets and every command
+    // (starting with CMD_CONNECT) silently times out.
+    private function _wrap_tcp($packet)
+    {
+        return self::TCP_HEADER_MAGIC . pack('V', strlen($packet)) . $packet;
+    }
+
+    private function _unwrap_tcp($data)
+    {
+        if ($data === false || $data === '') return $data;
+        if (substr($data, 0, 4) === self::TCP_HEADER_MAGIC) {
+            return substr($data, 8);
+        }
+        return $data;
+    }
+
     private function _build_packet($cmd, $data)
     {
         $this->reply = ($this->reply + 1) % self::USHRT_MAX;
-        $len = 8 + strlen($data);
-        return pack('vvvv', $cmd, 0, $this->session, $this->reply) . $data;
+        // Devices validate the checksum field and silently drop the packet
+        // (no reply at all) if it doesn't match, so it can't be left as 0.
+        $buf      = pack('vvvv', $cmd, 0, $this->session, $this->reply) . $data;
+        $checksum = $this->_checksum($buf);
+        return pack('vvvv', $cmd, $checksum, $this->session, $this->reply) . $data;
+    }
+
+    // Classic 16-bit one's-complement checksum (same family as IP/UDP
+    // checksums) computed over the header+data with the checksum field
+    // itself zeroed, per the ZKTeco protocol.
+    private function _checksum($buf)
+    {
+        $len      = strlen($buf);
+        $checksum = 0;
+        $i        = 0;
+        while ($len > 1) {
+            $checksum += unpack('v', substr($buf, $i, 2))[1];
+            if ($checksum > self::USHRT_MAX) {
+                $checksum -= self::USHRT_MAX;
+            }
+            $i   += 2;
+            $len -= 2;
+        }
+        if ($len) {
+            $checksum += ord(substr($buf, $i, 1));
+        }
+        while ($checksum > self::USHRT_MAX) {
+            $checksum -= self::USHRT_MAX;
+        }
+        $checksum = -$checksum - 1;
+        while ($checksum < 0) {
+            $checksum += self::USHRT_MAX;
+        }
+        return $checksum;
     }
 
     private function _parse_cmd($buf)
