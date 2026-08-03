@@ -138,22 +138,66 @@ class Attendance_model extends App_Model
         return $this->db->count_all_results($this->table) > 0;
     }
 
+    // When several exports (different devices, or a device export plus the
+    // monthly report) cover the same employee+date, later imports merge into
+    // an existing row instead of being skipped - each field only fills in
+    // gaps or widens the punch span, so one source's blank never erases
+    // another source's real value.
     public function bulk_import($records)
     {
-        $saved = 0;
+        $saved   = 0;
+        $merged  = 0;
         $skipped = 0;
+
         foreach ($records as $rec) {
-            if ($this->record_exists($rec['employee_id'], $rec['attendance_date'])) {
+            $existing = $this->get_by_date($rec['employee_id'], $rec['attendance_date']);
+
+            if (!$existing) {
+                $rec['working_hours'] = $this->_calc_hours($rec['in_time'] ?? null, $rec['out_time'] ?? null);
+                $rec['status']        = $this->_normalize_status($rec);
+                $rec['created_at']    = date('Y-m-d H:i:s');
+                $this->db->insert($this->table, $rec);
+                $saved++;
+                continue;
+            }
+
+            $mergedIn  = $this->_merge_time($existing->in_time, $rec['in_time'] ?? null, true);
+            $mergedOut = $this->_merge_time($existing->out_time, $rec['out_time'] ?? null, false);
+
+            if ($mergedIn === $existing->in_time && $mergedOut === $existing->out_time) {
                 $skipped++;
                 continue;
             }
-            $rec['working_hours'] = $this->_calc_hours($rec['in_time'] ?? null, $rec['out_time'] ?? null);
-            $rec['status']        = $this->_normalize_status($rec);
-            $rec['created_at']    = date('Y-m-d H:i:s');
-            $this->db->insert($this->table, $rec);
-            $saved++;
+
+            // Computed before queuing the update's where() below - _determine_status()
+            // runs its own nested query (via Shifts_model), and building it inline
+            // inside the update() call's array argument runs it while that where()
+            // is still pending on the same shared query builder, corrupting both.
+            $status = $mergedIn
+                ? $this->_determine_status($mergedIn, $rec['employee_id'], $rec['attendance_date'])
+                : ($existing->status ?: ($rec['status'] ?? 'absent'));
+
+            $this->db->where('id', $existing->id)->update($this->table, [
+                'in_time'       => $mergedIn,
+                'out_time'      => $mergedOut,
+                'working_hours' => $this->_calc_hours($mergedIn, $mergedOut),
+                'status'        => $status,
+                'updated_at'    => date('Y-m-d H:i:s'),
+            ]);
+            $merged++;
         }
-        return ['saved' => $saved, 'skipped' => $skipped];
+
+        return ['saved' => $saved, 'merged' => $merged, 'skipped' => $skipped];
+    }
+
+    // Earliest wins for in_time, latest wins for out_time - keeps the widest
+    // punch span across sources, consistent with the single-device
+    // first-punch/last-punch rule. A blank on either side never wins.
+    private function _merge_time($existing, $new, $preferEarliest)
+    {
+        if (!$existing) return $new ?: null;
+        if (!$new) return $existing;
+        return $preferEarliest ? min($existing, $new) : max($existing, $new);
     }
 
     // Called by ZKTeco sync — inserts or updates

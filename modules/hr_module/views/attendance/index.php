@@ -17,7 +17,7 @@ if (!isset($is_global))   $is_global   = is_admin() || staff_can('view', 'hr_att
           <div class="tw-flex tw-flex-wrap tw-gap-2">
             <!-- Filters -->
             <?php if ($is_global): ?>
-            <select id="f-dept" class="selectpicker" data-width="150px">
+            <select id="f-dept" class="selectpicker" data-width="260px">
               <option value=""><?php echo _l('hr_all') . ' Dept'; ?></option>
               <?php foreach ($departments as $d): ?>
               <option value="<?php echo $d->id; ?>"><?php echo htmlspecialchars($d->name); ?></option>
