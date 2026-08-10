@@ -118,6 +118,10 @@ class Leave_model extends App_Model
             return ['success' => false, 'message' => _l('hr_error_not_found')];
         }
 
+        if ($type->requires_attachment && empty($data['attachment'])) {
+            return ['success' => false, 'message' => _l('hr_val_attachment_required')];
+        }
+
         $dates = array_column($days, 'date');
         if (count($dates) !== count(array_unique($dates))) {
             return ['success' => false, 'message' => _l('hr_val_duplicate_leave_dates')];
@@ -354,6 +358,12 @@ class Leave_model extends App_Model
     {
         $request = $this->get_request($id);
         if (!$request) return false;
+        // Mirrors cancel()'s balance restore - deleting an approved request must
+        // give back the days it deducted, same as cancelling one does.
+        if ($request->status === 'approved') {
+            $year = date('Y', strtotime($request->from_date));
+            $this->_restore_balance($request->employee_id, $request->leave_type_id, $year, $request->total_days);
+        }
         $this->db->where('leave_request_id', $id)->delete($this->tbl_request_days);
         $this->db->where('id', $id)->delete($this->tbl_requests);
         return $this->db->affected_rows() > 0;

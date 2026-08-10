@@ -23,8 +23,8 @@ class Settings extends AdminController
             if (staff_cant('edit', 'hr_settings') && !is_admin()) {
                 access_denied('hr_settings');
             }
-            $this->_save_settings();
-            set_alert('success', _l('hr_settings_saved'));
+            $result = $this->_save_settings();
+            set_alert($result['success'] ? 'success' : 'danger', $result['success'] ? _l('hr_settings_saved') : $result['message']);
             redirect(admin_url('hr_module/settings'));
         }
 
@@ -157,13 +157,42 @@ class Settings extends AdminController
             return;
         }
 
-        $this->_save_settings();
+        $result = $this->_save_settings();
+        if (!$result['success']) {
+            echo json_encode($result);
+            return;
+        }
 
         echo json_encode(['success' => true, 'message' => _l('hr_settings_saved')]);
     }
 
     private function _save_settings()
     {
+        // The view's <input min/max> only enforces this client-side - a direct
+        // POST could otherwise save anything (e.g. a negative late threshold,
+        // or a payroll generation day of 999), so the same ranges are checked
+        // here before anything is written.
+        $numeric_ranges = [
+            'working_days_per_week'          => [1, 7,    'Working days per week must be between 1 and 7.'],
+            'working_hours_per_day'          => [1, 24,   'Working hours per day must be between 1 and 24.'],
+            'late_threshold_minutes'         => [0, 120,  'Late threshold must be between 0 and 120 minutes.'],
+            'default_overtime_rate'          => [1, 5,    'Overtime rate must be between 1 and 5.'],
+            'overtime_holiday_rate'          => [1, 5,    'Holiday overtime rate must be between 1 and 5.'],
+            'overtime_day_divisor'           => [1, 31,   'Overtime day divisor must be between 1 and 31.'],
+            'shift_allowance_evening_amount' => [0, null, 'Evening shift allowance cannot be negative.'],
+            'shift_allowance_night_amount'   => [0, null, 'Night shift allowance cannot be negative.'],
+            'fiscal_year_start_month'        => [1, 12,   'Fiscal year start month must be between 1 and 12.'],
+            'payroll_generation_day'         => [1, 31,   'Payroll generation day must be between 1 and 31.'],
+            'zkteco_sync_interval'           => [5, 1440, 'ZKTeco sync interval must be between 5 and 1440 minutes.'],
+        ];
+        foreach ($numeric_ranges as $key => list($min, $max, $message)) {
+            $posted = $this->input->post($key);
+            if ($posted === null || $posted === '') continue;
+            if (!is_numeric($posted) || $posted < $min || ($max !== null && $posted > $max)) {
+                return ['success' => false, 'message' => $message];
+            }
+        }
+
         $allowed_keys = [
             'working_days_per_week',
             'working_hours_per_day',
@@ -234,5 +263,6 @@ class Settings extends AdminController
         }
 
         $this->Hr_module_model->save_settings($save_data);
+        return ['success' => true];
     }
 }

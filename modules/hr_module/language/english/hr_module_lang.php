@@ -721,6 +721,7 @@ $lang['hr_val_duplicate_attendance']       = 'Attendance record already exists f
 $lang['hr_val_no_leave_days']              = 'Please add at least one day to this leave request';
 $lang['hr_val_duplicate_leave_dates']      = 'The same date was added more than once';
 $lang['hr_val_invalid_leave_day']          = 'Invalid leave day entry';
+$lang['hr_val_attachment_required']        = 'This leave type requires a supporting document to be attached';
 
 // Errors
 $lang['hr_error_permission']               = 'You do not have permission to perform this action';

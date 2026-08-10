@@ -31,20 +31,16 @@
       <thead><tr>
         <th>Department</th>
         <th class="text-right">Total</th><th class="text-right">Active</th><th class="text-right">Inactive</th>
-        <th class="text-right">Permanent</th><th class="text-right">Contract</th><th class="text-right">Part-time</th>
         <th class="text-right">Male</th><th class="text-right">Female</th>
       </tr></thead>
       <tbody>
-      <?php if(empty($rows)): ?><tr><td colspan="9" class="text-center text-muted" style="padding:30px">No records.</td></tr>
+      <?php if(empty($rows)): ?><tr><td colspan="6" class="text-center text-muted" style="padding:30px">No records.</td></tr>
       <?php else: foreach($rows as $r): ?>
       <tr>
         <td><strong><?php echo htmlspecialchars($r->department_name ?? 'Unassigned'); ?></strong></td>
         <td class="text-right"><strong><?php echo $r->total; ?></strong></td>
         <td class="text-right text-success"><?php echo $r->active; ?></td>
         <td class="text-right text-muted"><?php echo $r->inactive; ?></td>
-        <td class="text-right"><?php echo $r->permanent; ?></td>
-        <td class="text-right"><?php echo $r->contract; ?></td>
-        <td class="text-right"><?php echo $r->parttime; ?></td>
         <td class="text-right"><?php echo $r->male; ?></td>
         <td class="text-right"><?php echo $r->female; ?></td>
       </tr>
@@ -54,9 +50,6 @@
         <td class="text-right"><strong><?php echo $total; ?></strong></td>
         <td class="text-right"><strong><?php echo array_sum(array_column((array)$rows,'active')); ?></strong></td>
         <td class="text-right"><?php echo array_sum(array_column((array)$rows,'inactive')); ?></td>
-        <td class="text-right"><?php echo array_sum(array_column((array)$rows,'permanent')); ?></td>
-        <td class="text-right"><?php echo array_sum(array_column((array)$rows,'contract')); ?></td>
-        <td class="text-right"><?php echo array_sum(array_column((array)$rows,'parttime')); ?></td>
         <td class="text-right"><?php echo array_sum(array_column((array)$rows,'male')); ?></td>
         <td class="text-right"><?php echo array_sum(array_column((array)$rows,'female')); ?></td>
       </tr>
