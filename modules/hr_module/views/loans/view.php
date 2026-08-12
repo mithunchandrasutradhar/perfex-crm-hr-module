@@ -172,7 +172,7 @@ if (!isset($can_manage_deductions)) $can_manage_deductions = staff_can('edit', '
               <tr><td>Approved By</td><td><?php echo htmlspecialchars($loan->approved_by_name); ?></td></tr>
               <?php endif; ?>
               <?php if ($loan->attachment): ?>
-              <tr><td>Attachment</td><td><a href="<?php echo base_url('uploads/hr_module/loans/'.$loan->attachment); ?>" target="_blank"><i class="fa fa-file tw-mr-1"></i>View</a></td></tr>
+              <tr><td>Attachment</td><td><a href="<?php echo admin_url('hr_module/loans/download/'.$loan->id); ?>" target="_blank"><i class="fa fa-file tw-mr-1"></i>View</a></td></tr>
               <?php endif; ?>
             </table>
           </div>

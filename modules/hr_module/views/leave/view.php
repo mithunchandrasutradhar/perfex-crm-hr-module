@@ -55,7 +55,7 @@ $badge = '<span class="label ' . ($badge_map[$r->status] ?? 'label-default') . '
               <?php endif; ?>
               <?php if ($r->attachment): ?>
               <tr><th><?php echo _l('hr_attachments'); ?></th>
-                <td><a href="<?php echo base_url('uploads/hr_module/leaves/' . $r->attachment); ?>" target="_blank"><i class="fa fa-paperclip"></i> View Attachment</a></td></tr>
+                <td><a href="<?php echo admin_url('hr_module/leave/download/' . $r->id); ?>" target="_blank"><i class="fa fa-paperclip"></i> View Attachment</a></td></tr>
               <?php endif; ?>
               <tr><th><?php echo _l('hr_created_at'); ?></th><td><?php echo _dt($r->created_at); ?></td></tr>
               <?php if ($r->approved_by): ?>

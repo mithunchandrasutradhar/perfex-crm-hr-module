@@ -81,10 +81,14 @@ class Training extends AdminController
         $training = $this->Training_model->get($id);
         if (!$training) show_404();
 
-        $own_emp_id   = hr_get_own_employee_id();
-        $is_instructor = $this->Training_model->is_instructor($id, get_staff_user_id());
+        $own_emp_id     = hr_get_own_employee_id();
+        $is_instructor  = $this->Training_model->is_instructor($id, get_staff_user_id());
+        $is_participant = $this->Training_model->is_participant($id, $own_emp_id);
 
-        if (staff_cant('view', 'hr_training') && staff_cant('view_own', 'hr_training') && !$is_instructor) {
+        // view_own alone isn't enough to see a training's roster - it must
+        // actually be one this employee is enrolled in, or an instructor on.
+        if (staff_cant('view', 'hr_training') && !$is_instructor
+            && !($is_participant && staff_can('view_own', 'hr_training'))) {
             access_denied('hr_training');
         }
 
@@ -100,6 +104,24 @@ class Training extends AdminController
         $data['days']            = array_column($sessions, 'session_date');
         $data['attendance_grid'] = $this->Training_model->get_attendance_grid($id);
         $this->load->view('hr_module/training/view', $data);
+    }
+
+    // Same view() authorization as above, proxied so the attachment isn't a
+    // directly-fetchable static file.
+    public function download($id)
+    {
+        $training = $this->Training_model->get($id);
+        if (!$training) show_404();
+
+        $is_instructor  = $this->Training_model->is_instructor($id, get_staff_user_id());
+        $is_participant = $this->Training_model->is_participant($id, hr_get_own_employee_id());
+        if (staff_cant('view', 'hr_training') && !$is_instructor
+            && !($is_participant && staff_can('view_own', 'hr_training'))) {
+            access_denied('hr_training');
+        }
+        if (empty($training->attachment)) show_404();
+        $this->load->helper('download');
+        force_download(FCPATH . 'uploads/hr_module/training/' . basename($training->attachment), null);
     }
 
     public function delete($id)
@@ -293,6 +315,7 @@ class Training extends AdminController
         if (empty($_FILES['attachment']['name'])) return;
         $path = FCPATH . 'uploads/hr_module/training/';
         if (!is_dir($path)) mkdir($path, 0755, true);
+        hr_lock_upload_dir($path);
         $this->load->library('upload', [
             'upload_path'   => $path,
             'allowed_types' => 'pdf|doc|docx|ppt|pptx|jpg|png',

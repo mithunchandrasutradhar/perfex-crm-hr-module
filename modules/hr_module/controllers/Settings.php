@@ -243,6 +243,13 @@ class Settings extends AdminController
         $save_data = [];
         foreach ($allowed_keys as $key) {
             $posted = $this->input->post($key);
+            // The API key is never re-rendered into the settings form (see
+            // views/settings/index.php) so a blank submission means "left
+            // untouched", not "clear it" - keep whatever is already saved.
+            if ($key === 'whatsapp_api_key' && $posted === '') {
+                $save_data[$key] = $this->Hr_module_model->get_setting('whatsapp_api_key', '');
+                continue;
+            }
             $save_data[$key] = $posted !== null ? $posted : '0';
         }
 

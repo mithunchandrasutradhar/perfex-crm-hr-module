@@ -20,7 +20,7 @@ function ef($v, $d = '-') { return !empty($v) ? htmlspecialchars($v) : $d; }
         <div class="panel_s">
           <div class="panel-body tw-text-center tw-py-6">
             <?php if ($e->photo): ?>
-            <img src="<?php echo base_url('uploads/hr_module/employees/' . $e->photo); ?>"
+            <img src="<?php echo admin_url('hr_module/employees/photo/' . $e->id); ?>"
               class="img-circle tw-mb-3" width="100" height="100" style="object-fit:cover">
             <?php else: ?>
             <div class="tw-mx-auto tw-mb-3" style="width:100px;height:100px;border-radius:50%;background:#e2e8f0;display:flex;align-items:center;justify-content:center;">

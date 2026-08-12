@@ -48,6 +48,7 @@ class Loans extends AdminController
             // Handle attachment
             $upload_path = FCPATH . 'uploads/hr_module/loans/';
             if (!is_dir($upload_path)) mkdir($upload_path, 0755, true);
+            hr_lock_upload_dir($upload_path);
             if (!empty($_FILES['attachment']['name'])) {
                 $this->load->library('upload', [
                     'upload_path'   => $upload_path,
@@ -123,6 +124,21 @@ class Loans extends AdminController
         // (including this loan's own view() ownership check above already guarantees it's theirs).
         $data['can_manage_deductions'] = staff_can('edit', 'hr_loans') || staff_can('create', 'hr_loans');
         $this->load->view('hr_module/loans/view', $data);
+    }
+
+    // Same ownership check as view() above, proxied so the attachment isn't a
+    // directly-fetchable static file.
+    public function download($id)
+    {
+        if (staff_cant('view', 'hr_loans') && staff_cant('view_own', 'hr_loans')) access_denied('hr_loans');
+        $loan = $this->Loans_model->get($id);
+        if (!$loan) show_404();
+        if (!staff_can('view', 'hr_loans') && staff_can('view_own', 'hr_loans')) {
+            if ((int) $loan->employee_id !== hr_get_own_employee_id()) access_denied('hr_loans');
+        }
+        if (empty($loan->attachment)) show_404();
+        $this->load->helper('download');
+        force_download(FCPATH . 'uploads/hr_module/loans/' . basename($loan->attachment), null);
     }
 
     public function approve($id)

@@ -150,6 +150,34 @@ class Employees extends AdminController
         $this->load->view('hr_module/employees/view', $data);
     }
 
+    // Serves the HR profile photo inline (not force_download - it's rendered as
+    // an <img>). Same audience as view()/edit(): anyone who can see this
+    // employee's profile at all, plus edit/create holders (the edit form shows
+    // the current photo too).
+    public function photo($id)
+    {
+        $can_see = staff_can('view', 'hr_employees') || staff_can('edit', 'hr_employees') || staff_can('create', 'hr_employees');
+        if (!$can_see && !staff_can('view_own', 'hr_employees')) {
+            access_denied('hr_employees');
+        }
+        $employee = $this->Employees_model->get($id);
+        if (!$employee) show_404();
+        if (!$can_see && (int) $employee->staff_id !== (int) get_staff_user_id()) {
+            access_denied('hr_employees');
+        }
+        if (empty($employee->photo)) show_404();
+        $path = FCPATH . 'uploads/hr_module/employees/' . basename($employee->photo);
+        if (!is_file($path)) show_404();
+
+        $ext  = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+        $mime = ['jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'png' => 'image/png', 'gif' => 'image/gif'][$ext] ?? 'application/octet-stream';
+        header('Content-Type: ' . $mime);
+        header('Content-Length: ' . filesize($path));
+        header('Cache-Control: private, max-age=86400');
+        readfile($path);
+        exit;
+    }
+
     public function delete($id)
     {
         if (staff_cant('delete', 'hr_employees')) access_denied('hr_employees');

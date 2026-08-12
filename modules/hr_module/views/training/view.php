@@ -86,7 +86,7 @@ $sessions_by_date = array_column($sessions, null, 'session_date');
             <?php endif; ?>
 
             <?php if ($training->attachment): ?>
-            <a href="<?php echo base_url('uploads/hr_module/training/'.$training->attachment); ?>" target="_blank" class="btn btn-default btn-sm">
+            <a href="<?php echo admin_url('hr_module/training/download/'.$training->id); ?>" target="_blank" class="btn btn-default btn-sm">
               <i class="fa fa-paperclip tw-mr-1"></i>View Attachment
             </a>
             <?php endif; ?>

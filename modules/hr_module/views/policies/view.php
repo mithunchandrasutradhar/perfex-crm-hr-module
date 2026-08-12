@@ -57,7 +57,7 @@ $revision_attachments = $pending_revision ? $this->Policies_model->decode_attach
             <?php if ($p->status === 'published' || $can_manage): ?>
             <hr>
             <?php foreach ($p_attachments as $a): ?>
-            <a href="<?php echo base_url('uploads/hr_module/policies/' . $a['file']); ?>" target="_blank" class="btn btn-default tw-mb-3 tw-mr-2">
+            <a href="<?php echo admin_url('hr_module/policies/download/' . $p->id . '/' . $a['file']); ?>" target="_blank" class="btn btn-default tw-mb-3 tw-mr-2">
               <i class="fa fa-file-pdf tw-mr-1"></i><?php echo htmlspecialchars($a['name'] ?: $a['file']); ?>
             </a>
             <?php endforeach; ?>
@@ -89,7 +89,7 @@ $revision_attachments = $pending_revision ? $this->Policies_model->decode_attach
                 <td><?php echo $pending_revision->type === 'public' ? 'Public - All Employees' : htmlspecialchars('Private - ' . ($pending_revision->department_names ?: '-')); ?></td></tr>
             </table>
             <?php foreach ($revision_attachments as $a): ?>
-            <a href="<?php echo base_url('uploads/hr_module/policies/' . $a['file']); ?>" target="_blank" class="btn btn-default btn-sm tw-mb-3 tw-mr-2">
+            <a href="<?php echo admin_url('hr_module/policies/download/' . $p->id . '/' . $a['file']); ?>" target="_blank" class="btn btn-default btn-sm tw-mb-3 tw-mr-2">
               <i class="fa fa-file-pdf tw-mr-1"></i><?php echo htmlspecialchars($a['name'] ?: $a['file']); ?> (proposed)
             </a>
             <?php endforeach; ?>

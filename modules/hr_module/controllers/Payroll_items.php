@@ -31,6 +31,10 @@ class Payroll_items extends AdminController
     public function edit($id)
     {
         if ($this->input->is_ajax_request() && !$this->input->post()) {
+            if (staff_cant('view', 'hr_payroll')) {
+                echo json_encode(['success' => false, 'message' => _l('hr_error_permission')]);
+                return;
+            }
             echo json_encode($this->Payroll_model->get_item($id));
             return;
         }

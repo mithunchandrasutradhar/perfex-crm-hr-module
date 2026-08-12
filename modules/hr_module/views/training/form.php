@@ -137,7 +137,7 @@ $form_url = $is_edit
                 <label>Attachment <small class="text-muted">(PDF/DOC/PPT/Image, max 5MB)</small></label>
                 <?php if ($is_edit && $training->attachment): ?>
                 <div class="tw-mb-2">
-                  <a href="<?php echo base_url('uploads/hr_module/training/'.$training->attachment); ?>" target="_blank">
+                  <a href="<?php echo admin_url('hr_module/training/download/'.$training->id); ?>" target="_blank">
                     <i class="fa fa-file tw-mr-1"></i>Current attachment
                   </a>
                 </div>

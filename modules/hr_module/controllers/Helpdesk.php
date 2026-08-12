@@ -107,6 +107,37 @@ class Helpdesk extends AdminController
         $this->load->view('hr_module/helpdesk/view', $data);
     }
 
+    // Same view() authorization as above, proxied so ticket/reply/internal-note
+    // attachments aren't directly-fetchable static files. $type is 'ticket',
+    // 'note', or 'reply' (with $ref_id as the reply id for 'reply').
+    public function download($id, $type, $ref_id = null)
+    {
+        if (staff_cant('view', 'hr_helpdesk') && staff_cant('view_own', 'hr_helpdesk')) access_denied('hr_helpdesk');
+        $ticket = $this->Helpdesk_model->get($id);
+        if (!$ticket) show_404();
+        if (!staff_can('view', 'hr_helpdesk') && staff_can('view_own', 'hr_helpdesk')) {
+            if ($ticket->is_anonymous || (int) $ticket->employee_id !== hr_get_own_employee_id()) {
+                access_denied('hr_helpdesk');
+            }
+        }
+
+        if ($type === 'ticket') {
+            $filename = $ticket->attachment;
+        } elseif ($type === 'note') {
+            $filename = $ticket->internal_note_attachment;
+        } elseif ($type === 'reply' && $ref_id) {
+            $reply = $this->db->where(['id' => (int) $ref_id, 'ticket_id' => $id])
+                ->get(db_prefix() . 'hr_helpdesk_replies')->row();
+            $filename = $reply ? $reply->attachment : null;
+        } else {
+            $filename = null;
+        }
+        if (empty($filename)) show_404();
+
+        $this->load->helper('download');
+        force_download(FCPATH . 'uploads/hr_module/helpdesk/' . basename($filename), null);
+    }
+
     public function reply($id)
     {
         if (staff_cant('edit', 'hr_helpdesk')) access_denied('hr_helpdesk');
@@ -181,6 +212,7 @@ class Helpdesk extends AdminController
         if (empty($_FILES[$field]['name'])) return;
         $path = FCPATH . 'uploads/hr_module/helpdesk/';
         if (!is_dir($path)) mkdir($path, 0755, true);
+        hr_lock_upload_dir($path);
         $this->load->library('upload', [
             'upload_path'   => $path,
             'allowed_types' => 'pdf|doc|docx|jpg|jpeg|png|txt',

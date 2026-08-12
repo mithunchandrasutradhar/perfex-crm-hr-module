@@ -152,7 +152,7 @@ $v = function($field) use ($contract) {
                     <input type="file" name="attachment" class="form-control" accept=".pdf,.doc,.docx">
                     <?php if ($editing && $contract->attachment): ?>
                     <small class="text-muted">
-                      Current: <a href="<?php echo base_url('uploads/hr_module/contracts/'.$contract->attachment); ?>" target="_blank">
+                      Current: <a href="<?php echo admin_url('hr_module/hr_contracts/download/'.$contract->id); ?>" target="_blank">
                         <?php echo $contract->attachment; ?>
                       </a> (upload new to replace)
                     </small>

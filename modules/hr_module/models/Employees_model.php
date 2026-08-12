@@ -213,6 +213,7 @@ class Employees_model extends App_Model
     {
         $upload_path = FCPATH . 'uploads/hr_module/employees/';
         if (!is_dir($upload_path)) mkdir($upload_path, 0755, true);
+        hr_lock_upload_dir($upload_path);
         $this->load->library('upload', [
             'upload_path'   => $upload_path,
             'allowed_types' => 'jpg|jpeg|png|gif',

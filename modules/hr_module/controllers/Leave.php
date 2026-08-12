@@ -61,6 +61,7 @@ class Leave extends AdminController
             if (!empty($_FILES['attachment']['name'])) {
                 $upload_path = FCPATH . 'uploads/hr_module/leaves/';
                 if (!is_dir($upload_path)) mkdir($upload_path, 0755, true);
+                hr_lock_upload_dir($upload_path);
                 $this->load->library('upload', [
                     'upload_path'   => $upload_path,
                     'allowed_types' => 'jpg|jpeg|png|pdf|doc|docx',
@@ -145,6 +146,25 @@ class Leave extends AdminController
             $request->employee_id, $request->leave_type_id, date('Y', strtotime($request->from_date))
         );
         $this->load->view('hr_module/leave/view', $data);
+    }
+
+    // Same ownership check as view() above, proxied so the attachment isn't a
+    // directly-fetchable static file.
+    public function download($id)
+    {
+        if (staff_cant('view', 'hr_leave') && staff_cant('view_own', 'hr_leave')) {
+            access_denied('hr_leave');
+        }
+        $request = $this->Leave_model->get_request($id);
+        if (!$request) show_404();
+        if (!staff_can('view', 'hr_leave') && staff_can('view_own', 'hr_leave')) {
+            if ((int) $request->employee_id !== hr_get_own_employee_id()) {
+                access_denied('hr_leave');
+            }
+        }
+        if (empty($request->attachment)) show_404();
+        $this->load->helper('download');
+        force_download(FCPATH . 'uploads/hr_module/leaves/' . basename($request->attachment), null);
     }
 
     public function approve($id)
@@ -249,6 +269,16 @@ class Leave extends AdminController
 
     public function cancel($id)
     {
+        if (staff_cant('view', 'hr_leave') && staff_cant('view_own', 'hr_leave')) {
+            access_denied('hr_leave');
+        }
+        $request = $this->Leave_model->get_request($id);
+        if (!$request) show_404();
+        if (!staff_can('view', 'hr_leave') && staff_can('view_own', 'hr_leave')) {
+            if ((int) $request->employee_id !== hr_get_own_employee_id()) {
+                access_denied('hr_leave');
+            }
+        }
         $reason = $this->input->post('reason', true);
         $result = $this->Leave_model->cancel($id, $reason ?: '');
         set_alert($result['success'] ? 'success' : 'danger',
@@ -414,7 +444,15 @@ class Leave extends AdminController
     public function get_balance_ajax()
     {
         if (!$this->input->is_ajax_request()) show_404();
-        $emp_id  = $this->input->get('employee_id');
+        if (staff_cant('view', 'hr_leave') && staff_cant('view_own', 'hr_leave')) {
+            show_404();
+        }
+        $emp_id = (int) $this->input->get('employee_id');
+        // A view_own-only caller can only ever check their own balance - same
+        // "ignore any spoofed employee_id" rule apply() already enforces above.
+        if (!staff_can('view', 'hr_leave') && staff_can('view_own', 'hr_leave')) {
+            $emp_id = hr_get_own_employee_id();
+        }
         $type_id = $this->input->get('leave_type_id');
         $year    = $this->input->get('year') ?: date('Y');
         $balance = $this->Leave_model->get_balance($emp_id, $type_id, $year);

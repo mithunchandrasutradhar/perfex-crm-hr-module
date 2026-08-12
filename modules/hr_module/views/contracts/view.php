@@ -129,7 +129,7 @@ if ($contract->end_date && $contract->status === 'active') {
             </table>
 
             <?php if ($contract->attachment): ?>
-            <a href="<?php echo base_url('uploads/hr_module/contracts/'.$contract->attachment); ?>" target="_blank"
+            <a href="<?php echo admin_url('hr_module/hr_contracts/download/'.$contract->id); ?>" target="_blank"
                class="btn btn-default btn-block btn-sm tw-mb-2">
               <i class="fa fa-paperclip tw-mr-1"></i>View Attachment
             </a>

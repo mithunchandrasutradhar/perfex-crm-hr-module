@@ -224,6 +224,33 @@ class Policies extends AdminController
         $this->load->view('hr_module/policies/view', $data);
     }
 
+    // Same _can_view_policy() authorization as view() above, proxied so
+    // attachments aren't directly-fetchable static files. $filename must be
+    // one of the policy's OWN listed attachments (or its pending revision's) -
+    // not just any file in the shared policies/ upload folder.
+    public function download($id, $filename)
+    {
+        $policy = $this->Policies_model->get($id);
+        if (!$policy) show_404();
+        if (!$this->_can_view_policy($policy)) access_denied('hr_policies');
+
+        $filename = basename($filename);
+        $attachments = $this->Policies_model->decode_attachments($policy->attachment);
+        $revision = $this->Policies_model->get_pending_revision($id);
+        if ($revision && ($this->_can_manage_departments($policy->department_id_list) || $this->_is_policy_approver())) {
+            $attachments = array_merge($attachments, $this->Policies_model->decode_attachments($revision->attachment));
+        }
+
+        $found = false;
+        foreach ($attachments as $a) {
+            if ($a['file'] === $filename) { $found = true; break; }
+        }
+        if (!$found) show_404();
+
+        $this->load->helper('download');
+        force_download(FCPATH . 'uploads/hr_module/policies/' . $filename, null);
+    }
+
     // Approving/rejecting a submission is restricted to whichever single staff member
     // is configured as the policy approver in Settings - not every admin, per explicit
     // product requirement. See _is_policy_approver() above.
@@ -343,6 +370,7 @@ class Policies extends AdminController
         if (!empty($_FILES['attachments']['name'][0])) {
             $upload_path = FCPATH . 'uploads/hr_module/policies/';
             if (!is_dir($upload_path)) mkdir($upload_path, 0755, true);
+            hr_lock_upload_dir($upload_path);
             $count = count($_FILES['attachments']['name']);
             for ($i = 0; $i < $count; $i++) {
                 if (empty($_FILES['attachments']['name'][$i])) continue;

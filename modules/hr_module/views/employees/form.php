@@ -201,7 +201,7 @@ function ev($obj, $key, $default = '') {
                   <label class="tw-block tw-mb-2">HR Profile Photo <small class="text-muted">(optional, overrides staff photo)</small></label>
                   <div id="photo-preview" class="tw-mb-2">
                     <?php if ($is_edit && $e->photo): ?>
-                    <img src="<?php echo base_url('uploads/hr_module/employees/' . $e->photo); ?>"
+                    <img src="<?php echo admin_url('hr_module/employees/photo/' . $e->id); ?>"
                       class="img-circle" width="80" height="80" style="object-fit:cover" id="preview-img">
                     <?php else: ?>
                     <div id="preview-img" style="width:80px;height:80px;border-radius:50%;background:#e2e8f0;display:inline-flex;align-items:center;justify-content:center;">

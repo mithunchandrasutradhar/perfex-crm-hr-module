@@ -76,6 +76,22 @@ class Hr_contracts extends AdminController
         $this->load->view('hr_module/contracts/view', $data);
     }
 
+    // Attachments live in a web-reachable uploads/ folder with no access control
+    // of their own - this proxies the same ownership check view() uses above,
+    // rather than linking straight to the static file.
+    public function download($id)
+    {
+        if (staff_cant('view', 'hr_contracts') && staff_cant('view_own', 'hr_contracts')) access_denied('hr_contracts');
+        $contract = $this->Hr_contracts_model->get($id);
+        if (!$contract) show_404();
+        if (!staff_can('view', 'hr_contracts') && staff_can('view_own', 'hr_contracts')) {
+            if ((int) $contract->employee_id !== hr_get_own_employee_id()) access_denied('hr_contracts');
+        }
+        if (empty($contract->attachment)) show_404();
+        $this->load->helper('download');
+        force_download(FCPATH . 'uploads/hr_module/contracts/' . basename($contract->attachment), null);
+    }
+
     public function sign($id)
     {
         if (staff_cant('edit', 'hr_contracts')) access_denied('hr_contracts');
@@ -124,6 +140,7 @@ class Hr_contracts extends AdminController
         if (empty($_FILES['attachment']['name'])) return;
         $path = FCPATH . 'uploads/hr_module/contracts/';
         if (!is_dir($path)) mkdir($path, 0755, true);
+        hr_lock_upload_dir($path);
         $this->load->library('upload', [
             'upload_path'   => $path,
             'allowed_types' => 'pdf|doc|docx',

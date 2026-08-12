@@ -93,6 +93,22 @@ function hr_module_register_permissions()
 }
 
 /**
+ * Drops a "Deny from all" .htaccess into an hr_module upload directory the
+ * first time it's created, so contract/loan/policy/helpdesk/training/leave
+ * attachments and employee photos - all real PII - can't be fetched by a
+ * direct static URL even if a filename ever leaks. Every download now goes
+ * through a permission-checked controller action instead (see each
+ * controller's download()/photo() method), so this never needs to be undone.
+ */
+function hr_lock_upload_dir($path)
+{
+    $file = rtrim($path, '/\\') . '/.htaccess';
+    if (!is_file($file)) {
+        file_put_contents($file, "Order Deny,Allow\nDeny from all\n");
+    }
+}
+
+/**
  * Returns the hr_employees.id for the currently logged-in staff member, or 0 if none.
  * Used for view_own permission filtering.
  */

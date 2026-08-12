@@ -3,6 +3,12 @@ defined('BASEPATH') or exit('No direct script access allowed');
 
 class Hr_module_model extends App_Model
 {
+    // Settings are read many times over the course of one request (e.g. the
+    // Payroll list recomputes live overtime/shift/tax figures per row, each
+    // pulling half a dozen settings) - cache the full table per-request so
+    // that fans out to one query instead of one per lookup.
+    private $_settings_cache = null;
+
     public function __construct()
     {
         parent::__construct();
@@ -12,12 +18,8 @@ class Hr_module_model extends App_Model
 
     public function get_setting($key, $default = '')
     {
-        $this->db->where('setting_key', $key);
-        $row = $this->db->get(db_prefix() . 'hr_settings')->row();
-        if ($row) {
-            return $row->setting_value;
-        }
-        return $default;
+        $settings = $this->get_all_settings();
+        return array_key_exists($key, $settings) ? $settings[$key] : $default;
     }
 
     // Whether a given "Notify on X" checkbox (Settings > Notification Settings)
@@ -31,12 +33,15 @@ class Hr_module_model extends App_Model
 
     public function get_all_settings()
     {
-        $rows    = $this->db->get(db_prefix() . 'hr_settings')->result();
-        $settings = [];
-        foreach ($rows as $row) {
-            $settings[$row->setting_key] = $row->setting_value;
+        if ($this->_settings_cache === null) {
+            $rows    = $this->db->get(db_prefix() . 'hr_settings')->result();
+            $settings = [];
+            foreach ($rows as $row) {
+                $settings[$row->setting_key] = $row->setting_value;
+            }
+            $this->_settings_cache = $settings;
         }
-        return $settings;
+        return $this->_settings_cache;
     }
 
     public function save_settings($data)
@@ -59,6 +64,10 @@ class Hr_module_model extends App_Model
                 ]);
             }
         }
+        // Invalidate the cache so anything reading settings later in this
+        // same request (there isn't currently a caller that does, but a
+        // future one shouldn't silently get stale values) sees the update.
+        $this->_settings_cache = null;
         return true;
     }
 

@@ -45,6 +45,13 @@ class Training_model extends App_Model
             ->get(db_prefix() . $this->table)->row();
     }
 
+    public function is_participant($training_id, $employee_id)
+    {
+        if (!$employee_id) return false;
+        return (bool) $this->db->where(['training_id' => $training_id, 'employee_id' => $employee_id])
+            ->get(db_prefix() . $this->parts_table)->row();
+    }
+
     // Whether this staff member is enrolled in (as employee) or assigned to (as
     // instructor) at least one training - lets them reach their own list/menu item
     // without needing module-wide view/view_own permission on their role.

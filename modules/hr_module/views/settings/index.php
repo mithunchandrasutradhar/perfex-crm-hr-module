@@ -396,7 +396,7 @@ $can_edit = staff_can('edit', 'hr_settings') || is_admin();
                                     <div class="form-group">
                                         <label><?php echo _l('hr_settings_whatsapp_api_key'); ?></label>
                                         <input type="password" name="whatsapp_api_key" class="form-control" autocomplete="new-password"
-                                            value="<?php echo isset($settings['whatsapp_api_key']) ? htmlspecialchars($settings['whatsapp_api_key']) : ''; ?>"
+                                            placeholder="<?php echo !empty($settings['whatsapp_api_key']) ? '•••••••• (saved — leave blank to keep)' : ''; ?>"
                                             <?php echo !$can_edit ? 'readonly' : ''; ?>>
                                     </div>
                                 </div>

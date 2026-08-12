@@ -66,7 +66,7 @@ $is_closed = in_array($ticket->status, ['closed','resolved']);
 
             <?php if ($ticket->attachment): ?>
             <div class="tw-mt-3">
-              <a href="<?php echo base_url('uploads/hr_module/helpdesk/'.$ticket->attachment); ?>" target="_blank" class="btn btn-default btn-xs">
+              <a href="<?php echo admin_url('hr_module/helpdesk/download/'.$ticket->id.'/ticket'); ?>" target="_blank" class="btn btn-default btn-xs">
                 <i class="fa fa-paperclip tw-mr-1"></i>Attachment
               </a>
             </div>
@@ -91,7 +91,7 @@ $is_closed = in_array($ticket->status, ['closed','resolved']);
             <p class="tw-mb-0"><?php echo nl2br(htmlspecialchars($reply->message)); ?></p>
             <?php if ($reply->attachment): ?>
             <div class="tw-mt-2">
-              <a href="<?php echo base_url('uploads/hr_module/helpdesk/'.$reply->attachment); ?>" target="_blank" class="btn btn-default btn-xs">
+              <a href="<?php echo admin_url('hr_module/helpdesk/download/'.$ticket->id.'/reply/'.$reply->id); ?>" target="_blank" class="btn btn-default btn-xs">
                 <i class="fa fa-paperclip tw-mr-1"></i>Attachment
               </a>
             </div>
@@ -115,7 +115,7 @@ $is_closed = in_array($ticket->status, ['closed','resolved']);
               <p class="tw-mb-2"><?php echo nl2br(htmlspecialchars($ticket->internal_note)); ?></p>
               <?php if ($ticket->internal_note_attachment): ?>
               <div class="tw-mb-2">
-                <a href="<?php echo base_url('uploads/hr_module/helpdesk/'.$ticket->internal_note_attachment); ?>" target="_blank" class="btn btn-default btn-xs">
+                <a href="<?php echo admin_url('hr_module/helpdesk/download/'.$ticket->id.'/note'); ?>" target="_blank" class="btn btn-default btn-xs">
                   <i class="fa fa-paperclip tw-mr-1"></i>Attachment
                 </a>
               </div>
@@ -141,7 +141,7 @@ $is_closed = in_array($ticket->status, ['closed','resolved']);
                 </div>
                 <?php if ($ticket->internal_note_attachment): ?>
                 <div class="tw-mb-3">
-                  <a href="<?php echo base_url('uploads/hr_module/helpdesk/'.$ticket->internal_note_attachment); ?>" target="_blank" class="btn btn-default btn-xs">
+                  <a href="<?php echo admin_url('hr_module/helpdesk/download/'.$ticket->id.'/note'); ?>" target="_blank" class="btn btn-default btn-xs">
                     <i class="fa fa-paperclip tw-mr-1"></i>Current Attachment
                   </a>
                 </div>
