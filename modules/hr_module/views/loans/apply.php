@@ -108,6 +108,13 @@ if (!isset($own_emp_id)) $own_emp_id = 0;
 <script>
 $(function () {
     var STEP = 500;
+    // A fixed 500-unit step turns into thousands of <option> elements once the
+    // amount gets large (e.g. 2,000 options at a 1,000,000 loan) - rebuilding
+    // that many via selectpicker's refresh() on every keystroke is what freezes
+    // the tab. Capping the option count and widening the step to compensate
+    // keeps the dropdown responsive at any amount, while still only ever
+    // offering clean round numbers.
+    var MAX_INSTALLMENT_OPTIONS = 200;
     var $amount      = $('#loan_amount');
     var $months      = $('#loan_months');
     var $installment = $('#loan_installment');
@@ -157,8 +164,15 @@ $(function () {
         }
 
         var top = Math.ceil(amount / STEP) * STEP;
+        // Keep the option count bounded: widen the step to the next clean
+        // multiple of STEP once a plain 500-unit granularity would produce more
+        // than MAX_INSTALLMENT_OPTIONS choices.
+        var effectiveStep = STEP;
+        if (top / STEP > MAX_INSTALLMENT_OPTIONS) {
+            effectiveStep = Math.ceil((top / MAX_INSTALLMENT_OPTIONS) / STEP) * STEP;
+        }
         var steps = [];
-        for (var v = STEP; v <= top; v += STEP) steps.push(v);
+        for (var v = effectiveStep; v <= top; v += effectiveStep) steps.push(v);
 
         // Keep the previous selection if it's still a valid step, otherwise default
         // to whichever step lands closest to a ~12 month repayment period.
@@ -184,7 +198,13 @@ $(function () {
         updateMonths();
     }
 
-    $amount.on('input', rebuildInstallmentOptions);
+    // Debounced so a full dropdown rebuild only runs once typing pauses,
+    // instead of once per keystroke while the amount is being entered.
+    var rebuildTimer = null;
+    $amount.on('input', function () {
+        clearTimeout(rebuildTimer);
+        rebuildTimer = setTimeout(rebuildInstallmentOptions, 250);
+    });
     $installment.on('change changed.bs.select', updateMonths);
 
     // Client-side validation before submit

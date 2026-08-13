@@ -110,6 +110,11 @@ class Loans_model extends App_Model
             $months  = max(1, (int) $data['repayment_months']);
             $install = round($amount / $months, 2);
         }
+        // repayment_months is a plain int column - a huge amount against a tiny
+        // installment (or a huge value typed directly into the months field)
+        // must not be allowed to overflow it. 360 months (30 years) is already
+        // far beyond any realistic employee loan term.
+        $months = min($months, 360);
 
         $record = [
             'employee_id'         => (int) $data['employee_id'],

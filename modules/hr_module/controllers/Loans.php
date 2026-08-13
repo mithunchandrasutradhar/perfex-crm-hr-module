@@ -34,6 +34,16 @@ class Loans extends AdminController
         $own_emp_id = $own_only ? hr_get_own_employee_id() : 0;
 
         if ($this->input->post()) {
+            // hr_loans.amount is decimal(15,2) - an unvalidated amount beyond that
+            // (or a huge amount divided by a tiny installment, blowing up the
+            // computed repayment_months past what its int column can hold) hits an
+            // uncaught "out of range" DB error on insert instead of a clean message.
+            $posted_amount = (float) $this->input->post('amount');
+            if ($posted_amount <= 0 || $posted_amount > 99999999.99) {
+                set_alert('danger', 'Loan amount must be greater than 0 and no more than 99,999,999.99.');
+                redirect(admin_url('hr_module/loans/apply'));
+            }
+
             // view_own users can only apply for themselves — ignore any spoofed employee_id
             $posted_emp_id = (int) $this->input->post('employee_id');
             $data = [
