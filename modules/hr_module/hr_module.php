@@ -11,8 +11,23 @@ Author: Alpha Net BD
 
 define('HR_MODULE_NAME', 'hr_module');
 
+// install.php only ever runs automatically at first activation. Every table/
+// column it adds after that point (e.g. hr_training.instructor_id) is guarded
+// by an "only if missing" check, so it's always safe to re-run - but nothing
+// re-ran it on an already-activated install, so a site whose module files get
+// updated in place without a manual Setup > Modules deactivate+reactivate could
+// keep running against a stale schema indefinitely (this is exactly what
+// caused a real 500 on hr_module/training on a live site: the column existed
+// in install.php but never got added to that site's already-created table).
+// HR_MODULE_SCHEMA_VERSION + hr_module_ensure_schema() below closes that gap:
+// bump this number whenever install.php gains a new guarded table/column, and
+// every site running this module will pick it up automatically on its very
+// next admin page load - no manual reactivation step, ever, on any install.
+define('HR_MODULE_SCHEMA_VERSION', 2);
+
 // ─── Hook registrations ────────────────────────────────────────────────────
 
+hooks()->add_action('admin_init', 'hr_module_ensure_schema');
 hooks()->add_action('admin_init', 'hr_module_init_menu_items');
 hooks()->add_action('admin_init', 'hr_module_register_permissions');
 hooks()->add_action('after_cron_run', 'hr_module_cron_tasks');
@@ -27,6 +42,46 @@ function hr_module_activation_hook()
 {
     $CI = &get_instance();
     require_once(__DIR__ . '/install.php');
+    hr_module_mark_schema_current();
+}
+
+// Re-runs install.php whenever the running code's schema version is newer than
+// whatever this specific site last applied - self-healing any table/column
+// install.php would have added since this site was first activated, with no
+// manual step required. One cheap SELECT on hr_settings per admin page view in
+// the steady state (already caught up); the real work only runs once, right
+// after a deploy that bumped HR_MODULE_SCHEMA_VERSION.
+function hr_module_ensure_schema()
+{
+    $CI = &get_instance();
+    if (!$CI->db->table_exists(db_prefix() . 'hr_settings')) {
+        return;
+    }
+    $row = $CI->db->where('setting_key', '_schema_version')->get(db_prefix() . 'hr_settings')->row();
+    $applied = $row ? (int) $row->setting_value : 0;
+    if ($applied >= HR_MODULE_SCHEMA_VERSION) {
+        return;
+    }
+
+    require_once(__DIR__ . '/install.php');
+    hr_module_mark_schema_current();
+}
+
+function hr_module_mark_schema_current()
+{
+    $CI = &get_instance();
+    $now = date('Y-m-d H:i:s');
+    $row = $CI->db->where('setting_key', '_schema_version')->get(db_prefix() . 'hr_settings')->row();
+    if ($row) {
+        $CI->db->where('setting_key', '_schema_version')
+            ->update(db_prefix() . 'hr_settings', ['setting_value' => HR_MODULE_SCHEMA_VERSION, 'updated_at' => $now]);
+    } else {
+        $CI->db->insert(db_prefix() . 'hr_settings', [
+            'setting_key'   => '_schema_version',
+            'setting_value' => HR_MODULE_SCHEMA_VERSION,
+            'created_at'    => $now,
+        ]);
+    }
 }
 
 function hr_module_deactivation_hook()

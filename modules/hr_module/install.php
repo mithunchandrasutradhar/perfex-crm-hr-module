@@ -1,6 +1,13 @@
 <?php
 defined('BASEPATH') or exit('No direct script access allowed');
 
+// This file re-runs automatically on every already-activated install whenever
+// HR_MODULE_SCHEMA_VERSION (in hr_module.php) is bumped - see
+// hr_module_ensure_schema() there. That means every statement in here MUST
+// stay guarded ("only create/alter if not already there"), the same as it
+// already is. If you add a new table or column below, also bump
+// HR_MODULE_SCHEMA_VERSION, or existing sites will never pick it up.
+
 $CI = &get_instance();
 
 // 1. Departments
