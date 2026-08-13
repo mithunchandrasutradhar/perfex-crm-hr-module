@@ -14,22 +14,21 @@ class Hr_module extends AdminController
         $data['title']     = _l('hr_dashboard_title');
         $data['bodyclass'] = 'hr-module-dashboard';
 
-        if (is_admin() || staff_can('view', 'hr_employees')) {
-            // Admin / HR manager — global company stats
-            $data['is_own'] = false;
-            $data['stats']  = $this->Hr_module_model->get_dashboard_stats();
-        } else {
-            // Regular staff — always show their own personal data
-            $employee_id = hr_get_own_employee_id();
-            if ($employee_id) {
-                $data['is_own']      = true;
-                $data['employee_id'] = $employee_id;
-                $data['stats']       = $this->Hr_module_model->get_employee_dashboard_stats($employee_id);
-            } else {
-                $data['is_own']     = false;
-                $data['no_profile'] = true;
-                $data['stats']      = [];
-            }
+        $is_manager  = is_admin() || staff_can('view', 'hr_employees');
+        $employee_id = hr_get_own_employee_id();
+
+        // An HR manager/admin is also a company employee themselves - if they
+        // have their own linked employee profile they get BOTH dashboards (the
+        // view renders a tab switch), not just the managerial one.
+        $data['is_manager']  = $is_manager;
+        $data['employee_id'] = $employee_id;
+        $data['no_profile']  = !$is_manager && !$employee_id;
+
+        if ($is_manager) {
+            $data['manager_stats'] = $this->Hr_module_model->get_dashboard_stats();
+        }
+        if ($employee_id) {
+            $data['own_stats'] = $this->Hr_module_model->get_employee_dashboard_stats($employee_id);
         }
 
         $this->load->view('hr_module/dashboard/index', $data);

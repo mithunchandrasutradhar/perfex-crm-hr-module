@@ -1,13 +1,17 @@
 <?php defined('BASEPATH') or exit('No direct script access allowed'); ?>
 <?php
-/** @var bool  $is_own      */
-/** @var bool  $no_profile  */
-/** @var array $stats       */
-/** @var int   $employee_id */
-if (!isset($is_own))      $is_own      = false;
-if (!isset($no_profile))  $no_profile  = false;
-if (!isset($stats))       $stats       = [];
-if (!isset($employee_id)) $employee_id = 0;
+/** @var bool  $is_manager    */
+/** @var bool  $no_profile    */
+/** @var array $own_stats     */
+/** @var array $manager_stats */
+/** @var int   $employee_id   */
+if (!isset($is_manager))    $is_manager    = false;
+if (!isset($no_profile))    $no_profile    = false;
+if (!isset($own_stats))     $own_stats     = [];
+if (!isset($manager_stats)) $manager_stats = [];
+if (!isset($employee_id))   $employee_id   = 0;
+$show_own     = (bool) $employee_id;
+$show_manager = (bool) $is_manager;
 ?>
 <?php init_head(); ?>
 <div id="wrapper">
@@ -27,7 +31,18 @@ if (!isset($employee_id)) $employee_id = 0;
     </div>
 </div>
 
-<?php elseif (!empty($is_own)): ?>
+<?php else: ?>
+
+<?php if ($show_own && $show_manager): ?>
+<ul class="nav nav-tabs tw-mb-4" id="hr-dashboard-tabs">
+    <li class="active"><a href="#hr-tab-own" data-toggle="tab"><i class="fa fa-user tw-mr-1"></i>My Dashboard</a></li>
+    <li><a href="#hr-tab-company" data-toggle="tab"><i class="fa fa-building tw-mr-1"></i>Company Dashboard</a></li>
+</ul>
+<div class="tab-content">
+<div class="tab-pane active" id="hr-tab-own">
+<?php endif; ?>
+
+<?php if ($show_own): $stats = $own_stats; ?>
 <!-- ══════════════════════════════════════════════════════════════════
      PERSONAL DASHBOARD  (view_own staff)
      ══════════════════════════════════════════════════════════════════ -->
@@ -159,9 +174,13 @@ $task_status_colors = [
                     </div>
                     <div>
                         <div class="tw-text-xs tw-text-neutral-500 tw-uppercase tw-tracking-wide">Net Salary</div>
-                        <div class="tw-text-xl tw-font-bold tw-text-neutral-800">
+                        <div class="tw-text-xl tw-font-bold tw-text-neutral-800 tw-flex tw-items-center tw-gap-2">
                             <?php if ($payroll): ?>
-                                <?php echo app_format_money($payroll->net_salary, get_base_currency()); ?>
+                                <span id="net-salary-masked">****</span>
+                                <span id="net-salary-value" style="display:none"><?php echo app_format_money($payroll->net_salary, get_base_currency()); ?></span>
+                                <button type="button" id="net-salary-toggle" class="tw-bg-transparent tw-border-0 tw-p-0 tw-text-neutral-400" style="cursor:pointer" title="Show/hide amount">
+                                    <i class="fa-regular fa-eye"></i>
+                                </button>
                             <?php else: ?>
                                 <span class="tw-text-base text-muted">Not generated</span>
                             <?php endif; ?>
@@ -285,25 +304,27 @@ $task_status_colors = [
             <div class="panel-heading">
                 <h5 class="tw-font-semibold tw-mb-0"><i class="fa fa-graduation-cap tw-mr-2 text-info"></i>Upcoming Training</h5>
             </div>
-            <div class="panel-body tw-p-0">
-                <table class="table table-condensed tw-mb-0">
-                    <thead><tr><th>Training</th><th>Start Date</th><th>Status</th></tr></thead>
-                    <tbody>
-                        <?php foreach ($trainings as $tr): ?>
-                        <tr>
-                            <td><?php echo htmlspecialchars($tr->title); ?></td>
-                            <td><?php echo _d($tr->start_date); ?></td>
-                            <td>
-                                <?php if ($tr->status === 'in_progress'): ?>
-                                    <span class="label label-success">In Progress</span>
-                                <?php else: ?>
-                                    <span class="label label-info">Scheduled</span>
-                                <?php endif; ?>
-                            </td>
-                        </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
+            <div class="panel-body">
+                <div class="table-responsive">
+                    <table class="table table-condensed tw-mb-0">
+                        <thead><tr><th>Training</th><th>Start Date</th><th>Status</th></tr></thead>
+                        <tbody>
+                            <?php foreach ($trainings as $tr): ?>
+                            <tr>
+                                <td><?php echo htmlspecialchars($tr->title); ?></td>
+                                <td><?php echo _d($tr->start_date); ?></td>
+                                <td>
+                                    <?php if ($tr->status === 'in_progress'): ?>
+                                        <span class="label label-success">In Progress</span>
+                                    <?php else: ?>
+                                        <span class="label label-info">Scheduled</span>
+                                    <?php endif; ?>
+                                </td>
+                            </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
@@ -321,17 +342,17 @@ $task_status_colors = [
                         <i class="fa fa-calendar-plus tw-mr-1"></i>Apply for Leave
                     </a>
                     <?php endif; ?>
-                    <?php if (staff_can('view_own', 'hr_leave')): ?>
+                    <?php if (staff_can('view', 'hr_leave') || staff_can('view_own', 'hr_leave')): ?>
                     <a href="<?php echo admin_url('hr_module/leave'); ?>" class="btn btn-default btn-sm">
                         <i class="fa fa-calendar tw-mr-1"></i>My Leaves
                     </a>
                     <?php endif; ?>
-                    <?php if (staff_can('view_own', 'hr_attendance')): ?>
+                    <?php if (staff_can('view', 'hr_attendance') || staff_can('view_own', 'hr_attendance')): ?>
                     <a href="<?php echo admin_url('hr_module/attendance'); ?>" class="btn btn-default btn-sm">
                         <i class="fa fa-clock tw-mr-1"></i>My Attendance
                     </a>
                     <?php endif; ?>
-                    <?php if (staff_can('view_own', 'hr_payroll')): ?>
+                    <?php if (staff_can('view', 'hr_payroll') || staff_can('view_own', 'hr_payroll')): ?>
                     <a href="<?php echo admin_url('hr_module/payroll'); ?>" class="btn btn-default btn-sm">
                         <i class="fa fa-file-invoice-dollar tw-mr-1"></i>My Payslips
                     </a>
@@ -347,7 +368,14 @@ $task_status_colors = [
     </div>
 </div>
 
-<?php else: ?>
+<?php endif; ?>
+
+<?php if ($show_own && $show_manager): ?>
+</div>
+<div class="tab-pane" id="hr-tab-company">
+<?php endif; ?>
+
+<?php if ($show_manager): $stats = $manager_stats; ?>
 <!-- ══════════════════════════════════════════════════════════════════
      ADMIN / GLOBAL DASHBOARD
      ══════════════════════════════════════════════════════════════════ -->
@@ -520,6 +548,13 @@ $task_status_colors = [
 
 <?php endif; ?>
 
+<?php if ($show_own && $show_manager): ?>
+</div>
+</div>
+<?php endif; ?>
+
+<?php endif; ?>
+
     </div><!-- /.content -->
 </div><!-- /#wrapper -->
 
@@ -536,3 +571,26 @@ $task_status_colors = [
 </style>
 
 <?php init_tail(); ?>
+<script>
+$(function () {
+    // The Net Salary card is wrapped in an <a> (click anywhere navigates to
+    // Payroll) - the toggle button must stop that click from bubbling up and
+    // triggering the navigation too.
+    $('#net-salary-toggle').on('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        var $masked = $('#net-salary-masked');
+        var $value  = $('#net-salary-value');
+        var $icon   = $(this).find('i');
+        if ($value.is(':visible')) {
+            $value.hide();
+            $masked.show();
+            $icon.removeClass('fa-eye-slash').addClass('fa-eye');
+        } else {
+            $masked.hide();
+            $value.show();
+            $icon.removeClass('fa-eye').addClass('fa-eye-slash');
+        }
+    });
+});
+</script>
