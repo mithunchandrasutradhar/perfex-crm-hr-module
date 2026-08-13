@@ -9,6 +9,11 @@ foreach (['status', 'from_date', 'to_date'] as $key) {
     $v = $CI->input->get($key);
     if ($v !== null && $v !== '') $filters[$key] = $v;
 }
+// The date filters now come from the same site-display-format datepicker
+// widget Attendance's list already uses (see attendance/table.php) - convert
+// back to the ISO format Training_model's date comparisons expect.
+if (!empty($filters['from_date'])) $filters['from_date'] = to_sql_date($filters['from_date']);
+if (!empty($filters['to_date']))   $filters['to_date']   = to_sql_date($filters['to_date']);
 
 if (!is_admin() && !staff_can('view', 'hr_training')) {
     $filters['own_or_instructor'] = ['employee_id' => hr_get_own_employee_id(), 'staff_id' => get_staff_user_id()];

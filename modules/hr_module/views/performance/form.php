@@ -18,12 +18,16 @@
                     <label for="employee_id"><?php echo _l('hr_employee'); ?> <span class="text-danger">*</span></label>
                     <select name="employee_id" id="employee_id" class="selectpicker" required
                             data-width="100%" data-live-search="true"
-                            data-none-selected-text="<?php echo _l('hr_select'); ?>">
+                            data-none-selected-text="<?php echo _l('hr_select'); ?>"
+                            <?php if (!empty($own_only)) echo 'disabled'; ?>>
                       <option value=""><?php echo _l('hr_select'); ?></option>
                       <?php foreach ($employees as $id => $name): ?>
-                      <option value="<?php echo $id; ?>"><?php echo htmlspecialchars($name); ?></option>
+                      <option value="<?php echo $id; ?>" <?php if (!empty($own_only)) echo 'selected'; ?>><?php echo htmlspecialchars($name); ?></option>
                       <?php endforeach; ?>
                     </select>
+                    <?php if (!empty($own_only)): ?>
+                    <input type="hidden" name="employee_id" value="<?php echo (int) $own_emp_id; ?>">
+                    <?php endif; ?>
                   </div>
                 </div>
                 <div class="col-md-6">
@@ -105,17 +109,17 @@ $(function(){
                     '</div>' +
                   '</div>' +
                   '<div class="col-md-3">' +
-                    '<div class="form-group">' +
-                      '<input type="text" name="sub_description['+i+']" class="form-control" placeholder="<?php echo _l('hr_performance_task_description'); ?>">' +
+                    '<div class="form-group select-placeholder">' +
+                      '<select name="sub_evaluator_ids['+i+'][]" class="selectpicker sub-evaluator-select" multiple ' +
+                              'data-width="100%" data-live-search="true" data-actions-box="true" ' +
+                              'data-none-selected-text="<?php echo _l('hr_performance_evaluators'); ?>">' +
+                        evaluatorOptions +
+                      '</select>' +
                     '</div>' +
                   '</div>' +
                 '</div>' +
-                '<div class="form-group select-placeholder tw-mb-0">' +
-                  '<select name="sub_evaluator_ids['+i+'][]" class="selectpicker sub-evaluator-select" multiple ' +
-                          'data-width="100%" data-live-search="true" data-actions-box="true" ' +
-                          'data-none-selected-text="<?php echo _l('hr_performance_evaluators'); ?>">' +
-                    evaluatorOptions +
-                  '</select>' +
+                '<div class="form-group tw-mb-0">' +
+                  '<textarea name="sub_description['+i+']" class="form-control" rows="2" placeholder="<?php echo _l('hr_performance_task_description'); ?>"></textarea>' +
                 '</div>' +
               '</div>' +
             '</div>'

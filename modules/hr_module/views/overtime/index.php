@@ -7,15 +7,23 @@
         <div class="tw-mb-2 tw-flex tw-flex-wrap tw-items-center tw-justify-between tw-gap-2">
           <h4 class="tw-font-semibold tw-text-lg tw-text-neutral-700"><?php echo _l('hr_overtime_list'); ?></h4>
           <div class="tw-flex tw-flex-wrap tw-gap-2">
-            <select id="f-dept" class="form-control input-sm" style="width:150px">
+            <?php if (!empty($show_dept_filter)): ?>
+            <select id="f-dept" class="selectpicker" data-width="150px" data-live-search="true">
               <option value=""><?php echo _l('hr_all'); ?> Dept</option>
               <?php foreach ($departments as $d): ?>
               <option value="<?php echo $d->id; ?>"><?php echo htmlspecialchars($d->name); ?></option>
               <?php endforeach; ?>
             </select>
-            <input type="date" id="f-from" class="form-control input-sm" style="width:135px">
-            <input type="date" id="f-to"   class="form-control input-sm" style="width:135px">
-            <select id="f-status" class="form-control input-sm" style="width:110px">
+            <?php endif; ?>
+            <div class="input-group date" style="width:135px">
+              <input type="text" id="f-from" class="form-control datepicker" autocomplete="off" placeholder="From date">
+              <div class="input-group-addon"><i class="fa-regular fa-calendar calendar-icon"></i></div>
+            </div>
+            <div class="input-group date" style="width:135px">
+              <input type="text" id="f-to" class="form-control datepicker" autocomplete="off" placeholder="To date">
+              <div class="input-group-addon"><i class="fa-regular fa-calendar calendar-icon"></i></div>
+            </div>
+            <select id="f-status" class="selectpicker" data-width="110px">
               <option value="">All Status</option>
               <option value="pending">Pending</option>
               <option value="approved">Approved</option>
@@ -46,14 +54,15 @@
 $(function(){
     initDataTable('.table-hr-overtime', window.location.href, [], [2,'desc']);
     function reload(){
+        var deptVal = $('#f-dept').length ? $('#f-dept').val() : '';
         var url = window.location.href.split('?')[0]
-            + '?department_id=' + $('#f-dept').val()
+            + '?department_id=' + deptVal
             + '&status='        + $('#f-status').val()
             + '&from_date='     + $('#f-from').val()
             + '&to_date='       + $('#f-to').val();
         $('.table-hr-overtime').DataTable().ajax.url(url).load();
     }
-    $('#f-dept,#f-status,#f-from,#f-to').on('change', reload);
+    $('#f-dept,#f-status,#f-from,#f-to').on('change changed.bs.select', reload);
 
     $(document).on('click', '.hr-ot-reject', function(e){
         e.preventDefault();

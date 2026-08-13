@@ -18,10 +18,15 @@ class Hr_contracts extends AdminController
             $this->app->get_table_data(module_views_path('hr_module', 'contracts/table'));
             return;
         }
-        $data['title']         = _l('hr_contract_list');
-        $data['departments']   = $this->Departments_model->get_active();
-        $data['employees']     = $this->Hr_module_model->get_active_employees_dropdown();
-        $data['expiring_soon'] = $this->Hr_contracts_model->get_expiring_soon(30);
+        // The department/employee filters only make sense for someone who can
+        // see more than their own contract - table.php already forces the list
+        // back to just the caller's own record otherwise.
+        $can_view_all = is_admin() || staff_can('view', 'hr_contracts');
+        $data['title']            = _l('hr_contract_list');
+        $data['show_dept_filter'] = $can_view_all;
+        $data['departments']      = $can_view_all ? $this->Departments_model->get_active() : [];
+        $data['employees']        = $can_view_all ? $this->Hr_module_model->get_active_employees_dropdown() : [];
+        $data['expiring_soon']    = $this->Hr_contracts_model->get_expiring_soon(30);
         $this->load->view('hr_module/contracts/index', $data);
     }
 

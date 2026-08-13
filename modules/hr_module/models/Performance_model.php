@@ -40,7 +40,8 @@ class Performance_model extends App_Model
                            d.name as department_name,
                            CONCAT(s.firstname," ",s.lastname) as assigned_by_name,
                            COUNT(st.id) as sub_target_count,
-                           SUM(st.status = "completed") as completed_count', false)
+                           SUM(st.status = "completed") as completed_count,
+                           SUM(st.status = "pending") as pending_count', false)
             ->from(db_prefix() . $this->targets_table . ' t')
             ->join(db_prefix() . 'hr_employees e', 'e.id = t.employee_id', 'left')
             ->join(db_prefix() . 'departments d', 'd.departmentid = e.department_id', 'left')

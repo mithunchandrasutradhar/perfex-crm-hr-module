@@ -22,10 +22,15 @@ class Shifts extends AdminController
             $this->app->get_table_data(module_views_path('hr_module', 'shifts/table'));
             return;
         }
-        $data['title']       = _l('hr_shift_list');
-        $data['departments'] = $this->Departments_model->get_active();
-        $data['shift_types'] = $this->Shifts_model->get_active_types();
-        $data['can_manage']  = is_admin() || staff_can('create', 'hr_shifts') || staff_can('edit', 'hr_shifts');
+        // The department filter only makes sense for someone who can see more
+        // than their own shift assignments - table.php already forces the list
+        // back to just the caller's own records otherwise.
+        $can_view_all = is_admin() || staff_can('view', 'hr_shifts');
+        $data['title']            = _l('hr_shift_list');
+        $data['show_dept_filter'] = $can_view_all;
+        $data['departments']      = $can_view_all ? $this->Departments_model->get_active() : [];
+        $data['shift_types']      = $this->Shifts_model->get_active_types();
+        $data['can_manage']       = is_admin() || staff_can('create', 'hr_shifts') || staff_can('edit', 'hr_shifts');
         $this->load->view('hr_module/shifts/index', $data);
     }
 

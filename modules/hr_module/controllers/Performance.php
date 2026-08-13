@@ -19,17 +19,28 @@ class Performance extends AdminController
             $this->app->get_table_data(module_views_path('hr_module', 'performance/table'));
             return;
         }
-        $data['title']       = _l('hr_performance_list');
-        $data['departments'] = $this->Departments_model->get_active();
-        $data['employees']   = $this->Hr_module_model->get_active_employees_dropdown();
+        // The department filter only makes sense for someone who can see more
+        // than their own/evaluated targets - table.php already forces the list
+        // back to own-or-evaluator otherwise.
+        $can_view_all = is_admin() || staff_can('view', 'hr_performance');
+        $data['title']            = _l('hr_performance_list');
+        $data['show_dept_filter'] = $can_view_all;
+        $data['departments']      = $can_view_all ? $this->Departments_model->get_active() : [];
+        $data['employees']        = $this->Hr_module_model->get_active_employees_dropdown();
         $this->load->view('hr_module/performance/index', $data);
     }
 
     public function add()
     {
         if (staff_cant('create', 'hr_performance')) access_denied('hr_performance');
+        // Someone who can only create (not view everyone) may only assign a
+        // target to themselves - mirrors the same self-service restriction
+        // already used for Loans/Overtime/Shifts/Helpdesk.
+        $own_only   = !is_admin() && !staff_can('view', 'hr_performance');
+        $own_emp_id = $own_only ? hr_get_own_employee_id() : 0;
+
         if ($this->input->post()) {
-            $data = $this->_target_post_data();
+            $data = $this->_target_post_data($own_only, $own_emp_id);
             $data['sub_targets'] = $this->_post_sub_targets();
             $result = $this->Performance_model->assign($data);
             if ($result['success']) {
@@ -39,9 +50,18 @@ class Performance extends AdminController
             set_alert('danger', $result['message']);
             redirect(admin_url('hr_module/performance/add'));
         }
-        $data['title']     = _l('hr_performance_assign');
-        $data['target']    = null;
-        $data['employees'] = $this->Hr_module_model->get_active_employees_dropdown();
+        $data['title']      = _l('hr_performance_assign');
+        $data['target']     = null;
+        $data['own_only']   = $own_only;
+        $data['own_emp_id'] = $own_emp_id;
+        if ($own_only) {
+            $emp = $this->Employees_model->get($own_emp_id);
+            $data['employees'] = $own_emp_id && $emp
+                ? [$own_emp_id => $emp->first_name . ' ' . $emp->last_name]
+                : [];
+        } else {
+            $data['employees'] = $this->Hr_module_model->get_active_employees_dropdown();
+        }
         $data['staff']     = $this->_get_staff_dropdown();
         $this->load->view('hr_module/performance/form', $data);
     }
@@ -202,6 +222,14 @@ class Performance extends AdminController
         if (staff_cant('create', 'hr_performance') && staff_cant('edit', 'hr_performance')) {
             access_denied('hr_performance');
         }
+        // A pure create-only self-service employee (no view/edit) can assign a
+        // target for themselves, but must not be able to pull up anyone else's
+        // report just by changing the URL - force it back to their own record,
+        // the same way add() forces employee_id for that same tier of caller.
+        $own_only = !is_admin() && !staff_can('view', 'hr_performance') && !staff_can('edit', 'hr_performance');
+        if ($own_only) {
+            $employee_id = hr_get_own_employee_id();
+        }
         $employee = $this->Employees_model->get($employee_id);
         if (!$employee) show_404();
 
@@ -211,10 +239,14 @@ class Performance extends AdminController
         $this->load->view('hr_module/performance/employee_report', $data);
     }
 
-    private function _target_post_data()
+    // $own_only/$own_emp_id are only ever passed by add() - edit()'s own call
+    // (with no arguments) keeps trusting the posted employee_id exactly as
+    // before, since editing an existing target already requires 'edit'.
+    private function _target_post_data($own_only = false, $own_emp_id = 0)
     {
+        $posted_emp_id = (int) $this->input->post('employee_id');
         return [
-            'employee_id' => (int) $this->input->post('employee_id'),
+            'employee_id' => $own_only ? $own_emp_id : $posted_emp_id,
             'title'       => $this->input->post('title', true),
             'description' => $this->input->post('description', true),
             'due_date'    => to_sql_date($this->input->post('due_date')),

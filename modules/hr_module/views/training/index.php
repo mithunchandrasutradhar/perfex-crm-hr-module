@@ -7,8 +7,14 @@
         <div class="tw-mb-2 tw-flex tw-flex-wrap tw-items-center tw-justify-between tw-gap-2">
           <h4 class="tw-font-semibold tw-text-lg tw-text-neutral-700"><?php echo _l('hr_training_list'); ?></h4>
           <div class="tw-flex tw-flex-wrap tw-gap-2">
-            <input type="date" id="f-from" class="form-control input-sm" style="width:135px" placeholder="From">
-            <input type="date" id="f-to"   class="form-control input-sm" style="width:135px" placeholder="To">
+            <div class="input-group date" style="width:135px">
+              <input type="text" id="f-from" class="form-control datepicker" autocomplete="off" placeholder="From date">
+              <div class="input-group-addon"><i class="fa-regular fa-calendar calendar-icon"></i></div>
+            </div>
+            <div class="input-group date" style="width:135px">
+              <input type="text" id="f-to" class="form-control datepicker" autocomplete="off" placeholder="To date">
+              <div class="input-group-addon"><i class="fa-regular fa-calendar calendar-icon"></i></div>
+            </div>
             <select id="f-status" class="selectpicker" data-width="140px">
               <option value="">All Status</option>
               <option value="scheduled">Scheduled</option>

@@ -8,25 +8,27 @@
           <h4 class="tw-font-semibold tw-text-lg tw-text-neutral-700"><?php echo _l('hr_payroll_list'); ?></h4>
           <div class="tw-flex tw-flex-wrap tw-gap-2">
             <!-- Filters -->
-            <select id="f-dept" class="form-control input-sm" style="width:150px">
+            <?php if (!empty($show_dept_filter)): ?>
+            <select id="f-dept" class="selectpicker" data-width="150px" data-live-search="true">
               <option value=""><?php echo _l('hr_all'); ?> Dept</option>
               <?php foreach ($departments as $d): ?>
               <option value="<?php echo $d->id; ?>"><?php echo htmlspecialchars($d->name); ?></option>
               <?php endforeach; ?>
             </select>
-            <select id="f-month" class="form-control input-sm" style="width:110px">
+            <?php endif; ?>
+            <select id="f-month" class="selectpicker" data-width="110px">
               <option value="">Month</option>
               <?php for($m=1;$m<=12;$m++): ?>
               <option value="<?php echo $m; ?>"><?php echo date('F',mktime(0,0,0,$m,1)); ?></option>
               <?php endfor; ?>
             </select>
-            <select id="f-year" class="form-control input-sm" style="width:90px">
+            <select id="f-year" class="selectpicker" data-width="90px">
               <option value="">Year</option>
               <?php for($y=date('Y');$y>=date('Y')-3;$y--): ?>
               <option value="<?php echo $y; ?>"><?php echo $y; ?></option>
               <?php endfor; ?>
             </select>
-            <select id="f-status" class="form-control input-sm" style="width:110px">
+            <select id="f-status" class="selectpicker" data-width="110px">
               <option value="">All Status</option>
               <option value="draft">Draft</option>
               <option value="paid">Paid</option>
@@ -36,9 +38,11 @@
               <i class="fa-regular fa-plus tw-mr-1"></i><?php echo _l('hr_payroll_generate'); ?>
             </a>
             <?php endif; ?>
+            <?php if (!empty($can_manage_items)): ?>
             <a href="<?php echo admin_url('hr_module/payroll_items'); ?>" class="btn btn-default btn-sm">
               <i class="fa fa-list tw-mr-1"></i><?php echo _l('hr_payroll_items_list'); ?>
             </a>
+            <?php endif; ?>
           </div>
         </div>
         <div class="panel_s">
@@ -110,14 +114,15 @@ $(function(){
     // first" default sort).
     initDataTable('.table-hr-payroll', window.location.href, [], [2,'desc']);
     function reload() {
+        var deptVal = $('#f-dept').length ? $('#f-dept').val() : '';
         var url = window.location.href.split('?')[0]
-            + '?department_id=' + $('#f-dept').val()
+            + '?department_id=' + deptVal
             + '&pay_month='     + $('#f-month').val()
             + '&pay_year='      + $('#f-year').val()
             + '&status='        + $('#f-status').val();
         $('.table-hr-payroll').DataTable().ajax.url(url).load();
     }
-    $('#f-dept,#f-month,#f-year,#f-status').on('change', reload);
+    $('#f-dept,#f-month,#f-year,#f-status').on('change changed.bs.select', reload);
 
     $(document).on('click', '.hr-mark-paid', function(e){
         e.preventDefault();

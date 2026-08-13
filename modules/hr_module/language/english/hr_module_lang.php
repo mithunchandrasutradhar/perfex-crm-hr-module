@@ -28,22 +28,22 @@ $lang['hr_menu_contracts']                 = 'Contracts';
 $lang['hr_menu_reports']                   = 'Reports';
 
 // Permissions
-$lang['hr_perm_employees']                 = 'Employees';
-$lang['hr_perm_departments']               = 'Departments';
-$lang['hr_perm_leave']                     = 'Leave Management';
-$lang['hr_perm_attendance']                = 'Attendance';
-$lang['hr_perm_payroll']                   = 'Payroll';
-$lang['hr_perm_loans']                     = 'Loans';
-$lang['hr_perm_overtime']                  = 'Overtime';
-$lang['hr_perm_performance']               = 'Performance';
-$lang['hr_perm_training']                  = 'Training';
+$lang['hr_perm_employees']                 = 'HR Employees';
+$lang['hr_perm_departments']               = 'HR Departments';
+$lang['hr_perm_leave']                     = 'HR Leave Management';
+$lang['hr_perm_attendance']                = 'HR Attendance';
+$lang['hr_perm_payroll']                   = 'HR Payroll';
+$lang['hr_perm_loans']                     = 'HR Loans';
+$lang['hr_perm_overtime']                  = 'HR Overtime';
+$lang['hr_perm_performance']               = 'HR Performance';
+$lang['hr_perm_training']                  = 'HR Training';
 $lang['hr_perm_helpdesk']                  = 'HR Helpdesk';
 $lang['hr_perm_contracts']                 = 'HR Contracts';
-$lang['hr_perm_zkteco']                    = 'ZKTeco Devices';
+$lang['hr_perm_zkteco']                    = 'HR ZKTeco Devices';
 $lang['hr_perm_reports']                   = 'HR Reports';
 $lang['hr_perm_settings']                  = 'HR Settings';
-$lang['hr_perm_holidays']                  = 'Official Calendar';
-$lang['hr_perm_policies']                  = 'Policies';
+$lang['hr_perm_holidays']                  = 'HR Holidays';
+$lang['hr_perm_policies']                  = 'HR Policies';
 
 // Common
 $lang['hr_add']                            = 'Add';
@@ -384,7 +384,9 @@ $lang['hr_overtime_company_holiday']       = 'Company Holiday';
 $lang['hr_overtime_not_eligible_date']     = 'This date is not a weekend or a registered holiday. Overtime can only be requested for those days.';
 $lang['hr_overtime_duplicate_date']        = 'An overtime request already exists for this employee on this date.';
 $lang['hr_overtime_select_employee_date']  = 'Select an employee and date to check eligibility.';
+$lang['hr_overtime_select_date']           = 'Select a date to check eligibility.';
 $lang['hr_overtime_eligibility_hint']      = 'Overtime can only be requested for a weekend or a registered government/company holiday. Select a date to see whether it qualifies.';
+$lang['hr_overtime_current_month_only']    = 'You can only request overtime for the current month, since an earlier or later month\'s payroll may already be settled.';
 $lang['hr_overtime_approve_confirm']       = 'Approve this overtime request?';
 $lang['hr_overtime_reject_reason_prompt']  = 'Reason for rejecting (optional):';
 $lang['hr_overtime_dates']                 = 'Overtime Date(s)';
@@ -769,7 +771,7 @@ $lang['not_hr_shift_status']                     = 'Your shift assignment reques
 $lang['not_hr_payroll_generated']                = 'Payroll for %s has been generated';
 
 // ─── Shift Duty ─────────────────────────────────────────────────────────
-$lang['hr_perm_shifts']                    = 'Shifts';
+$lang['hr_perm_shifts']                    = 'HR Shifts';
 $lang['hr_settings_shift_types']           = 'Shift Types';
 $lang['hr_settings_shift_allowances_title']       = 'Shift Allowances';
 $lang['hr_settings_shift_allowance_evening']      = 'Evening Shift Allowance (per day)';

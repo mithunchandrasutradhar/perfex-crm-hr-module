@@ -22,7 +22,8 @@ $cur_year  = (int) date('Y');
             <form method="get" class="tw-mb-4">
               <div class="row">
                 <div class="col-md-3">
-                  <select name="status" class="form-control">
+                  <div class="select-placeholder">
+                  <select name="status" class="selectpicker" data-width="100%">
                     <option value="">All Statuses</option>
                     <?php foreach (['pending','approved','rejected'] as $s): ?>
                     <option value="<?php echo $s; ?>" <?php echo ($filters['status'] ?? '') === $s ? 'selected' : ''; ?>>
@@ -30,9 +31,11 @@ $cur_year  = (int) date('Y');
                     </option>
                     <?php endforeach; ?>
                   </select>
+                  </div>
                 </div>
                 <div class="col-md-2">
-                  <select name="pay_month" class="form-control">
+                  <div class="select-placeholder">
+                  <select name="pay_month" class="selectpicker" data-width="100%">
                     <option value="">All Months</option>
                     <?php for ($m = 1; $m <= 12; $m++): ?>
                     <option value="<?php echo $m; ?>" <?php echo (int)($filters['pay_month'] ?? 0) === $m ? 'selected' : ''; ?>>
@@ -40,9 +43,11 @@ $cur_year  = (int) date('Y');
                     </option>
                     <?php endfor; ?>
                   </select>
+                  </div>
                 </div>
                 <div class="col-md-2">
-                  <select name="pay_year" class="form-control">
+                  <div class="select-placeholder">
+                  <select name="pay_year" class="selectpicker" data-width="100%">
                     <option value="">All Years</option>
                     <?php for ($y = $cur_year - 1; $y <= $cur_year + 1; $y++): ?>
                     <option value="<?php echo $y; ?>" <?php echo (int)($filters['pay_year'] ?? 0) === $y ? 'selected' : ''; ?>>
@@ -50,6 +55,7 @@ $cur_year  = (int) date('Y');
                     </option>
                     <?php endfor; ?>
                   </select>
+                  </div>
                 </div>
                 <div class="col-md-2">
                   <button type="submit" class="btn btn-default">

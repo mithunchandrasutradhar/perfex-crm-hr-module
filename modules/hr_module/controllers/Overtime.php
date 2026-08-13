@@ -20,9 +20,15 @@ class Overtime extends AdminController
             $this->app->get_table_data(module_views_path('hr_module', 'overtime/table'));
             return;
         }
-        $data['title']       = _l('hr_overtime_list');
-        $data['departments'] = $this->Departments_model->get_active();
-        $data['employees']   = $this->Hr_module_model->get_active_employees_dropdown();
+        // The department filter only makes sense for someone who can see more
+        // than their own requests - table.php already forces the list back to
+        // just the caller's own records otherwise, so a company-wide department
+        // picker for that viewer would just be confusing, unusable UI.
+        $can_view_all = is_admin() || staff_can('view', 'hr_overtime');
+        $data['title']            = _l('hr_overtime_list');
+        $data['show_dept_filter'] = $can_view_all;
+        $data['departments']      = $can_view_all ? $this->Departments_model->get_active() : [];
+        $data['employees']        = $this->Hr_module_model->get_active_employees_dropdown();
         $this->load->view('hr_module/overtime/index', $data);
     }
 
@@ -36,6 +42,21 @@ class Overtime extends AdminController
         if ($this->input->post()) {
             $employee_id = $own_only ? $own_emp_id : (int) $this->input->post('employee_id');
             $dates       = $this->_post_dates();
+
+            // Self-service employees may only request overtime within the
+            // current calendar month - a past/future month's overtime would
+            // sync into that month's payroll after it may already be settled,
+            // conflicting with what was actually paid out.
+            if ($own_only) {
+                $current_ym = date('Y-m');
+                foreach ($dates as $d) {
+                    if (substr($d, 0, 7) !== $current_ym) {
+                        set_alert('danger', _l('hr_overtime_current_month_only'));
+                        redirect(admin_url('hr_module/overtime/request'));
+                    }
+                }
+            }
+
             $result = $this->Overtime_model->request([
                 'employee_id' => $employee_id,
                 'dates'       => $dates,

@@ -7,13 +7,13 @@
         <div class="tw-mb-2 tw-flex tw-flex-wrap tw-items-center tw-justify-between tw-gap-2">
           <h4 class="tw-font-semibold tw-text-lg tw-text-neutral-700"><?php echo _l('hr_employee_list'); ?></h4>
           <div class="tw-flex tw-gap-2">
-            <select id="filter-dept" class="form-control input-sm" style="width:160px">
+            <select id="filter-dept" class="selectpicker" data-width="160px" data-live-search="true">
               <option value=""><?php echo _l('hr_all') . ' ' . _l('hr_department'); ?></option>
               <?php foreach ($departments as $d): ?>
               <option value="<?php echo $d->id; ?>"><?php echo htmlspecialchars($d->name); ?></option>
               <?php endforeach; ?>
             </select>
-            <select id="filter-status" class="form-control input-sm" style="width:120px">
+            <select id="filter-status" class="selectpicker" data-width="130px">
               <option value=""><?php echo _l('hr_all'); ?></option>
               <option value="1"><?php echo _l('hr_active'); ?></option>
               <option value="0"><?php echo _l('hr_inactive'); ?></option>

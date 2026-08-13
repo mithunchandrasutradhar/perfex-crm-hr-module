@@ -159,9 +159,9 @@ $status_badge = ['draft'=>'default','paid'=>'success'];
     </div>
     <?php echo form_open(admin_url('hr_module/payroll/mark_paid/'.$payroll->id)); ?>
     <div class="modal-body">
-      <div class="form-group">
+      <div class="form-group select-placeholder">
         <label><?php echo _l('hr_payroll_payment_method'); ?></label>
-        <select name="payment_method" class="form-control" required>
+        <select name="payment_method" class="selectpicker" data-width="100%" required>
           <option value="bank_transfer"><?php echo _l('hr_payroll_bank_transfer'); ?></option>
           <option value="cash"><?php echo _l('hr_payroll_cash'); ?></option>
           <option value="cheque"><?php echo _l('hr_payroll_cheque'); ?></option>
@@ -169,7 +169,10 @@ $status_badge = ['draft'=>'default','paid'=>'success'];
       </div>
       <div class="form-group">
         <label>Payment Date</label>
-        <input type="date" name="payment_date" class="form-control" value="<?php echo date('Y-m-d'); ?>" required>
+        <div class="input-group date">
+          <input type="text" name="payment_date" class="form-control datepicker" autocomplete="off" value="<?php echo _d(date('Y-m-d')); ?>" required>
+          <div class="input-group-addon"><i class="fa-regular fa-calendar calendar-icon"></i></div>
+        </div>
       </div>
     </div>
     <div class="modal-footer">

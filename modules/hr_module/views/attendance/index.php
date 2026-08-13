@@ -44,10 +44,10 @@ if (!isset($is_global))   $is_global   = is_admin() || staff_can('view', 'hr_att
               <i class="fa-regular fa-plus tw-mr-1"></i><?php echo _l('hr_attendance_add'); ?>
             </button>
             <?php endif; ?>
+            <?php if ($is_global): ?>
             <a href="<?php echo admin_url('hr_module/attendance/monthly'); ?>" class="btn btn-default btn-sm">
               <i class="fa-regular fa-calendar tw-mr-1"></i><?php echo _l('hr_attendance_monthly'); ?>
             </a>
-            <?php if ($is_global): ?>
             <a href="<?php echo admin_url('hr_module/attendance/import'); ?>" class="btn btn-default btn-sm">
               <i class="fa-solid fa-upload tw-mr-1"></i><?php echo _l('hr_attendance_import'); ?>
             </a>

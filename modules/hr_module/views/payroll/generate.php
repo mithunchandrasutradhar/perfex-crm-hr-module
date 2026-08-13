@@ -14,9 +14,9 @@
             <?php echo form_open(admin_url('hr_module/payroll/generate'), ['id'=>'generateForm']); ?>
               <div class="row">
                 <div class="col-md-6">
-                  <div class="form-group">
+                  <div class="form-group select-placeholder">
                     <label><?php echo _l('hr_payroll_month'); ?> <span class="text-danger">*</span></label>
-                    <select name="pay_month" class="form-control" required>
+                    <select name="pay_month" class="selectpicker" data-width="100%" required>
                       <?php for($m=1;$m<=12;$m++): ?>
                       <option value="<?php echo $m; ?>" <?php if(date('n')==$m) echo 'selected'; ?>><?php echo date('F',mktime(0,0,0,$m,1)); ?></option>
                       <?php endfor; ?>
@@ -24,9 +24,9 @@
                   </div>
                 </div>
                 <div class="col-md-6">
-                  <div class="form-group">
+                  <div class="form-group select-placeholder">
                     <label><?php echo _l('hr_payroll_year'); ?> <span class="text-danger">*</span></label>
-                    <select name="pay_year" class="form-control" required>
+                    <select name="pay_year" class="selectpicker" data-width="100%" required>
                       <?php for($y=date('Y');$y>=date('Y')-2;$y--): ?>
                       <option value="<?php echo $y; ?>" <?php if(date('Y')==$y) echo 'selected'; ?>><?php echo $y; ?></option>
                       <?php endfor; ?>

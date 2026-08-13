@@ -23,7 +23,7 @@ if (!isset($pending_revisions)) $pending_revisions = [];
           </h4>
           <div class="tw-flex tw-flex-wrap tw-gap-2">
             <?php if ($is_global): ?>
-            <select id="f-dept" class="form-control input-sm" style="width:150px">
+            <select id="f-dept" class="selectpicker" data-width="150px" data-live-search="true">
               <option value="">All Visibility</option>
               <option value="public">Public</option>
               <?php foreach ($departments as $d): ?>
@@ -31,7 +31,7 @@ if (!isset($pending_revisions)) $pending_revisions = [];
               <?php endforeach; ?>
             </select>
             <?php endif; ?>
-            <select id="f-type" class="form-control input-sm" style="width:120px">
+            <select id="f-type" class="selectpicker" data-width="120px">
               <option value="">All Types</option>
               <option value="public">Public</option>
               <option value="private">Private</option>
@@ -116,6 +116,6 @@ $(function(){
             + '&type='          + $('#f-type').val();
         $('.table-hr-policies').DataTable().ajax.url(url).load();
     }
-    $('#f-dept,#f-type').on('change', reload);
+    $('#f-dept,#f-type').on('change changed.bs.select', reload);
 });
 </script>

@@ -19,9 +19,14 @@ class Loans extends AdminController
             $this->app->get_table_data(module_views_path('hr_module', 'loans/table'));
             return;
         }
-        $data['title']       = _l('hr_loan_list');
-        $data['departments'] = $this->Departments_model->get_active();
-        $data['employees']   = $this->Hr_module_model->get_active_employees_dropdown();
+        // The department filter only makes sense for someone who can see more
+        // than their own loans - table.php already forces the list back to just
+        // the caller's own records otherwise.
+        $can_view_all = is_admin() || staff_can('view', 'hr_loans');
+        $data['title']            = _l('hr_loan_list');
+        $data['show_dept_filter'] = $can_view_all;
+        $data['departments']      = $can_view_all ? $this->Departments_model->get_active() : [];
+        $data['employees']        = $this->Hr_module_model->get_active_employees_dropdown();
         $this->load->view('hr_module/loans/index', $data);
     }
 
@@ -154,7 +159,7 @@ class Loans extends AdminController
     public function approve($id)
     {
         if (staff_cant('edit', 'hr_loans')) access_denied('hr_loans');
-        $date   = $this->input->post('disbursement_date') ?: date('Y-m-d');
+        $date   = to_sql_date($this->input->post('disbursement_date')) ?: date('Y-m-d');
         $result = $this->Loans_model->approve($id, $date);
         if ($result['success']) {
             if ($this->Hr_module_model->notifications_enabled('notify_loan_approve')) {
@@ -218,7 +223,7 @@ class Loans extends AdminController
     {
         if (staff_cant('edit', 'hr_loans')) access_denied('hr_loans');
         $amount = (float) $this->input->post('amount');
-        $date   = $this->input->post('repayment_date');
+        $date   = to_sql_date($this->input->post('repayment_date'));
         $notes  = $this->input->post('notes', true);
         $result = $this->Loans_model->add_manual_repayment($id, $amount, $date, $notes);
         if ($result['success']) set_alert('success', $result['message']);

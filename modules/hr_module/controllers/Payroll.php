@@ -21,8 +21,16 @@ class Payroll extends AdminController
             $this->app->get_table_data(module_views_path('hr_module', 'payroll/table'));
             return;
         }
+        // Payroll_items::index() requires global 'view' on hr_payroll - a
+        // view_own-only employee clicking this link from here would just land
+        // on access_denied, so only show it to someone who can actually open it.
+        // Same reasoning for the department filter - table.php already forces
+        // the list back to just the caller's own records otherwise.
+        $can_view_all = is_admin() || staff_can('view', 'hr_payroll');
+        $data['can_manage_items']  = $can_view_all;
+        $data['show_dept_filter']  = $can_view_all;
         $data['title']       = _l('hr_payroll_list');
-        $data['departments'] = $this->Departments_model->get_active();
+        $data['departments'] = $can_view_all ? $this->Departments_model->get_active() : [];
         $data['employees']   = $this->Hr_module_model->get_active_employees_dropdown();
         $this->load->view('hr_module/payroll/index', $data);
     }

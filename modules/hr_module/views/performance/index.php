@@ -1,5 +1,16 @@
 <?php defined('BASEPATH') or exit('No direct script access allowed');
-$can_assign = staff_can('create', 'hr_performance') || staff_can('edit', 'hr_performance');
+// employee_report() allows either capability, but add() (the "Assign Target"
+// link below) only ever requires 'create' - gating the link on the broader
+// create-or-edit check let an edit-only viewer see a link that then 403'd.
+//
+// A pure create-only self-service employee (no view/edit) can assign a
+// target for themselves, but has no business browsing a "pick any employee"
+// report dropdown - the controller enforces this server-side too, this just
+// keeps the UI from offering a choice that would just get overridden.
+$can_manage_reports = is_admin() || staff_can('view', 'hr_performance') || staff_can('edit', 'hr_performance');
+$can_assign          = staff_can('create', 'hr_performance');
+$own_report_only     = $can_assign && !$can_manage_reports;
+$own_emp_id_for_report = $own_report_only ? hr_get_own_employee_id() : 0;
 ?>
 <?php init_head(); ?>
 <div id="wrapper">
@@ -9,12 +20,14 @@ $can_assign = staff_can('create', 'hr_performance') || staff_can('edit', 'hr_per
         <div class="tw-mb-2 tw-flex tw-flex-wrap tw-items-center tw-justify-between tw-gap-2">
           <h4 class="tw-font-semibold tw-text-lg tw-text-neutral-700"><?php echo _l('hr_performance_list'); ?></h4>
           <div class="tw-flex tw-flex-wrap tw-gap-2 tw-items-center">
+            <?php if (!empty($show_dept_filter)): ?>
             <select id="f-dept" class="selectpicker" data-width="150px" data-live-search="true">
               <option value=""><?php echo _l('hr_all'); ?> Dept</option>
               <?php foreach ($departments as $d): ?>
               <option value="<?php echo $d->id; ?>"><?php echo htmlspecialchars($d->name); ?></option>
               <?php endforeach; ?>
             </select>
+            <?php endif; ?>
             <select id="f-status" class="selectpicker" data-width="160px">
               <option value="">All Status</option>
               <option value="pending"><?php echo _l('hr_performance_status_pending'); ?></option>
@@ -22,7 +35,7 @@ $can_assign = staff_can('create', 'hr_performance') || staff_can('edit', 'hr_per
               <option value="partially_completed"><?php echo _l('hr_performance_status_partial'); ?></option>
               <option value="completed"><?php echo _l('hr_performance_status_completed'); ?></option>
             </select>
-            <?php if ($can_assign): ?>
+            <?php if ($can_manage_reports): ?>
             <select id="report-employee" class="selectpicker" data-width="200px" data-live-search="true"
                     data-none-selected-text="<?php echo _l('hr_employee'); ?>">
               <option value=""><?php echo _l('hr_select'); ?></option>
@@ -30,9 +43,16 @@ $can_assign = staff_can('create', 'hr_performance') || staff_can('edit', 'hr_per
               <option value="<?php echo $id; ?>"><?php echo htmlspecialchars($name); ?></option>
               <?php endforeach; ?>
             </select>
-            <button type="button" id="generate-report-btn" class="btn btn-default btn-sm">
-              <i class="fa fa-file-text-o tw-mr-1"></i><?php echo _l('hr_performance_generate_report'); ?>
+            <button type="button" id="generate-report-btn" class="btn btn-default">
+              <i class="fa-regular fa-file-lines tw-mr-1"></i><?php echo _l('hr_performance_generate_report'); ?>
             </button>
+            <?php elseif ($own_report_only && $own_emp_id_for_report): ?>
+            <a href="<?php echo admin_url('hr_module/performance/employee_report/' . $own_emp_id_for_report); ?>"
+               target="_blank" class="btn btn-default">
+              <i class="fa-regular fa-file-lines tw-mr-1"></i><?php echo _l('hr_performance_generate_report'); ?>
+            </a>
+            <?php endif; ?>
+            <?php if ($can_assign): ?>
             <a href="<?php echo admin_url('hr_module/performance/add'); ?>" class="btn btn-primary">
               <i class="fa-regular fa-plus tw-mr-1"></i><?php echo _l('hr_performance_assign'); ?>
             </a>
@@ -44,7 +64,7 @@ $can_assign = staff_can('create', 'hr_performance') || staff_can('edit', 'hr_per
             <?php render_datatable([
               _l('hr_employee'), _l('hr_department'),
               _l('hr_performance_target_title'), _l('hr_performance_assigned_by'),
-              _l('hr_performance_progress'), _l('hr_performance_due_date'),
+              _l('hr_performance_progress'), _l('hr_status'), _l('hr_performance_due_date'),
             ], 'hr-performance'); ?>
           </div>
         </div>
@@ -55,10 +75,11 @@ $can_assign = staff_can('create', 'hr_performance') || staff_can('edit', 'hr_per
 <?php init_tail(); ?>
 <script>
 $(function(){
-    initDataTable('.table-hr-performance', window.location.href, [], [5,'desc']);
+    initDataTable('.table-hr-performance', window.location.href, [], [6,'desc']);
     function reload(){
+        var deptVal = $('#f-dept').length ? $('#f-dept').val() : '';
         var url = window.location.href.split('?')[0]
-            + '?department_id=' + $('#f-dept').val()
+            + '?department_id=' + deptVal
             + '&status='        + $('#f-status').val();
         $('.table-hr-performance').DataTable().ajax.url(url).load();
     }

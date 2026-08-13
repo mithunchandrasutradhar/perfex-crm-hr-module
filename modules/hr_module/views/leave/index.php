@@ -25,12 +25,14 @@
               <i class="fa-regular fa-plus tw-mr-1"></i><?php echo _l('hr_leave_add'); ?>
             </a>
             <?php endif; ?>
+            <?php if (!empty($can_manage_types_balances)): ?>
             <a href="<?php echo admin_url('hr_module/leave_types'); ?>" class="btn btn-default btn-sm">
               <i class="fa fa-list tw-mr-1"></i><?php echo _l('hr_leave_types_list'); ?>
             </a>
             <a href="<?php echo admin_url('hr_module/leave_balances'); ?>" class="btn btn-default btn-sm">
               <i class="fa fa-balance-scale tw-mr-1"></i><?php echo _l('hr_leave_balances_list'); ?>
             </a>
+            <?php endif; ?>
           </div>
         </div>
         <div class="panel_s">

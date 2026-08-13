@@ -19,9 +19,14 @@ class Helpdesk extends AdminController
             $this->app->get_table_data(module_views_path('hr_module', 'helpdesk/table'));
             return;
         }
-        $data['title']       = _l('hr_helpdesk_list');
-        $data['departments'] = $this->Departments_model->get_active();
-        $data['employees']   = $this->Hr_module_model->get_active_employees_dropdown();
+        // The department filter only makes sense for someone who can see more
+        // than their own tickets - table.php already forces the list back to
+        // just the caller's own records otherwise.
+        $can_view_all = is_admin() || staff_can('view', 'hr_helpdesk');
+        $data['title']            = _l('hr_helpdesk_list');
+        $data['show_dept_filter'] = $can_view_all;
+        $data['departments']      = $can_view_all ? $this->Departments_model->get_active() : [];
+        $data['employees']        = $this->Hr_module_model->get_active_employees_dropdown();
         $this->load->view('hr_module/helpdesk/index', $data);
     }
 

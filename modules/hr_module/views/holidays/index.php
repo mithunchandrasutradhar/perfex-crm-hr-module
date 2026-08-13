@@ -90,7 +90,7 @@ $day_names = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Satur
               <div class="col-md-2">
                 <div class="form-group tw-mb-2">
                   <label class="tw-text-sm">Type</label>
-                  <select id="new-holiday-type" class="form-control input-sm">
+                  <select id="new-holiday-type" class="selectpicker" data-width="100%">
                     <option value="government">Government</option>
                     <option value="company">Company</option>
                   </select>
@@ -289,7 +289,10 @@ $day_names = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Satur
               <input type="hidden" name="year" value="<?php echo $year; ?>">
               <input type="hidden" name="cal_year" value="<?php echo $cal_year; ?>">
               <input type="hidden" name="cal_month" value="<?php echo $cal_month; ?>">
-              <input type="date" name="roster_date" class="form-control input-sm" style="width:160px" value="<?php echo htmlspecialchars($roster_date); ?>">
+              <div class="input-group date" style="width:160px">
+                <input type="text" name="roster_date" class="form-control input-sm datepicker" autocomplete="off" value="<?php echo htmlspecialchars(_d($roster_date)); ?>">
+                <span class="input-group-addon"><i class="fa-regular fa-calendar calendar-icon"></i></span>
+              </div>
               <button type="submit" class="btn btn-default btn-sm">View</button>
             </form>
           </div>

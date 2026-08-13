@@ -31,8 +31,11 @@ class Holidays extends AdminController
 
         $data = array_merge($data, $this->_build_calendar_data($cal_year, $cal_month));
 
-        $roster_date = $this->input->get('roster_date') ?: date('Y-m-d');
-        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $roster_date)) {
+        // The form now submits this via the same site-display-format datepicker
+        // widget used elsewhere in the module (see attendance/table.php) -
+        // convert back to ISO before the format check below.
+        $roster_date = $this->input->get('roster_date') ? to_sql_date($this->input->get('roster_date')) : date('Y-m-d');
+        if (!$roster_date || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $roster_date)) {
             $roster_date = date('Y-m-d');
         }
         $data['roster_date']   = $roster_date;

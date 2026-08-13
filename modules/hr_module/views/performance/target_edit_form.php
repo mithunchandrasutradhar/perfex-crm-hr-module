@@ -32,7 +32,10 @@
                 <div class="col-md-6">
                   <div class="form-group">
                     <label><?php echo _l('hr_performance_due_date'); ?></label>
-                    <input type="date" name="due_date" class="form-control" value="<?php echo $target->due_date; ?>">
+                    <div class="input-group date">
+                      <input type="text" name="due_date" class="form-control datepicker" autocomplete="off" value="<?php echo $target->due_date ? _d($target->due_date) : ''; ?>">
+                      <div class="input-group-addon"><i class="fa-regular fa-calendar calendar-icon"></i></div>
+                    </div>
                   </div>
                 </div>
               </div>

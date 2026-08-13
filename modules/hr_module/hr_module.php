@@ -31,6 +31,7 @@ hooks()->add_action('admin_init', 'hr_module_ensure_schema');
 hooks()->add_action('admin_init', 'hr_module_init_menu_items');
 hooks()->add_action('admin_init', 'hr_module_register_permissions');
 hooks()->add_action('after_cron_run', 'hr_module_cron_tasks');
+hooks()->add_action('after_render_aside_menu', 'hr_module_sidebar_active_fix');
 
 // ─── Activation / Deactivation / Uninstall ────────────────────────────────
 
@@ -396,6 +397,83 @@ function hr_module_init_menu_items()
             'position' => 14,
         ]);
     }
+}
+
+// The core sidebar only marks a menu item active/expanded on an EXACT href
+// match against the current URL (assets/js/main.js) - so it works for the
+// HR Dashboard link (href == hr_module root, no deeper subpages) but breaks
+// for every other HR item as soon as you're one level deeper, e.g.
+// hr_module/leave/apply or hr_module/loans/view/15 no longer equals the
+// sidebar's hr_module/leave or hr_module/loans href. Since that JS is core
+// and shared by every module's sidebar, fix it here instead: open the HR
+// parent menu whenever the current URL is anywhere under hr_module, and
+// highlight whichever child's href is the longest prefix match of the URL.
+//
+// This has to wait for metisMenu (core's sidebar plugin) to finish binding
+// its click handlers before it can simulate a click to expand the menu.
+// metisMenu is initialized from core's own main.js, whose exact timing
+// (document ready vs window load, and its position among other "load"
+// listeners) isn't something this module should depend on - a fixed "load"
+// listener registered here actually fired BEFORE core's own (registration
+// order for same-event listeners), running before metisMenu had bound
+// anything. Polling for metisMenu's own jQuery data key sidesteps that
+// entirely: it only proceeds once metisMenu has verifiably finished.
+function hr_module_sidebar_active_fix()
+{
+    $hr_base = rtrim(admin_url('hr_module'), '/');
+    ?>
+    <script>
+    (function () {
+        var HR_BASE = <?php echo json_encode($hr_base); ?>;
+        if (window.location.href.indexOf(HR_BASE) === -1) {
+            return;
+        }
+
+        function isCurrent(href) {
+            if (!href) {
+                return false;
+            }
+            return window.location.href === href
+                || window.location.href.indexOf(href + '/') === 0
+                || window.location.href.indexOf(href + '?') === 0;
+        }
+
+        function applyActiveState($, $parent) {
+            if (!$parent.hasClass('active')) {
+                $parent.children('a').first().trigger('click');
+            }
+
+            var $best = null;
+            var bestLen = -1;
+            $parent.find('> ul.nav-second-level > li > a').each(function () {
+                var href = this.getAttribute('href');
+                if (isCurrent(href) && href.length > bestLen) {
+                    bestLen = href.length;
+                    $best = $(this);
+                }
+            });
+            if ($best) {
+                $parent.find('> ul.nav-second-level > li').removeClass('active');
+                $best.parent('li').addClass('active');
+            }
+        }
+
+        var attempts = 0;
+        (function waitForMetisMenu() {
+            attempts++;
+            var $ = window.jQuery;
+            var $sideMenu = $ ? $('#side-menu') : null;
+            if ($ && $sideMenu && $sideMenu.data('metisMenu')) {
+                applyActiveState($, $sideMenu.find('li.menu-item-human-resource').first());
+                return;
+            }
+            if (attempts < 60) {
+                setTimeout(waitForMetisMenu, 50);
+            }
+        })();
+    })();
+    </script>
+    <?php
 }
 
 // ─── Cron Tasks ───────────────────────────────────────────────────────────

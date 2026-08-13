@@ -7,13 +7,15 @@
         <div class="tw-mb-2 tw-flex tw-flex-wrap tw-items-center tw-justify-between tw-gap-2">
           <h4 class="tw-font-semibold tw-text-lg tw-text-neutral-700"><?php echo _l('hr_loan_list'); ?></h4>
           <div class="tw-flex tw-flex-wrap tw-gap-2">
-            <select id="f-dept" class="form-control input-sm" style="width:150px">
+            <?php if (!empty($show_dept_filter)): ?>
+            <select id="f-dept" class="selectpicker" data-width="150px" data-live-search="true">
               <option value=""><?php echo _l('hr_all'); ?> Dept</option>
               <?php foreach ($departments as $d): ?>
               <option value="<?php echo $d->id; ?>"><?php echo htmlspecialchars($d->name); ?></option>
               <?php endforeach; ?>
             </select>
-            <select id="f-status" class="form-control input-sm" style="width:120px">
+            <?php endif; ?>
+            <select id="f-status" class="selectpicker" data-width="120px">
               <option value="">All Status</option>
               <option value="pending">Pending</option>
               <option value="approved">Approved</option>
@@ -47,11 +49,12 @@
 $(function(){
     initDataTable('.table-hr-loans', window.location.href, [], [7,'desc']);
     function reload() {
+        var deptVal = $('#f-dept').length ? $('#f-dept').val() : '';
         var url = window.location.href.split('?')[0]
-            + '?department_id=' + $('#f-dept').val()
+            + '?department_id=' + deptVal
             + '&status='        + $('#f-status').val();
         $('.table-hr-loans').DataTable().ajax.url(url).load();
     }
-    $('#f-dept,#f-status').on('change', reload);
+    $('#f-dept,#f-status').on('change changed.bs.select', reload);
 });
 </script>

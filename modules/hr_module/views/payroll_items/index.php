@@ -92,9 +92,9 @@
             </div>
           </div>
           <div class="col-md-4">
-            <div class="form-group">
+            <div class="form-group select-placeholder">
               <label>Type <span class="text-danger">*</span></label>
-              <select name="type" id="item_type" class="form-control">
+              <select name="type" id="item_type" class="selectpicker" data-width="100%">
                 <option value="allowance">Allowance</option>
                 <option value="deduction">Deduction</option>
               </select>
@@ -103,9 +103,9 @@
         </div>
         <div class="row">
           <div class="col-md-6">
-            <div class="form-group">
+            <div class="form-group select-placeholder">
               <label>Calculation <span class="text-danger">*</span></label>
-              <select name="calculation_type" id="item_calc" class="form-control">
+              <select name="calculation_type" id="item_calc" class="selectpicker" data-width="100%">
                 <option value="fixed">Fixed Amount</option>
                 <option value="percentage">% of Basic Salary</option>
               </select>
@@ -138,7 +138,7 @@
         </div>
         <div class="form-group">
           <label>Description</label>
-          <input type="text" name="description" id="item_desc" class="form-control" placeholder="Optional description">
+          <textarea name="description" id="item_desc" class="form-control" rows="2" placeholder="Optional description"></textarea>
         </div>
       </div>
       <div class="modal-footer">
@@ -158,6 +158,7 @@ $(function(){
     $('#btn-add-item').on('click', function(){
         $('#itemForm')[0].reset();
         $('#item_id').val('');
+        $('#item_type, #item_calc').selectpicker('refresh');
         $('#item_status').prop('checked', true);
         $('#item-modal-title').text('<?php echo _l('hr_payroll_item_add'); ?>');
         $('#itemModal').modal('show');
@@ -166,8 +167,9 @@ $(function(){
     $(document).on('click', '.hr-edit-item', function(e){
         e.preventDefault();
         $.getJSON('<?php echo admin_url('hr_module/payroll_items/edit/'); ?>'+$(this).data('id'), function(d){
-            $('#item_id').val(d.id); $('#item_name').val(d.name); $('#item_type').val(d.type);
-            $('#item_calc').val(d.calculation_type).trigger('change'); $('#item_value').val(d.value);
+            $('#item_id').val(d.id); $('#item_name').val(d.name);
+            $('#item_type').val(d.type).selectpicker('refresh');
+            $('#item_calc').val(d.calculation_type).selectpicker('refresh').trigger('change'); $('#item_value').val(d.value);
             $('#item_taxable').prop('checked', parseInt(d.taxable)===1); $('#item_status').prop('checked', parseInt(d.status)===1);
             $('#item_desc').val(d.description);
             $('#item-modal-title').text('<?php echo _l('hr_payroll_item_edit'); ?>');

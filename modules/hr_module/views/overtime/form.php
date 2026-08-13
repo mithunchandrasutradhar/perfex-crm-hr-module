@@ -11,6 +11,18 @@ $form_url = $is_edit
     ? admin_url('hr_module/overtime/edit/' . $overtime->id)
     : admin_url('hr_module/overtime/request');
 $existing_dates = $is_edit ? array_column($dates, 'overtime_date') : [];
+// Self-service employees may only request overtime within the current
+// calendar month (see Overtime::request() for the actual enforcement) -
+// this only narrows the date picker for a NEW request; edit() is untouched.
+$restrict_to_current_month = $own_only && !$is_edit;
+// The xdsoft datetimepicker (assets/plugins/datetimepicker) parses
+// data-date-min-date/data-date-end-date against its own "formatDate" option
+// (default 'Y/m/d'), which Perfex's appDatepicker() never overrides - it
+// only sets "format" (the site's display format, e.g. d-m-Y). Passing the
+// site-format string here failed to parse, so the picker silently fell back
+// to "now" for both bounds, collapsing the selectable range to just today.
+$current_month_start = $restrict_to_current_month ? date('Y/m/01') : '';
+$current_month_end   = $restrict_to_current_month ? date('Y/m/t') : '';
 ?>
 <?php init_head(); ?>
 <div id="wrapper">
@@ -30,6 +42,9 @@ $existing_dates = $is_edit ? array_column($dates, 'overtime_date') : [];
             <div class="alert alert-info tw-text-sm">
               <i class="fa fa-info-circle tw-mr-1"></i><?php echo _l('hr_overtime_eligibility_hint'); ?>
               <?php echo _l('hr_overtime_multi_date_hint'); ?>
+              <?php if ($restrict_to_current_month): ?>
+              <?php echo _l('hr_overtime_current_month_only'); ?>
+              <?php endif; ?>
             </div>
             <?php echo form_open($form_url, ['id' => 'overtimeForm']); ?>
               <div class="row">
@@ -74,7 +89,10 @@ $existing_dates = $is_edit ? array_column($dates, 'overtime_date') : [];
                       <div class="ot-date-row tw-mb-2">
                         <div class="tw-flex tw-gap-2">
                           <div class="input-group date">
-                            <input type="text" name="overtime_date[]" class="form-control datepicker ot-date-input" autocomplete="off" required>
+                            <input type="text" name="overtime_date[]" class="form-control datepicker ot-date-input" autocomplete="off" required
+                              <?php if ($restrict_to_current_month): ?>
+                              data-date-min-date="<?php echo $current_month_start; ?>" data-date-end-date="<?php echo $current_month_end; ?>"
+                              <?php endif; ?>>
                             <div class="input-group-addon"><i class="fa-regular fa-calendar calendar-icon"></i></div>
                           </div>
                           <button type="button" class="btn btn-default btn-sm ot-remove-date" style="display:none">
@@ -112,12 +130,15 @@ $existing_dates = $is_edit ? array_column($dates, 'overtime_date') : [];
 <?php init_tail(); ?>
 <script>
 $(function(){
+    var dateRangeAttrs = <?php echo $restrict_to_current_month
+        ? "' data-date-min-date=\"" . $current_month_start . "\" data-date-end-date=\"" . $current_month_end . "\"'"
+        : "''"; ?>;
     var dayTypeLabels = {
         weekend: '<?php echo _l('hr_overtime_weekend'); ?>',
         government_holiday: '<?php echo _l('hr_overtime_government_holiday'); ?>',
         company_holiday: '<?php echo _l('hr_overtime_company_holiday'); ?>'
     };
-    var selectPrompt = '<?php echo _l('hr_overtime_select_employee_date'); ?>';
+    var selectPrompt = '<?php echo $own_only ? _l('hr_overtime_select_date') : _l('hr_overtime_select_employee_date'); ?>';
     var notEligible   = '<?php echo _l('hr_overtime_not_eligible_date'); ?>';
 
     function updateRowPreview($row){
@@ -159,7 +180,7 @@ $(function(){
     $('#ot_add_date').on('click', function(){
         var $row = $('<div class="ot-date-row tw-mb-2"><div class="tw-flex tw-gap-2">'
             + '<div class="input-group date">'
-            + '<input type="text" name="overtime_date[]" class="form-control datepicker ot-date-input" autocomplete="off" required>'
+            + '<input type="text" name="overtime_date[]" class="form-control datepicker ot-date-input" autocomplete="off" required' + dateRangeAttrs + '>'
             + '<div class="input-group-addon"><i class="fa-regular fa-calendar calendar-icon"></i></div>'
             + '</div>'
             + '<button type="button" class="btn btn-default btn-sm ot-remove-date"><i class="fa fa-times"></i></button>'

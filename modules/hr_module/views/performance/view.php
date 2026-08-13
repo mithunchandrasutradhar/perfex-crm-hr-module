@@ -115,13 +115,13 @@ $can_assign = staff_can('create', 'hr_performance') || staff_can('edit', 'hr_per
                 <div class="col-md-4">
                   <div class="form-group">
                     <label><?php echo _l('hr_performance_completion_percentage'); ?></label>
-                    <input type="number" step="0.01" min="0" max="100" name="completion_percentage" class="form-control input-sm"
+                    <input type="number" step="0.01" min="0" max="100" name="completion_percentage" class="form-control"
                            value="<?php echo $st->completion_percentage !== null ? $st->completion_percentage : ''; ?>">
                   </div>
                 </div>
               </div>
               <div class="form-group">
-                <textarea name="employee_note" class="form-control input-sm" rows="2"
+                <textarea name="employee_note" class="form-control" rows="2"
                           placeholder="<?php echo _l('hr_performance_employee_note'); ?>"><?php echo htmlspecialchars($st->employee_note ?? ''); ?></textarea>
               </div>
               <button type="submit" class="btn btn-primary btn-xs"><?php echo _l('hr_save'); ?></button>
@@ -146,19 +146,21 @@ $can_assign = staff_can('create', 'hr_performance') || staff_can('edit', 'hr_per
             <hr>
             <?php echo form_open(admin_url('hr_module/performance/add_feedback/'.$st->id)); ?>
               <div class="form-group">
-                <textarea name="feedback" class="form-control input-sm" rows="2" required
+                <textarea name="feedback" class="form-control" rows="2" required
                           placeholder="<?php echo _l('hr_performance_add_feedback'); ?>..."></textarea>
               </div>
               <div class="row">
                 <div class="col-md-4">
-                  <select name="rating" class="form-control input-sm">
-                    <option value="">-- <?php echo _l('hr_performance_rating'); ?> --</option>
-                    <option value="Excellent">Excellent</option>
-                    <option value="Very Good">Very Good</option>
-                    <option value="Good">Good</option>
-                    <option value="Average">Average</option>
-                    <option value="Poor">Poor</option>
-                  </select>
+                  <div class="form-group select-placeholder">
+                    <select name="rating" class="selectpicker" data-width="100%">
+                      <option value="">-- <?php echo _l('hr_performance_rating'); ?> --</option>
+                      <option value="Excellent">Excellent</option>
+                      <option value="Very Good">Very Good</option>
+                      <option value="Good">Good</option>
+                      <option value="Average">Average</option>
+                      <option value="Poor">Poor</option>
+                    </select>
+                  </div>
                 </div>
               </div>
               <button type="submit" class="btn btn-default btn-xs tw-mt-2"><i class="fa fa-comment tw-mr-1"></i><?php echo _l('hr_performance_add_feedback'); ?></button>

@@ -7,12 +7,14 @@
         <div class="tw-mb-2 tw-flex tw-flex-wrap tw-items-center tw-justify-between tw-gap-2">
           <h4 class="tw-font-semibold tw-text-lg tw-text-neutral-700"><?php echo _l('hr_helpdesk_list'); ?></h4>
           <div class="tw-flex tw-flex-wrap tw-gap-2">
+            <?php if (!empty($show_dept_filter)): ?>
             <select id="f-dept" class="selectpicker" data-width="150px" data-live-search="true">
               <option value=""><?php echo _l('hr_all'); ?> Dept</option>
               <?php foreach ($departments as $d): ?>
               <option value="<?php echo $d->id; ?>"><?php echo htmlspecialchars($d->name); ?></option>
               <?php endforeach; ?>
             </select>
+            <?php endif; ?>
             <select id="f-priority" class="selectpicker" data-width="130px">
               <option value="">All Priority</option>
               <option value="high">High</option>
@@ -52,8 +54,9 @@
 $(function(){
     initDataTable('.table-hr-helpdesk', window.location.href, [], [7,'desc']);
     function reload(){
+        var deptVal = $('#f-dept').length ? $('#f-dept').val() : '';
         var url = window.location.href.split('?')[0]
-            + '?department_id=' + $('#f-dept').val()
+            + '?department_id=' + deptVal
             + '&priority='      + $('#f-priority').val()
             + '&status='        + $('#f-status').val();
         $('.table-hr-helpdesk').DataTable().ajax.url(url).load();

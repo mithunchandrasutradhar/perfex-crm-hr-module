@@ -6,12 +6,14 @@
 /** @var int    $own_emp_id      */
 /** @var string $holidays_json   */
 /** @var string $weekly_off_json */
+/** @var string $balances_json   */
 if (!isset($employees))        $employees        = [];
 if (!isset($leave_types))      $leave_types      = [];
 if (!isset($own_only))         $own_only         = false;
 if (!isset($own_emp_id))       $own_emp_id       = 0;
 if (!isset($holidays_json))    $holidays_json    = '[]';
 if (!isset($weekly_off_json))  $weekly_off_json  = '[5]';
+if (!isset($balances_json))    $balances_json    = '{}';
 ?>
 <?php init_head(); ?>
 <div id="wrapper">
@@ -145,6 +147,7 @@ if (!isset($weekly_off_json))  $weekly_off_json  = '[5]';
 (function(){
     var gHolidays  = <?php echo isset($holidays_json)  ? $holidays_json  : '[]'; ?>;
     var gWeeklyOff = <?php echo isset($weekly_off_json) ? $weekly_off_json : '[5]'; ?>;
+    var gBalances  = <?php echo $balances_json; ?>;
     var rowIndex = 0;
 
     function parseDateLocal(str) {
@@ -393,19 +396,44 @@ if (!isset($weekly_off_json))  $weekly_off_json  = '[5]';
         $('#range-days-count').removeClass('label-default').addClass('label-info').text(days + ' <?php echo _l('hr_days'); ?>');
     }
 
+    function renderBalance(rem) {
+        rem = parseFloat(rem) || 0;
+        $('#balance-remaining').text(rem);
+        $('#balance-remaining').closest('.form-control-static')
+            .removeClass('text-success text-danger')
+            .addClass(rem <= 0 ? 'text-danger' : 'text-success');
+        $('#balance-box').show();
+    }
+
+    // Bootstrap-select fires BOTH 'change' and 'changed.bs.select' for a single
+    // selection, and this is bound to both (see the listener below) - so every
+    // leave-type change dispatches two overlapping requests here with no
+    // ordering guarantee. Aborting whatever's still in flight before starting a
+    // new one means only the latest request's response can ever land, which is
+    // what was making the balance box update inconsistently.
+    //
+    // gBalances (preloaded on page load - see the controller) already covers
+    // every selectable employee/leave-type combination for this year, so the
+    // normal case reads it locally with no round trip at all. The AJAX call
+    // only remains as a fallback for a combination that somehow isn't in that
+    // preloaded set (e.g. a balance allocated after this page was loaded).
+    var balanceXhr = null;
     function loadBalance() {
         var emp  = $('#leave-employee').val();
         var type = $('#leave-type').val();
+        if (balanceXhr) { balanceXhr.abort(); balanceXhr = null; }
         if (!emp || !type) { $('#balance-box').hide(); return; }
-        $.getJSON('<?php echo admin_url('hr_module/leave/get_balance_ajax'); ?>', {
+
+        var key = emp + '_' + type;
+        if (gBalances.hasOwnProperty(key)) {
+            renderBalance(gBalances[key]);
+            return;
+        }
+
+        balanceXhr = $.getJSON('<?php echo admin_url('hr_module/leave/get_balance_ajax'); ?>', {
             employee_id: emp, leave_type_id: type
         }, function(data){
-            var rem = parseFloat(data.remaining) || 0;
-            $('#balance-remaining').text(rem);
-            $('#balance-remaining').closest('.form-control-static')
-                .removeClass('text-success text-danger')
-                .addClass(rem <= 0 ? 'text-danger' : 'text-success');
-            $('#balance-box').show();
+            renderBalance(data.remaining);
         });
     }
 

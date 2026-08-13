@@ -20,6 +20,11 @@ class Leave extends AdminController
         if ($this->input->is_ajax_request()) {
             $this->app->get_table_data(module_views_path('hr_module', 'leave/table'));
         }
+        // Leave_types::index()/Leave_balances::index() both require global 'view'
+        // on hr_leave - a view_own-only employee clicking either link from here
+        // would just land on access_denied, so only show them to someone who can
+        // actually open those pages.
+        $data['can_manage_types_balances'] = is_admin() || staff_can('view', 'hr_leave');
         $data['title']        = _l('hr_leave_list');
         $data['leave_types']  = $this->Leave_model->get_active_types();
         $this->load->model('hr_module/Departments_model');
@@ -114,6 +119,21 @@ class Leave extends AdminController
         $data['own_emp_id']     = $own_emp_id;
         $data['holidays_json']  = json_encode($this->Holidays_model->get_as_json($year));
         $data['weekly_off_json']= json_encode($this->Holidays_model->get_weekly_off_days());
+
+        // Preload every employee/leave-type balance for this year so the "Leave
+        // Balance" box can update instantly on selection change instead of firing
+        // a fresh AJAX round trip each time (each one re-runs the full admin
+        // bootstrap, which is what was making it feel slow) - get_balance_ajax()
+        // itself is untouched and still works exactly as before.
+        $balance_rows = $own_only
+            ? ($own_emp_id ? $this->Leave_model->get_employee_balances($own_emp_id, $year) : [])
+            : $this->Leave_model->get_all_balances($year);
+        $balances_map = [];
+        foreach ($balance_rows as $b) {
+            $balances_map[$b->employee_id . '_' . $b->leave_type_id] =
+                (float) $b->allocated_days + (float) $b->carry_forward_days - (float) $b->used_days;
+        }
+        $data['balances_json'] = json_encode($balances_map);
 
         if ($own_only) {
             $emp = $this->Employees_model->get($own_emp_id);

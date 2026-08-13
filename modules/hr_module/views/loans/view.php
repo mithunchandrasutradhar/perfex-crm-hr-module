@@ -346,9 +346,9 @@ if (!isset($can_manage_deductions)) $can_manage_deductions = staff_can('edit', '
     <div class="modal-body">
       <div class="row">
         <div class="col-md-6">
-          <div class="form-group">
+          <div class="form-group select-placeholder">
             <label>Month <span class="text-danger">*</span></label>
-            <select name="pay_month" class="form-control" required>
+            <select name="pay_month" class="selectpicker" data-width="100%" required>
               <?php for ($m = 1; $m <= 12; $m++): ?>
               <option value="<?php echo $m; ?>" <?php echo $m === $cur_month ? 'selected' : ''; ?>>
                 <?php echo date('F', mktime(0,0,0,$m,1)); ?>
@@ -358,9 +358,9 @@ if (!isset($can_manage_deductions)) $can_manage_deductions = staff_can('edit', '
           </div>
         </div>
         <div class="col-md-6">
-          <div class="form-group">
+          <div class="form-group select-placeholder">
             <label>Year <span class="text-danger">*</span></label>
-            <select name="pay_year" class="form-control" required>
+            <select name="pay_year" class="selectpicker" data-width="100%" required>
               <?php for ($y = $cur_year - 1; $y <= $cur_year + 1; $y++): ?>
               <option value="<?php echo $y; ?>" <?php echo $y === $cur_year ? 'selected' : ''; ?>><?php echo $y; ?></option>
               <?php endfor; ?>
@@ -392,11 +392,11 @@ if (!isset($can_manage_deductions)) $can_manage_deductions = staff_can('edit', '
             if (!$has_default) { $deduct_steps[] = round($deduct_default, 2); sort($deduct_steps); }
         }
       ?>
-      <div class="form-group" id="amountGroup">
+      <div class="form-group select-placeholder" id="amountGroup">
         <label>Deduction Amount <span class="text-danger">*</span></label>
         <div class="input-group">
           <span class="input-group-addon"><?php echo get_option('currency_symbol') ?: 'BDT'; ?></span>
-          <select name="amount" id="deductAmount" class="form-control">
+          <select name="amount" id="deductAmount" class="selectpicker" data-width="100%">
             <?php foreach ($deduct_steps as $s): ?>
             <option value="<?php echo $s; ?>" <?php echo (abs($s - $deduct_default) < 0.01) ? 'selected' : ''; ?>>
               <?php echo number_format($s, 2); ?><?php echo (abs($s - $deduct_outstanding) < 0.01) ? ' (full payoff)' : ''; ?>
@@ -448,7 +448,10 @@ if (!isset($can_manage_deductions)) $can_manage_deductions = staff_can('edit', '
     <?php echo form_open(admin_url('hr_module/loans/approve/'.$loan->id)); ?>
     <div class="modal-body">
       <div class="form-group"><label>Disbursement Date</label>
-        <input type="date" name="disbursement_date" class="form-control" value="<?php echo date('Y-m-d'); ?>">
+        <div class="input-group date">
+          <input type="text" name="disbursement_date" class="form-control datepicker" autocomplete="off" value="<?php echo _d(date('Y-m-d')); ?>">
+          <div class="input-group-addon"><i class="fa-regular fa-calendar calendar-icon"></i></div>
+        </div>
       </div>
     </div>
     <div class="modal-footer">
@@ -494,7 +497,10 @@ if (!isset($can_manage_deductions)) $can_manage_deductions = staff_can('edit', '
         </div>
         <div class="col-md-6">
           <div class="form-group"><label>Date <span class="text-danger">*</span></label>
-            <input type="date" name="repayment_date" class="form-control" value="<?php echo date('Y-m-d'); ?>" required>
+            <div class="input-group date">
+              <input type="text" name="repayment_date" class="form-control datepicker" autocomplete="off" value="<?php echo _d(date('Y-m-d')); ?>" required>
+              <div class="input-group-addon"><i class="fa-regular fa-calendar calendar-icon"></i></div>
+            </div>
           </div>
         </div>
       </div>
@@ -526,7 +532,7 @@ $(function () {
         if (showCarry) $('#carryShortfallAmount').text(shortfall.toFixed(2));
     }
     $('#skipCheck').on('change', toggleSkip);
-    $('#deductAmount').on('change', toggleSkip);
+    $('#deductAmount').on('change changed.bs.select', toggleSkip);
     toggleSkip();
 
     // Editing a pending request from the history table (any month, not just the current
@@ -535,8 +541,8 @@ $(function () {
     $(document).on('click', '.hr-edit-hist-request', function (e) {
         e.preventDefault();
         var $el = $(this);
-        $('select[name="pay_month"]').val($el.data('month'));
-        $('select[name="pay_year"]').val($el.data('year'));
+        $('select[name="pay_month"]').val($el.data('month')).selectpicker('refresh');
+        $('select[name="pay_year"]').val($el.data('year')).selectpicker('refresh');
         $('#skipCheck').prop('checked', $el.data('is-skip') == 1);
         if ($el.data('carry-option') === 'extend_term') $('#carryExtend').prop('checked', true);
         else $('#carryNext').prop('checked', true);

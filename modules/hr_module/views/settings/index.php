@@ -52,9 +52,9 @@ $can_edit = staff_can('edit', 'hr_settings') || is_admin();
                                     </div>
                                 </div>
                                 <div class="col-md-3 col-sm-6">
-                                    <div class="form-group">
+                                    <div class="form-group select-placeholder">
                                         <label><?php echo _l('hr_settings_fiscal_year_start'); ?></label>
-                                        <select name="fiscal_year_start_month" class="form-control" <?php echo !$can_edit ? 'disabled' : ''; ?>>
+                                        <select name="fiscal_year_start_month" class="selectpicker" data-width="100%" <?php echo !$can_edit ? 'disabled' : ''; ?>>
                                             <?php
                                             $months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
                                             $current_month = isset($settings['fiscal_year_start_month']) ? (int)$settings['fiscal_year_start_month'] : 1;

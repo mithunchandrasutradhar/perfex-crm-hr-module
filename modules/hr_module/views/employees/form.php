@@ -112,7 +112,7 @@ function ev($obj, $key, $default = '') {
                   <div class="input-group date">
                     <input type="text" name="joining_date" class="form-control datepicker" autocomplete="off"
                       value="<?php echo $is_edit ? _d(ev($e,'joining_date')) : ''; ?>">
-                    <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                    <div class="input-group-addon"><i class="fa-regular fa-calendar calendar-icon"></i></div>
                   </div>
                 </div>
               </div>
@@ -122,7 +122,7 @@ function ev($obj, $key, $default = '') {
                   <div class="input-group date">
                     <input type="text" name="end_date" class="form-control datepicker" autocomplete="off"
                       value="<?php echo $is_edit ? _d(ev($e,'end_date')) : ''; ?>">
-                    <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                    <div class="input-group-addon"><i class="fa-regular fa-calendar calendar-icon"></i></div>
                   </div>
                 </div>
               </div>
@@ -137,9 +137,9 @@ function ev($obj, $key, $default = '') {
 
             <div class="row">
               <div class="col-md-6 col-sm-6">
-                <div class="form-group">
+                <div class="form-group select-placeholder">
                   <label><?php echo _l('hr_department'); ?></label>
-                  <select name="department_id" id="emp_dept" class="form-control">
+                  <select name="department_id" id="emp_dept" class="selectpicker" data-width="100%" data-live-search="true">
                     <option value=""><?php echo _l('hr_select'); ?></option>
                     <?php foreach ($departments as $d): ?>
                     <option value="<?php echo $d->id; ?>" <?php if($is_edit && $e->department_id == $d->id) echo 'selected'; ?>>
@@ -150,9 +150,9 @@ function ev($obj, $key, $default = '') {
                 </div>
               </div>
               <div class="col-md-6 col-sm-6">
-                <div class="form-group">
+                <div class="form-group select-placeholder">
                   <label><?php echo _l('hr_designation'); ?></label>
-                  <select name="designation_id" id="emp_designation" class="form-control">
+                  <select name="designation_id" id="emp_designation" class="selectpicker" data-width="100%" data-live-search="true">
                     <option value=""><?php echo _l('hr_select'); ?></option>
                     <?php foreach ($designations as $ds): ?>
                     <option value="<?php echo $ds->id; ?>" <?php if($is_edit && $e->designation_id == $ds->id) echo 'selected'; ?>>
@@ -218,9 +218,9 @@ function ev($obj, $key, $default = '') {
               <div class="col-md-9">
                 <div class="row">
                   <div class="col-md-4 col-sm-6">
-                    <div class="form-group">
+                    <div class="form-group select-placeholder">
                       <label><?php echo _l('hr_gender'); ?></label>
-                      <select name="gender" class="form-control">
+                      <select name="gender" class="selectpicker" data-width="100%">
                         <option value=""><?php echo _l('hr_select'); ?></option>
                         <option value="male"   <?php if($is_edit && $e->gender=='male')   echo 'selected'; ?>>Male</option>
                         <option value="female" <?php if($is_edit && $e->gender=='female') echo 'selected'; ?>>Female</option>
@@ -234,14 +234,14 @@ function ev($obj, $key, $default = '') {
                       <div class="input-group date">
                         <input type="text" name="date_of_birth" class="form-control datepicker" autocomplete="off"
                           value="<?php echo $is_edit ? _d(ev($e,'date_of_birth')) : ''; ?>">
-                        <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                        <div class="input-group-addon"><i class="fa-regular fa-calendar calendar-icon"></i></div>
                       </div>
                     </div>
                   </div>
                   <div class="col-md-4 col-sm-6">
-                    <div class="form-group">
+                    <div class="form-group select-placeholder">
                       <label><?php echo _l('hr_employee_blood_group'); ?></label>
-                      <select name="blood_group" class="form-control">
+                      <select name="blood_group" class="selectpicker" data-width="100%">
                         <option value=""><?php echo _l('hr_select'); ?></option>
                         <?php foreach (['A+','A-','B+','B-','AB+','AB-','O+','O-'] as $bg): ?>
                         <option value="<?php echo $bg; ?>" <?php if($is_edit && $e->blood_group==$bg) echo 'selected'; ?>><?php echo $bg; ?></option>
@@ -250,9 +250,9 @@ function ev($obj, $key, $default = '') {
                     </div>
                   </div>
                   <div class="col-md-4 col-sm-6">
-                    <div class="form-group">
+                    <div class="form-group select-placeholder">
                       <label><?php echo _l('hr_employee_marital_status'); ?></label>
-                      <select name="marital_status" class="form-control">
+                      <select name="marital_status" class="selectpicker" data-width="100%">
                         <option value=""><?php echo _l('hr_select'); ?></option>
                         <?php foreach (['Single','Married','Divorced','Widowed'] as $ms): ?>
                         <option value="<?php echo strtolower($ms); ?>" <?php if($is_edit && $e->marital_status==strtolower($ms)) echo 'selected'; ?>><?php echo $ms; ?></option>

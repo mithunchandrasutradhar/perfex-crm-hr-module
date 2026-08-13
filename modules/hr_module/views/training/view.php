@@ -289,10 +289,10 @@ $sessions_by_date = array_column($sessions, null, 'session_date');
             <?php endif; ?>
             <?php if ($can_generate_report): ?>
             <a href="<?php echo admin_url('hr_module/training/report/'.$training->id); ?>" target="_blank" class="btn btn-default btn-block tw-mb-2">
-              <i class="fa fa-file-text-o tw-mr-1"></i><?php echo _l('hr_training_generate_report'); ?>
+              <i class="fa-regular fa-file-lines tw-mr-1"></i><?php echo _l('hr_training_generate_report'); ?>
             </a>
             <a href="<?php echo admin_url('hr_module/training/email_report/'.$training->id); ?>" class="btn btn-default btn-block tw-mb-2 _delete">
-              <i class="fa fa-envelope-o tw-mr-1"></i><?php echo _l('hr_training_email_report'); ?>
+              <i class="fa-regular fa-envelope tw-mr-1"></i><?php echo _l('hr_training_email_report'); ?>
             </a>
             <?php endif; ?>
             <?php if (staff_can('edit','hr_training')): ?>

@@ -39,6 +39,7 @@ foreach ($rows as $r) {
 
     $count     = (int) $r->sub_target_count;
     $completed = (int) $r->completed_count;
+    $pending   = (int) ($r->pending_count ?? 0);
     $pct       = $count > 0 ? round(($completed / $count) * 100) : 0;
     $progress_cell = $count > 0
         ? '<small class="text-muted">' . $completed . ' / ' . $count . '</small>'
@@ -48,12 +49,26 @@ foreach ($rows as $r) {
             . 'style="width: ' . $pct . '%" data-percent="' . $pct . '"></div></div>'
         : '-';
 
+    // One target can have several sub-targets, each with its own status - this
+    // rolls them up into a single overall label for the list, the same three
+    // buckets the "All Status" filter above the table already offers.
+    if ($count === 0) {
+        $status_cell = '-';
+    } elseif ($completed === $count) {
+        $status_cell = '<span class="label label-success">' . _l('hr_performance_status_completed') . '</span>';
+    } elseif ($pending === $count) {
+        $status_cell = '<span class="label label-default">' . _l('hr_performance_status_pending') . '</span>';
+    } else {
+        $status_cell = '<span class="label label-warning">' . _l('hr_performance_status_in_progress') . '</span>';
+    }
+
     $row = [
         $employee_cell,
         $r->department_name ? htmlspecialchars($r->department_name) : '-',
         htmlspecialchars($r->title),
         htmlspecialchars($r->assigned_by_name ?? '-'),
         $progress_cell,
+        $status_cell,
         $r->due_date ? date('d M Y', strtotime($r->due_date)) : '-',
     ];
     $row['DT_RowClass'] = 'has-row-options';

@@ -7,19 +7,21 @@
         <div class="tw-mb-2 tw-flex tw-flex-wrap tw-items-center tw-justify-between tw-gap-2">
           <h4 class="tw-font-semibold tw-text-lg tw-text-neutral-700"><?php echo _l('hr_shift_list'); ?></h4>
           <div class="tw-flex tw-flex-wrap tw-gap-2">
-            <select id="f-dept" class="form-control input-sm" style="width:150px">
+            <?php if (!empty($show_dept_filter)): ?>
+            <select id="f-dept" class="selectpicker" data-width="150px" data-live-search="true">
               <option value=""><?php echo _l('hr_all'); ?> Dept</option>
               <?php foreach ($departments as $d): ?>
               <option value="<?php echo $d->id; ?>"><?php echo htmlspecialchars($d->name); ?></option>
               <?php endforeach; ?>
             </select>
-            <select id="f-shift" class="form-control input-sm" style="width:150px">
+            <?php endif; ?>
+            <select id="f-shift" class="selectpicker" data-width="150px">
               <option value="">All Shifts</option>
               <?php foreach ($shift_types as $s): ?>
               <option value="<?php echo $s->id; ?>"><?php echo htmlspecialchars($s->name); ?></option>
               <?php endforeach; ?>
             </select>
-            <select id="f-status" class="form-control input-sm" style="width:120px">
+            <select id="f-status" class="selectpicker" data-width="120px">
               <option value="">All Status</option>
               <option value="pending"><?php echo _l('hr_shift_status_pending'); ?></option>
               <option value="approved"><?php echo _l('hr_shift_status_approved'); ?></option>
@@ -71,13 +73,14 @@
 $(function(){
     initDataTable('.table-hr-shifts', window.location.href, [], [5,'desc']);
     function reload() {
+        var deptVal = $('#f-dept').length ? $('#f-dept').val() : '';
         var url = window.location.href.split('?')[0]
-            + '?department_id=' + $('#f-dept').val()
+            + '?department_id=' + deptVal
             + '&shift_type_id=' + $('#f-shift').val()
             + '&status='        + $('#f-status').val();
         $('.table-hr-shifts').DataTable().ajax.url(url).load();
     }
-    $('#f-dept,#f-shift,#f-status').on('change', reload);
+    $('#f-dept,#f-shift,#f-status').on('change changed.bs.select', reload);
 
     function csrf_pair() {
         return '<?php echo $this->security->get_csrf_token_name(); ?>=<?php echo $this->security->get_csrf_hash(); ?>';
