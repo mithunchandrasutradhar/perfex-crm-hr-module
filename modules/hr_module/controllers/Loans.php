@@ -39,6 +39,10 @@ class Loans extends AdminController
         $own_emp_id = $own_only ? hr_get_own_employee_id() : 0;
 
         if ($this->input->post()) {
+            // view_own users can only apply for themselves — ignore any spoofed employee_id
+            $posted_emp_id   = (int) $this->input->post('employee_id');
+            $resolved_emp_id = $own_only ? $own_emp_id : $posted_emp_id;
+
             // hr_loans.amount is decimal(15,2) - an unvalidated amount beyond that
             // (or a huge amount divided by a tiny installment, blowing up the
             // computed repayment_months past what its int column can hold) hits an
@@ -49,10 +53,23 @@ class Loans extends AdminController
                 redirect(admin_url('hr_module/loans/apply'));
             }
 
-            // view_own users can only apply for themselves — ignore any spoofed employee_id
-            $posted_emp_id = (int) $this->input->post('employee_id');
+            // max_loan_amount is a revolving cap on TOTAL current exposure, not a
+            // per-request cap - what's actually available is the ceiling minus
+            // whatever's still outstanding on approved/active loans.
+            $capacity = $this->_get_remaining_loan_capacity($resolved_emp_id);
+            if ($posted_amount > $capacity['remaining']) {
+                // _l()'s $label arg IS the %s substitution (it sprintf()s internally) -
+                // an array of labels fills multiple %s placeholders in order.
+                set_alert('danger', _l('hr_loan_exceeds_remaining_capacity', [
+                    number_format(max(0, $capacity['remaining']), 2),
+                    number_format($capacity['exposure'], 2),
+                    number_format($capacity['max'], 2),
+                ]));
+                redirect(admin_url('hr_module/loans/apply'));
+            }
+
             $data = [
-                'employee_id'         => $own_only ? $own_emp_id : $posted_emp_id,
+                'employee_id'         => $resolved_emp_id,
                 'amount'              => (float) $this->input->post('amount'),
                 'reason'              => $this->input->post('reason', true),
                 'repayment_months'    => (int) $this->input->post('repayment_months'),
@@ -111,16 +128,89 @@ class Loans extends AdminController
         $data['title']      = _l('hr_loan_add');
         $data['own_only']   = $own_only;
         $data['own_emp_id'] = $own_emp_id;
+        $default_max = (float) $this->Hr_module_model->get_setting('default_max_loan_amount', 99999999.99);
         if ($own_only) {
             $this->load->model('hr_module/Employees_model');
             $emp = $this->Employees_model->get($own_emp_id);
             $data['employees'] = $own_emp_id && $emp
                 ? [$own_emp_id => $emp->first_name . ' ' . $emp->last_name]
                 : [];
+            $capacity = $own_emp_id
+                ? $this->_get_remaining_loan_capacity($own_emp_id)
+                : ['max' => $default_max, 'exposure' => 0.0, 'remaining' => $default_max];
+            $data['own_max_loan_amount']    = $capacity['max'];
+            $data['own_loan_exposure']      = $capacity['exposure'];
+            $data['own_remaining_capacity'] = $capacity['remaining'];
+            $data['max_loan_json']          = json_encode([]);
+            $data['exposure_json']          = json_encode([]);
         } else {
             $data['employees'] = $this->Hr_module_model->get_active_employees_dropdown();
+            // One query for every active employee's custom limit, and one
+            // aggregate query for their current approved/active loan exposure -
+            // rather than a separate lookup per dropdown option, the hint just
+            // reads these preloaded maps locally when the employee selection changes.
+            $rows = $this->db->select('id, max_loan_amount')->where('status', 1)
+                ->get(db_prefix() . 'hr_employees')->result();
+            $max_map = [];
+            foreach ($rows as $row) {
+                $max_map[$row->id] = ($row->max_loan_amount !== null && $row->max_loan_amount !== '')
+                    ? (float) $row->max_loan_amount : $default_max;
+            }
+            $exposure_rows = $this->db->select('employee_id, SUM(outstanding) as exposure')
+                ->where_in('status', ['approved', 'active'])
+                ->group_by('employee_id')
+                ->get(db_prefix() . 'hr_loans')->result();
+            $exposure_map = [];
+            foreach ($exposure_rows as $row) {
+                $exposure_map[$row->employee_id] = (float) $row->exposure;
+            }
+            $data['max_loan_json']          = json_encode($max_map);
+            $data['exposure_json']          = json_encode($exposure_map);
+            $data['own_max_loan_amount']    = 0;
+            $data['own_loan_exposure']      = 0;
+            $data['own_remaining_capacity'] = 0;
         }
+        $data['default_max_loan_amount'] = $default_max;
         $this->load->view('hr_module/loans/apply', $data);
+    }
+
+    // Effective loan ceiling for an employee: their own custom limit if set on
+    // their HR profile, otherwise the site-wide default from Settings >
+    // General - falling back to the absolute hr_loans.amount column ceiling if
+    // neither is configured yet (e.g. right after upgrading, before anyone has
+    // visited Settings).
+    private function _get_max_loan_amount($employee_id)
+    {
+        $this->load->model('hr_module/Employees_model');
+        $emp = $this->Employees_model->get($employee_id);
+        if ($emp && $emp->max_loan_amount !== null && $emp->max_loan_amount !== '') {
+            return (float) $emp->max_loan_amount;
+        }
+        return (float) $this->Hr_module_model->get_setting('default_max_loan_amount', 99999999.99);
+    }
+
+    // Sum of outstanding balance across this employee's approved/active loans.
+    // Only these two statuses count against the cap: a pending request hasn't
+    // been approved yet, a rejected one never happened, and a closed
+    // (fully repaid) loan no longer ties up any of the employee's limit.
+    private function _get_current_loan_exposure($employee_id)
+    {
+        $row = $this->db->select_sum('outstanding')
+            ->where('employee_id', $employee_id)
+            ->where_in('status', ['approved', 'active'])
+            ->get(db_prefix() . 'hr_loans')->row();
+        return ($row && $row->outstanding !== null) ? (float) $row->outstanding : 0.0;
+    }
+
+    // What's actually available to borrow right now: the employee's ceiling
+    // (custom or site default) minus whatever they currently owe on
+    // approved/active loans - this is what a new request is checked against,
+    // not the flat ceiling itself.
+    private function _get_remaining_loan_capacity($employee_id)
+    {
+        $max      = $this->_get_max_loan_amount($employee_id);
+        $exposure = $this->_get_current_loan_exposure($employee_id);
+        return ['max' => $max, 'exposure' => $exposure, 'remaining' => $max - $exposure];
     }
 
     public function view($id)

@@ -184,6 +184,7 @@ class Settings extends AdminController
             'fiscal_year_start_month'        => [1, 12,   'Fiscal year start month must be between 1 and 12.'],
             'payroll_generation_day'         => [1, 31,   'Payroll generation day must be between 1 and 31.'],
             'zkteco_sync_interval'           => [5, 1440, 'ZKTeco sync interval must be between 5 and 1440 minutes.'],
+            'default_max_loan_amount'        => [0, 99999999.99, 'Default maximum loan amount must be between 0 and 99,999,999.99.'],
         ];
         foreach ($numeric_ranges as $key => list($min, $max, $message)) {
             $posted = $this->input->post($key);
@@ -207,6 +208,7 @@ class Settings extends AdminController
             'employee_id_prefix',
             'fiscal_year_start_month',
             'payroll_generation_day',
+            'default_max_loan_amount',
             'currency',
             'notify_leave_apply',
             'notify_leave_approve',

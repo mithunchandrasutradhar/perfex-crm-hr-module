@@ -133,6 +133,14 @@ function ev($obj, $key, $default = '') {
                     value="<?php echo $is_edit ? ev($e,'basic_salary','0') : '0'; ?>">
                 </div>
               </div>
+              <div class="col-md-3 col-sm-6">
+                <div class="form-group">
+                  <label><?php echo _l('hr_employee_max_loan_amount'); ?></label>
+                  <input type="number" name="max_loan_amount" class="form-control" step="0.01" min="0" max="99999999.99"
+                    value="<?php echo $is_edit ? ev($e,'max_loan_amount','') : ''; ?>"
+                    placeholder="<?php echo _l('hr_employee_max_loan_amount_hint'); ?>">
+                </div>
+              </div>
             </div>
 
             <div class="row">

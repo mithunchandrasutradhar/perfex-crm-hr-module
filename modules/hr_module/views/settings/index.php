@@ -77,8 +77,17 @@ $can_edit = staff_can('edit', 'hr_settings') || is_admin();
                                     </div>
                                 </div>
                             </div>
-                            <?php if (staff_can('view', 'hr_departments')): ?>
                             <div class="row">
+                                <div class="col-md-3 col-sm-6">
+                                    <div class="form-group tw-mb-0">
+                                        <label><?php echo _l('hr_settings_default_max_loan_amount'); ?> <i class="fa-solid fa-circle-info tw-text-neutral-400" data-toggle="tooltip" data-title="<?php echo _l('hr_settings_default_max_loan_amount_hint'); ?>" style="cursor:help;"></i></label>
+                                        <input type="number" name="default_max_loan_amount" class="form-control" step="0.01" min="0" max="99999999.99"
+                                            value="<?php echo isset($settings['default_max_loan_amount']) ? $settings['default_max_loan_amount'] : ''; ?>"
+                                            placeholder="99999999.99"
+                                            <?php echo !$can_edit ? 'readonly' : ''; ?>>
+                                    </div>
+                                </div>
+                                <?php if (staff_can('view', 'hr_departments')): ?>
                                 <div class="col-md-3 col-sm-6">
                                     <div class="form-group tw-mb-0">
                                         <label><?php echo _l('hr_settings_company_structure'); ?></label>
@@ -87,8 +96,8 @@ $can_edit = staff_can('edit', 'hr_settings') || is_admin();
                                         </a>
                                     </div>
                                 </div>
+                                <?php endif; ?>
                             </div>
-                            <?php endif; ?>
                         </div>
                     </div>
                 </div>

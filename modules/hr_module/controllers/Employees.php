@@ -223,6 +223,11 @@ class Employees extends AdminController
             'joining_date'            => to_sql_date($this->input->post('joining_date')) ?: null,
             'end_date'                => to_sql_date($this->input->post('end_date')) ?: null,
             'basic_salary'            => (float) $this->input->post('basic_salary'),
+            // Blank means "no custom limit" - the employee falls back to the
+            // site-wide default from Settings > General (see Loans::apply()).
+            'max_loan_amount'         => $this->input->post('max_loan_amount') !== '' && $this->input->post('max_loan_amount') !== null
+                ? (float) $this->input->post('max_loan_amount')
+                : null,
             'bank_name'               => $this->input->post('bank_name', true),
             'bank_account'            => $this->input->post('bank_account', true),
             'bank_branch'             => $this->input->post('bank_branch', true),

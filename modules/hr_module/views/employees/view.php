@@ -71,6 +71,9 @@ function ef($v, $d = '-') { return !empty($v) ? htmlspecialchars($v) : $d; }
                   <tr><th><?php echo _l('hr_employee_joining_date'); ?></th><td><?php echo $e->joining_date ? _d($e->joining_date) : '-'; ?></td></tr>
                   <tr><th><?php echo _l('hr_employee_end_date'); ?></th><td><?php echo $e->end_date ? _d($e->end_date) : '-'; ?></td></tr>
                   <tr><th><?php echo _l('hr_employee_basic_salary'); ?></th><td><?php echo number_format($e->basic_salary, 2); ?></td></tr>
+                  <?php if ($e->max_loan_amount !== null && $e->max_loan_amount !== ''): ?>
+                  <tr><th><?php echo _l('hr_employee_max_loan_amount'); ?></th><td><?php echo number_format($e->max_loan_amount, 2); ?></td></tr>
+                  <?php endif; ?>
                   <tr><th><?php echo _l('hr_employee_staff_linked'); ?></th><td><?php echo ef($e->staff_name); ?></td></tr>
                   <tr><th><?php echo _l('hr_notes'); ?></th><td><?php echo ef($e->notes); ?></td></tr>
                 </table>

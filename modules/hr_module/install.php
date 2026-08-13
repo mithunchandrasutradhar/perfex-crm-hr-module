@@ -77,6 +77,7 @@ if (!$CI->db->table_exists(db_prefix() . 'hr_employees')) {
       `joining_date` date DEFAULT NULL,
       `end_date` date DEFAULT NULL,
       `basic_salary` decimal(15,2) NOT NULL DEFAULT 0.00,
+      `max_loan_amount` decimal(15,2) DEFAULT NULL,
       `bank_name` varchar(191) DEFAULT NULL,
       `bank_account` varchar(100) DEFAULT NULL,
       `bank_branch` varchar(191) DEFAULT NULL,
@@ -102,6 +103,15 @@ if (!$CI->db->table_exists(db_prefix() . 'hr_employees')) {
       ADD KEY `designation_id` (`designation_id`);');
     $CI->db->query('ALTER TABLE `' . db_prefix() . 'hr_employees`
       MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1;');
+}
+// Upgrade: add max_loan_amount column (per-employee loan ceiling override - NULL
+// means "use the site-wide default from Settings > General") if the table
+// existed before it was added to the schema
+if ($CI->db->table_exists(db_prefix() . 'hr_employees')) {
+    $col = $CI->db->query("SHOW COLUMNS FROM `" . db_prefix() . "hr_employees` LIKE 'max_loan_amount'")->num_rows();
+    if ($col === 0) {
+        $CI->db->query("ALTER TABLE `" . db_prefix() . "hr_employees` ADD COLUMN `max_loan_amount` decimal(15,2) DEFAULT NULL AFTER `basic_salary`");
+    }
 }
 
 // 4. Leave Types

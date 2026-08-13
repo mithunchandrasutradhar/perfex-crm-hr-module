@@ -1,8 +1,20 @@
 <?php defined('BASEPATH') or exit('No direct script access allowed');
-/** @var bool $own_only   */
-/** @var int  $own_emp_id */
-if (!isset($own_only))   $own_only   = false;
-if (!isset($own_emp_id)) $own_emp_id = 0;
+/** @var bool   $own_only                */
+/** @var int    $own_emp_id              */
+/** @var string $max_loan_json           */
+/** @var string $exposure_json           */
+/** @var float  $own_max_loan_amount     */
+/** @var float  $own_loan_exposure       */
+/** @var float  $own_remaining_capacity  */
+/** @var float  $default_max_loan_amount */
+if (!isset($own_only))                $own_only                = false;
+if (!isset($own_emp_id))              $own_emp_id              = 0;
+if (!isset($max_loan_json))           $max_loan_json           = '{}';
+if (!isset($exposure_json))           $exposure_json           = '{}';
+if (!isset($own_max_loan_amount))     $own_max_loan_amount     = 0;
+if (!isset($own_loan_exposure))       $own_loan_exposure       = 0;
+if (!isset($own_remaining_capacity))  $own_remaining_capacity  = 0;
+if (!isset($default_max_loan_amount)) $default_max_loan_amount = 99999999.99;
 ?>
 <?php init_head(); ?>
 <div id="wrapper">
@@ -45,6 +57,7 @@ if (!isset($own_emp_id)) $own_emp_id = 0;
                           <input type="number" step="0.01" min="1" name="amount" id="loan_amount"
                                  class="form-control" required placeholder="0.00">
                         </div>
+                        <p id="maxLoanHint" class="help-block tw-text-xs tw-mb-0"></p>
                       </div>
                     </div>
                     <div class="col-md-4">
@@ -72,7 +85,7 @@ if (!isset($own_emp_id)) $own_emp_id = 0;
                       </div>
                     </div>
                   </div>
-                  <div id="calcHint" class="text-muted" style="font-size:11px;margin-top:-8px">
+                  <div id="calcHint" class="text-muted" style="font-size:11px;margin-top:8px">
                     <i class="fa fa-info-circle"></i>
                     Installment is chosen in steps of <?php echo number_format(500, 0); ?> — the repayment period is calculated from it automatically.
                   </div>
@@ -107,6 +120,51 @@ if (!isset($own_emp_id)) $own_emp_id = 0;
 <?php init_tail(); ?>
 <script>
 $(function () {
+    // Preloaded once on page load (see Loans::apply()) so the "remaining loan
+    // capacity" hint updates instantly on employee change with no AJAX round
+    // trip - same pattern as the leave-apply balance box. max_loan_amount is a
+    // cap on TOTAL current exposure, not a per-request cap, so what's actually
+    // available is max minus whatever's still outstanding on approved/active loans.
+    var maxLoanMap          = <?php echo $max_loan_json; ?>;
+    var exposureMap         = <?php echo $exposure_json; ?>;
+    var ownMaxLoanAmount    = <?php echo (float) $own_max_loan_amount; ?>;
+    var ownLoanExposure     = <?php echo (float) $own_loan_exposure; ?>;
+    var ownRemainingCapacity = <?php echo (float) $own_remaining_capacity; ?>;
+    var defaultMaxLoanAmount = <?php echo (float) $default_max_loan_amount; ?>;
+    // _l('key') always sprintf()s internally (with '' when no label is passed),
+    // which silently eats the %s before it ever reaches here - the raw template
+    // (with %s intact, for this JS-side replace) has to come from $this->lang->line()
+    // directly instead.
+    var capacityHintTpl     = <?php echo json_encode($this->lang->line('hr_loan_remaining_capacity_hint')); ?>;
+    var capacityExceededTpl = <?php echo json_encode($this->lang->line('hr_loan_exceeds_remaining_capacity')); ?>;
+    var isOwnOnly           = <?php echo $own_only ? 'true' : 'false'; ?>;
+
+    function currentCapacity() {
+        if (isOwnOnly) {
+            return { max: ownMaxLoanAmount, exposure: ownLoanExposure, remaining: ownRemainingCapacity };
+        }
+        var empId = $('select[name="employee_id"]').val();
+        var max      = (empId && maxLoanMap.hasOwnProperty(empId)) ? parseFloat(maxLoanMap[empId]) : defaultMaxLoanAmount;
+        var exposure = (empId && exposureMap.hasOwnProperty(empId)) ? parseFloat(exposureMap[empId]) : 0;
+        return { max: max, exposure: exposure, remaining: max - exposure };
+    }
+
+    // Both templates take [remaining, exposure, max] in that order - each %s is
+    // replaced left to right, matching the PHP-side _l() label array order.
+    function fillCapacityTpl(tpl, capacity) {
+        var remaining = Math.max(0, capacity.remaining);
+        return tpl.replace('%s', fmt(remaining)).replace('%s', fmt(capacity.exposure)).replace('%s', fmt(capacity.max));
+    }
+
+    function updateMaxLoanHint() {
+        var capacity = currentCapacity();
+        $('#maxLoanHint').text(fillCapacityTpl(capacityHintTpl, capacity));
+        $('#loan_amount').attr('max', Math.max(0, capacity.remaining));
+    }
+
+    $(document).on('change changed.bs.select', 'select[name="employee_id"]', updateMaxLoanHint);
+    updateMaxLoanHint();
+
     var STEP = 500;
     // A fixed 500-unit step turns into thousands of <option> elements once the
     // amount gets large (e.g. 2,000 options at a 1,000,000 loan) - rebuilding
@@ -218,6 +276,11 @@ $(function () {
         }
         if (install <= 0) {
             alert('Select a monthly installment.');
+            e.preventDefault(); return;
+        }
+        var capacity = currentCapacity();
+        if (amount > capacity.remaining) {
+            alert(fillCapacityTpl(capacityExceededTpl, capacity));
             e.preventDefault(); return;
         }
     });
