@@ -102,7 +102,7 @@ $task_status_colors = [
                         <i class="fa fa-calendar-check fa-lg tw-text-white"></i>
                     </div>
                     <div>
-                        <div class="tw-text-xs tw-text-neutral-500 tw-uppercase tw-tracking-wide">Leave Balance</div>
+                        <div class="tw-text-xs tw-text-neutral-500 tw-uppercase tw-tracking-wide">Casual Leave Balance</div>
                         <div class="tw-text-xl tw-font-bold tw-text-neutral-800">
                             <?php echo number_format($stats['leave_balance_remaining'] ?? 0, 1); ?> <span class="tw-text-sm tw-font-normal text-muted">days left</span>
                         </div>
@@ -244,7 +244,8 @@ $task_status_colors = [
                     <div>
                         <div class="tw-text-xs tw-text-neutral-500 tw-uppercase tw-tracking-wide">Overtime (<?php echo date('M'); ?>)</div>
                         <div class="tw-text-xl tw-font-bold tw-text-neutral-800">
-                            <?php echo number_format($stats['approved_overtime_hours'] ?? 0, 1); ?> <span class="tw-text-sm tw-font-normal text-muted">hrs</span>
+                            <?php $aod = (int) ($stats['approved_overtime_days'] ?? 0); ?>
+                            <?php echo $aod; ?> <span class="tw-text-sm tw-font-normal text-muted"><?php echo $aod == 1 ? 'day' : 'days'; ?></span>
                         </div>
                     </div>
                 </div>

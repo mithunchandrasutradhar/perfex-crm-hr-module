@@ -91,6 +91,11 @@ $can_self_edit = (int) $overtime->employee_id === hr_get_own_employee_id() && st
             <hr>
             <div class="tw-flex tw-gap-4 tw-text-sm text-muted">
               <span>Submitted: <?php echo date('d M Y', strtotime($overtime->created_at)); ?></span>
+              <?php if ($overtime->soft_approved_at): ?>
+              <span>Soft <?php echo ucfirst($overtime->soft_status); ?>: <?php echo date('d M Y', strtotime($overtime->soft_approved_at)); ?>
+                <?php if ($overtime->soft_approved_by_name): ?> by <?php echo htmlspecialchars($overtime->soft_approved_by_name); ?><?php endif; ?>
+              </span>
+              <?php endif; ?>
               <?php if ($overtime->approved_at): ?>
               <span>Processed: <?php echo date('d M Y', strtotime($overtime->approved_at)); ?>
                 <?php if ($overtime->approved_by_name): ?> by <?php echo htmlspecialchars($overtime->approved_by_name); ?><?php endif; ?>
@@ -108,6 +113,26 @@ $can_self_edit = (int) $overtime->employee_id === hr_get_own_employee_id() && st
             <h5 class="tw-font-semibold tw-mb-3">Actions</h5>
 
             <?php if ($overtime->status === 'pending'): ?>
+              <?php if (!empty($can_soft_approve)): ?>
+              <!-- Soft Approve/Reject: informational-only pre-approval, never blocks the real Approve/Reject below -->
+              <?php if ($overtime->soft_approved_at): ?>
+              <div class="alert alert-info tw-py-2 tw-mb-2 tw-text-sm">
+                Soft <?php echo ucfirst($overtime->soft_status); ?> by <strong><?php echo htmlspecialchars($overtime->soft_approved_by_name ?: '-'); ?></strong>
+                &mdash; <?php echo date('d M Y', strtotime($overtime->soft_approved_at)); ?>
+              </div>
+              <?php endif; ?>
+              <a href="<?php echo admin_url('hr_module/overtime/soft_approve/'.$overtime->id); ?>"
+                 class="btn btn-success btn-outline btn-block tw-mb-2"
+                 onclick="return confirm('Soft approve this overtime request?')">
+                <i class="fa fa-check tw-mr-1"></i><?php echo _l('hr_overtime_soft_approve'); ?>
+              </a>
+              <a href="<?php echo admin_url('hr_module/overtime/soft_reject/'.$overtime->id); ?>"
+                 class="btn btn-danger btn-outline btn-block tw-mb-2"
+                 onclick="return confirm('Soft reject this overtime request?')">
+                <i class="fa fa-times tw-mr-1"></i><?php echo _l('hr_overtime_soft_reject'); ?>
+              </a>
+              <hr>
+              <?php endif; ?>
               <?php if (staff_can('edit','hr_overtime')): ?>
               <a href="<?php echo admin_url('hr_module/overtime/approve/'.$overtime->id); ?>"
                  class="btn btn-success btn-block tw-mb-2"

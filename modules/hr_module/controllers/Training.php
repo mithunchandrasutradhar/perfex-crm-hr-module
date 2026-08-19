@@ -14,7 +14,9 @@ class Training extends AdminController
     public function index()
     {
         $has_own = $this->Training_model->has_own_or_instructor(hr_get_own_employee_id(), get_staff_user_id());
-        if (staff_cant('view', 'hr_training') && staff_cant('view_own', 'hr_training') && !$has_own) {
+        $has_own_department = staff_can('view_department', 'hr_training')
+            && $this->Training_model->has_department_training(hr_get_own_department_id());
+        if (staff_cant('view', 'hr_training') && staff_cant('view_own', 'hr_training') && !$has_own && !$has_own_department) {
             access_denied('hr_training');
         }
         if ($this->input->is_ajax_request()) {
@@ -84,11 +86,14 @@ class Training extends AdminController
         $own_emp_id     = hr_get_own_employee_id();
         $is_instructor  = $this->Training_model->is_instructor($id, get_staff_user_id());
         $is_participant = $this->Training_model->is_participant($id, $own_emp_id);
+        $has_dept_participant = staff_can('view_department', 'hr_training')
+            && $this->Training_model->has_department_participant($id, hr_get_own_department_id());
 
         // view_own alone isn't enough to see a training's roster - it must
         // actually be one this employee is enrolled in, or an instructor on.
         if (staff_cant('view', 'hr_training') && !$is_instructor
-            && !($is_participant && staff_can('view_own', 'hr_training'))) {
+            && !($is_participant && staff_can('view_own', 'hr_training'))
+            && !$has_dept_participant) {
             access_denied('hr_training');
         }
 

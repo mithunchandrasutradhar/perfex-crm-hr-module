@@ -35,6 +35,9 @@ class Zkteco_model extends App_Model
         ];
         $this->db->insert(db_prefix() . $this->devices_table, $record);
         $id = $this->db->insert_id();
+        if ($id) {
+            log_activity('HR ZKTeco Device Added [ID: ' . $id . ', Name: ' . $data['name'] . ']');
+        }
         return $id ? ['success' => true, 'id' => $id, 'message' => _l('hr_zkteco_device_added')]
                    : ['success' => false, 'message' => _l('hr_error_saving')];
     }
@@ -50,6 +53,7 @@ class Zkteco_model extends App_Model
             'status'     => $data['status'] ?? 1,
             'updated_at' => date('Y-m-d H:i:s'),
         ]);
+        log_activity('HR ZKTeco Device Updated [ID: ' . $id . ']');
         return ['success' => true, 'message' => _l('hr_zkteco_device_updated')];
     }
 
@@ -58,6 +62,7 @@ class Zkteco_model extends App_Model
         $this->db->where('device_id', $id)->delete(db_prefix() . $this->mapping_table);
         $this->db->where('device_id', $id)->delete(db_prefix() . $this->logs_table);
         $this->db->where('id', $id)->delete(db_prefix() . $this->devices_table);
+        log_activity('HR ZKTeco Device Deleted [ID: ' . $id . ']');
         return ['success' => true, 'message' => _l('hr_zkteco_device_deleted')];
     }
 
@@ -140,6 +145,8 @@ class Zkteco_model extends App_Model
 
         $this->_log_sync($device_id, $records_fetched, $records_saved, 'success');
 
+        log_activity('HR ZKTeco Sync Completed [Device ID: ' . $device_id . ', Fetched: ' . $records_fetched . ', Saved: ' . $records_saved . ']');
+
         return [
             'success'         => true,
             'records_fetched' => $records_fetched,
@@ -187,12 +194,14 @@ class Zkteco_model extends App_Model
                 'created_at'     => date('Y-m-d H:i:s'),
             ]);
         }
+        log_activity('HR ZKTeco Employee Mapping Saved [Employee ID: ' . $employee_id . ', Device ID: ' . $device_id . ']');
         return ['success' => true, 'message' => 'Mapping saved.'];
     }
 
     public function delete_mapping($id)
     {
         $this->db->where('id', $id)->delete(db_prefix() . $this->mapping_table);
+        log_activity('HR ZKTeco Employee Mapping Deleted [ID: ' . $id . ']');
         return ['success' => true];
     }
 

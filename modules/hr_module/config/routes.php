@@ -48,6 +48,8 @@ $route['hr_module/leave/edit/(:num)']             = 'hr_module/Leave/edit/$1';
 $route['hr_module/leave/view/(:num)']             = 'hr_module/Leave/view/$1';
 $route['hr_module/leave/approve/(:num)']          = 'hr_module/Leave/approve/$1';
 $route['hr_module/leave/reject/(:num)']           = 'hr_module/Leave/reject/$1';
+$route['hr_module/leave/soft_approve/(:num)']     = 'hr_module/Leave/soft_approve/$1';
+$route['hr_module/leave/soft_reject/(:num)']      = 'hr_module/Leave/soft_reject/$1';
 $route['hr_module/leave/cancel/(:num)']           = 'hr_module/Leave/cancel/$1';
 $route['hr_module/leave/request_cancellation/(:num)']  = 'hr_module/Leave/request_cancellation/$1';
 $route['hr_module/leave/approve_cancellation/(:num)']  = 'hr_module/Leave/approve_cancellation/$1';
@@ -119,6 +121,8 @@ $route['hr_module/overtime/edit/(:num)']          = 'hr_module/Overtime/edit/$1'
 $route['hr_module/overtime/view/(:num)']          = 'hr_module/Overtime/view/$1';
 $route['hr_module/overtime/approve/(:num)']       = 'hr_module/Overtime/approve/$1';
 $route['hr_module/overtime/reject/(:num)']        = 'hr_module/Overtime/reject/$1';
+$route['hr_module/overtime/soft_approve/(:num)']  = 'hr_module/Overtime/soft_approve/$1';
+$route['hr_module/overtime/soft_reject/(:num)']   = 'hr_module/Overtime/soft_reject/$1';
 $route['hr_module/overtime/delete/(:num)']        = 'hr_module/Overtime/delete/$1';
 
 // Performance
@@ -199,4 +203,6 @@ $route['hr_module/shifts/apply']            = 'hr_module/Shifts/apply';
 $route['hr_module/shifts/view/(:num)']      = 'hr_module/Shifts/view/$1';
 $route['hr_module/shifts/approve/(:num)']   = 'hr_module/Shifts/approve/$1';
 $route['hr_module/shifts/reject/(:num)']    = 'hr_module/Shifts/reject/$1';
+$route['hr_module/shifts/soft_approve/(:num)'] = 'hr_module/Shifts/soft_approve/$1';
+$route['hr_module/shifts/soft_reject/(:num)']  = 'hr_module/Shifts/soft_reject/$1';
 $route['hr_module/shifts/delete/(:num)']    = 'hr_module/Shifts/delete/$1';

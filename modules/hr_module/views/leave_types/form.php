@@ -93,6 +93,17 @@ $t       = $is_edit ? $leave_type : (object)[];
               <p class="help-block tw-text-xs tw-mb-0"><?php echo _l('hr_leave_is_date_range_hint'); ?></p>
             </div>
 
+            <div class="form-group select-placeholder">
+              <label><?php echo _l('hr_leave_gender_restriction'); ?></label>
+              <?php $gender = $is_edit ? ($t->gender ?? '') : ''; ?>
+              <select name="gender" class="selectpicker" data-width="200px">
+                <option value="" <?php echo $gender === '' ? 'selected' : ''; ?>><?php echo _l('hr_leave_gender_any'); ?></option>
+                <option value="male" <?php echo $gender === 'male' ? 'selected' : ''; ?>><?php echo _l('hr_male'); ?></option>
+                <option value="female" <?php echo $gender === 'female' ? 'selected' : ''; ?>><?php echo _l('hr_female'); ?></option>
+              </select>
+              <p class="help-block tw-text-xs tw-mb-0"><?php echo _l('hr_leave_gender_restriction_hint'); ?></p>
+            </div>
+
             <div class="form-group">
               <label><?php echo _l('hr_description'); ?></label>
               <textarea name="description" class="form-control" rows="2"><?php echo $is_edit ? htmlspecialchars($t->description ?? '') : ''; ?></textarea>

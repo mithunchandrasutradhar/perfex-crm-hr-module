@@ -12,6 +12,26 @@ class Overtime_model extends App_Model
 {
     private $table = 'hr_overtime';
 
+    public function __construct()
+    {
+        parent::__construct();
+        $this->_ensure_soft_approval_columns();
+    }
+
+    // Informational-only pre-approval step (see soft_approve()/soft_reject()
+    // below) - added on first use, so this works immediately without
+    // reactivating the module. Mirrors Leave_model::_ensure_cancellation_columns().
+    private function _ensure_soft_approval_columns()
+    {
+        $col = $this->db->query("SHOW COLUMNS FROM `" . db_prefix() . $this->table . "` LIKE 'soft_status'")->num_rows();
+        if ($col === 0) {
+            $this->db->query("ALTER TABLE `" . db_prefix() . $this->table . "`
+                ADD COLUMN `soft_status` VARCHAR(20) DEFAULT NULL,
+                ADD COLUMN `soft_approved_by` INT(11) DEFAULT NULL,
+                ADD COLUMN `soft_approved_at` DATETIME DEFAULT NULL");
+        }
+    }
+
     public function get($id)
     {
         $row = $this->db->where('id', $id)->get(db_prefix() . $this->table)->row();
@@ -22,16 +42,20 @@ class Overtime_model extends App_Model
                       MIN(o.reason) as reason, MIN(o.status) as status,
                       MIN(o.approved_by) as approved_by, MIN(o.approved_at) as approved_at,
                       MIN(o.rejection_reason) as rejection_reason, MIN(o.created_at) as created_at,
+                      MIN(o.soft_status) as soft_status, MIN(o.soft_approved_by) as soft_approved_by,
+                      MIN(o.soft_approved_at) as soft_approved_at,
                       COUNT(*) as day_count, MIN(o.overtime_date) as first_date, MAX(o.overtime_date) as last_date,
                       GROUP_CONCAT(DISTINCT o.day_type) as day_types,
-                      e.first_name, e.last_name, e.employee_code, e.basic_salary,
+                      e.first_name, e.last_name, e.employee_code, e.basic_salary, e.department_id as employee_department_id,
                       d.name as department_name, ds.name as designation_name,
-                      CONCAT(s.firstname," ",s.lastname) as approved_by_name', false)
+                      CONCAT(s.firstname," ",s.lastname) as approved_by_name,
+                      CONCAT(shb.firstname," ",shb.lastname) as soft_approved_by_name', false)
             ->from(db_prefix() . $this->table . ' o')
             ->join(db_prefix() . 'hr_employees e',    'e.id = o.employee_id',      'left')
             ->join(db_prefix() . 'departments d', 'd.departmentid = e.department_id', 'left')
             ->join(db_prefix() . 'hr_designations ds','ds.id = e.designation_id',  'left')
             ->join(db_prefix() . 'staff s',           's.staffid = o.approved_by', 'left')
+            ->join(db_prefix() . 'staff shb',         'shb.staffid = o.soft_approved_by', 'left')
             ->where('o.batch_id', $row->batch_id)
             ->group_by('o.batch_id')
             ->get()->row();
@@ -159,6 +183,9 @@ class Overtime_model extends App_Model
         }
         $this->db->insert_batch(db_prefix() . $this->table, $rows);
         $id = $this->db->insert_id();
+        if ($id) {
+            log_activity('HR Overtime Requested [ID: ' . $id . ', Employee ID: ' . $employee_id . ', Days: ' . count($rows) . ']');
+        }
         return $id ? ['success' => true, 'id' => $id, 'message' => count($rows) === 1 ? _l('hr_overtime_applied_msg') : _l('hr_overtime_batch_submitted', count($rows))]
                    : ['success' => false, 'message' => _l('hr_error_saving')];
     }
@@ -215,6 +242,9 @@ class Overtime_model extends App_Model
         }
         $this->db->insert_batch(db_prefix() . $this->table, $rows);
         $new_id = $this->db->insert_id();
+        if ($new_id) {
+            log_activity('HR Overtime Request Edited [ID: ' . $new_id . ', Employee ID: ' . $employee_id . ']');
+        }
         return $new_id ? ['success' => true, 'id' => $new_id, 'message' => _l('hr_updated_successfully')]
                        : ['success' => false, 'message' => _l('hr_error_saving')];
     }
@@ -248,6 +278,7 @@ class Overtime_model extends App_Model
             $this->Payroll_model->sync_overtime_for_period($row->employee_id, $period[0], $period[1]);
         }
 
+        log_activity('HR Overtime Approved [ID: ' . $id . ']');
         return ['success' => true, 'message' => _l('hr_overtime_approved_msg')];
     }
 
@@ -262,7 +293,37 @@ class Overtime_model extends App_Model
             'rejection_reason' => $reason,
             'updated_at'       => date('Y-m-d H:i:s'),
         ]);
+        log_activity('HR Overtime Rejected [ID: ' . $id . ']');
         return ['success' => true, 'message' => _l('hr_overtime_rejected_msg')];
+    }
+
+    // Informational-only pre-approval: records who soft-approved/rejected a still
+    // pending batch. Never touches status/payroll sync and never blocks
+    // approve()/reject() above - purely a note shown alongside the real decision.
+    // Applied batch-wide, same as approve()/reject().
+    public function soft_approve($id)
+    {
+        return $this->_soft_decide($id, 'approved');
+    }
+
+    public function soft_reject($id)
+    {
+        return $this->_soft_decide($id, 'rejected');
+    }
+
+    private function _soft_decide($id, $decision)
+    {
+        $row = $this->db->where('id', $id)->get(db_prefix() . $this->table)->row();
+        if (!$row || $row->status !== 'pending') {
+            return ['success' => false, 'message' => 'Only a pending request can be soft ' . $decision . '.'];
+        }
+        $this->db->where('batch_id', $row->batch_id)->update(db_prefix() . $this->table, [
+            'soft_status'      => $decision,
+            'soft_approved_by' => get_staff_user_id(),
+            'soft_approved_at' => date('Y-m-d H:i:s'),
+        ]);
+        log_activity('HR Overtime Soft ' . ucfirst($decision) . ' [ID: ' . $id . ']');
+        return ['success' => true];
     }
 
     public function delete($id)
@@ -273,6 +334,7 @@ class Overtime_model extends App_Model
             return ['success' => false, 'message' => 'Approved overtime cannot be deleted.'];
         }
         $this->db->where('batch_id', $row->batch_id)->delete(db_prefix() . $this->table);
+        log_activity('HR Overtime Request Deleted [ID: ' . $id . ']');
         return ['success' => true];
     }
 

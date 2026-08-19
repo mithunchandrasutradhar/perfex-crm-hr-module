@@ -55,6 +55,7 @@ function ev($obj, $key, $default = '') {
                         data-email="<?php echo htmlspecialchars($s->email); ?>"
                         data-phone="<?php echo htmlspecialchars($s->phonenumber ?? ''); ?>"
                         data-photo="<?php echo htmlspecialchars($s_photo_url); ?>"
+                        data-department="<?php echo htmlspecialchars($s->department_id ?? ''); ?>"
                         <?php echo ($is_edit && $e->staff_id == $s->staffid) ? 'selected' : ''; ?>>
                   <?php echo htmlspecialchars($s->firstname . ' ' . $s->lastname); ?>
                   (<?php echo htmlspecialchars($s->email); ?>)
@@ -397,6 +398,16 @@ $(function(){
         var phone = $opt.data('phone');
         var photo = $opt.data('photo');
         showStaffPreview(staffId, fn, ln, email, phone, photo);
+
+        <?php if (!$is_edit): ?>
+        // Pre-select the Department dropdown from the chosen staff's existing
+        // department on file, instead of leaving it blank - add page only, so
+        // this never overrides an already-saved HR department on the edit page.
+        var dept = $opt.data('department');
+        if (dept) {
+            $('#emp_dept').val(String(dept)).selectpicker('refresh');
+        }
+        <?php endif; ?>
     });
 
     // Trigger on load for edit mode

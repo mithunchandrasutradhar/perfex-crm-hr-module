@@ -43,6 +43,9 @@ $badge = '<span class="label ' . ($badge_map[$a->status] ?? 'label-default') . '
               <tr><th><?php echo _l('hr_remarks'); ?></th><td><?php echo nl2br(htmlspecialchars($a->rejection_reason)); ?></td></tr>
               <?php endif; ?>
               <tr><th><?php echo _l('hr_created_at'); ?></th><td><?php echo _dt($a->created_at); ?> by <?php echo htmlspecialchars($a->created_by_name ?: '-'); ?></td></tr>
+              <?php if (!empty($a->soft_approved_by)): ?>
+              <tr><th>Soft <?php echo ucfirst($a->soft_status); ?> By</th><td><?php echo htmlspecialchars($a->soft_approved_by_name ?: '-'); ?> &mdash; <?php echo _dt($a->soft_approved_at); ?></td></tr>
+              <?php endif; ?>
               <?php if ($a->approved_by): ?>
               <tr><th><?php echo ucfirst($a->status); ?> By</th><td><?php echo htmlspecialchars($a->approved_by_name ?: '-'); ?> &mdash; <?php echo _dt($a->approved_at); ?></td></tr>
               <?php endif; ?>
@@ -56,6 +59,28 @@ $badge = '<span class="label ' . ($badge_map[$a->status] ?? 'label-default') . '
         <div class="panel_s">
           <div class="panel-body">
             <h6 class="tw-font-semibold tw-mb-3"><?php echo _l('hr_actions'); ?></h6>
+
+            <?php if (!empty($can_soft_approve) && $a->status === 'pending'): ?>
+            <!-- Soft Approve/Reject: informational-only pre-approval, never blocks the real Approve/Reject below -->
+            <?php if (!empty($a->soft_approved_by)): ?>
+            <div class="alert alert-info tw-py-2 tw-mb-3 tw-text-sm">
+              Soft <?php echo ucfirst($a->soft_status); ?> by <strong><?php echo htmlspecialchars($a->soft_approved_by_name ?: '-'); ?></strong> &mdash; <?php echo _dt($a->soft_approved_at); ?>
+            </div>
+            <?php endif; ?>
+            <form action="<?php echo admin_url('hr_module/shifts/soft_approve/' . $a->id); ?>" method="post" class="tw-mb-2">
+              <?php echo form_hidden($this->security->get_csrf_token_name(), $this->security->get_csrf_hash()); ?>
+              <button type="submit" class="btn btn-success btn-outline btn-block btn-sm">
+                <i class="fa fa-check tw-mr-1"></i><?php echo _l('hr_shift_soft_approve'); ?>
+              </button>
+            </form>
+            <form action="<?php echo admin_url('hr_module/shifts/soft_reject/' . $a->id); ?>" method="post" class="tw-mb-3">
+              <?php echo form_hidden($this->security->get_csrf_token_name(), $this->security->get_csrf_hash()); ?>
+              <button type="submit" class="btn btn-danger btn-outline btn-block btn-sm">
+                <i class="fa fa-times tw-mr-1"></i><?php echo _l('hr_shift_soft_reject'); ?>
+              </button>
+            </form>
+            <hr>
+            <?php endif; ?>
 
             <?php if ($can_approve && $a->status === 'pending'): ?>
             <form action="<?php echo admin_url('hr_module/shifts/approve/' . $a->id); ?>" method="post" class="tw-mb-3">

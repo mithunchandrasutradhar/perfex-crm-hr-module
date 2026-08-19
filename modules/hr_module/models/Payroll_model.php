@@ -25,6 +25,9 @@ class Payroll_model extends App_Model
         $data['created_at'] = date('Y-m-d H:i:s');
         $this->db->insert(db_prefix() . $this->items_table, $data);
         $id = $this->db->insert_id();
+        if ($id) {
+            log_activity('HR Payroll Item Created [ID: ' . $id . ', Name: ' . ($data['name'] ?? '') . ']');
+        }
         return $id ? ['success' => true, 'id' => $id, 'message' => _l('hr_payroll_item_added')]
                    : ['success' => false, 'message' => _l('hr_error_saving')];
     }
@@ -33,7 +36,11 @@ class Payroll_model extends App_Model
     {
         $data['updated_at'] = date('Y-m-d H:i:s');
         $this->db->where('id', $id)->update(db_prefix() . $this->items_table, $data);
-        return $this->db->affected_rows() >= 0
+        $ok = $this->db->affected_rows() >= 0;
+        if ($ok) {
+            log_activity('HR Payroll Item Updated [ID: ' . $id . ']');
+        }
+        return $ok
             ? ['success' => true, 'message' => _l('hr_payroll_item_updated')]
             : ['success' => false, 'message' => _l('hr_error_saving')];
     }
@@ -46,6 +53,7 @@ class Payroll_model extends App_Model
             return ['success' => false, 'message' => 'Cannot delete — item is used in existing payroll records.'];
         }
         $this->db->where('id', $id)->delete(db_prefix() . $this->items_table);
+        log_activity('HR Payroll Item Deleted [ID: ' . $id . ']');
         return ['success' => true, 'message' => _l('hr_payroll_item_deleted')];
     }
 
@@ -337,6 +345,7 @@ class Payroll_model extends App_Model
         foreach ($details as &$d) $d['payroll_id'] = $pid;
         if ($details) $this->db->insert_batch(db_prefix() . $this->details_table, $details);
 
+        log_activity('HR Payroll Generated [ID: ' . $pid . ', Employee ID: ' . $employee_id . ', Period: ' . $month . '/' . $year . ']');
         return ['success' => true, 'id' => $pid, 'message' => _l('hr_payroll_generated')];
     }
 
@@ -398,6 +407,7 @@ class Payroll_model extends App_Model
             'net_salary'       => $live_totals['net'],
             'updated_at'       => date('Y-m-d H:i:s'),
         ]);
+        log_activity('HR Payroll Marked Paid [ID: ' . $id . ', Employee ID: ' . $row->employee_id . ', Period: ' . $row->pay_month . '/' . $row->pay_year . ']');
         return ['success' => true, 'message' => _l('hr_payroll_paid')];
     }
 
@@ -423,6 +433,7 @@ class Payroll_model extends App_Model
             'payment_date'   => null,
             'updated_at'     => date('Y-m-d H:i:s'),
         ]);
+        log_activity('HR Payroll Reverted To Draft [ID: ' . $id . ', Employee ID: ' . $row->employee_id . ', Period: ' . $row->pay_month . '/' . $row->pay_year . ']');
         return ['success' => true, 'message' => 'Payroll reverted to draft.'];
     }
 
@@ -437,6 +448,7 @@ class Payroll_model extends App_Model
         $this->_reapply_payroll_loan_deduction($id, 0);
         $this->db->where('payroll_id', $id)->delete(db_prefix() . $this->details_table);
         $this->db->where('id', $id)->delete(db_prefix() . $this->table);
+        log_activity('HR Payroll Deleted [ID: ' . $id . ']');
         return ['success' => true];
     }
 

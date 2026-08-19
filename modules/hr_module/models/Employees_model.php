@@ -202,11 +202,18 @@ class Employees_model extends App_Model
             ->get($this->table)->result_array();
         $linked_ids = array_column($linked, 'staff_id');
 
-        $q = $this->db->select('staffid, firstname, lastname, email, phonenumber, profile_image')
-            ->where('active', 1)
-            ->order_by('firstname', 'ASC');
-        if ($linked_ids) $q->where_not_in('staffid', $linked_ids);
-        return $q->get(db_prefix() . 'staff')->result();
+        // department_id: the staff's Perfex ticket-department (tblstaff_departments is
+        // many-to-many, so this picks their first-assigned one) - used to pre-select the
+        // HR "Department" dropdown on the Add Employee page once this staff is chosen,
+        // instead of leaving it blank even though the staff already has one on file.
+        $q = $this->db->select('s.staffid, s.firstname, s.lastname, s.email, s.phonenumber, s.profile_image,
+                (SELECT sd.departmentid FROM ' . db_prefix() . 'staff_departments sd
+                    WHERE sd.staffid = s.staffid ORDER BY sd.staffdepartmentid ASC LIMIT 1) as department_id', false)
+            ->from(db_prefix() . 'staff s')
+            ->where('s.active', 1)
+            ->order_by('s.firstname', 'ASC');
+        if ($linked_ids) $q->where_not_in('s.staffid', $linked_ids);
+        return $q->get()->result();
     }
 
     public function handle_photo_upload($old_photo = null)

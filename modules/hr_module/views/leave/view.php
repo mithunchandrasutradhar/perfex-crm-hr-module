@@ -2,7 +2,7 @@
 /** @var object      $request */
 /** @var array       $days    */
 /** @var object|null $balance */
-if (!isset($request)) $request = (object)['id'=>0,'status'=>'pending','leave_type_name'=>'','employee_name'=>'','employee_code'=>'','from_date'=>null,'to_date'=>null,'total_days'=>0,'is_half_day'=>0,'reason'=>'','rejection_reason'=>null,'attachment'=>null,'created_at'=>null,'approved_by'=>null,'approved_by_name'=>'','approved_at'=>null,'cancellation_status'=>null,'cancellation_reason'=>null,'cancellation_requested_at'=>null];
+if (!isset($request)) $request = (object)['id'=>0,'status'=>'pending','leave_type_name'=>'','employee_name'=>'','employee_code'=>'','from_date'=>null,'to_date'=>null,'total_days'=>0,'is_half_day'=>0,'reason'=>'','rejection_reason'=>null,'attachment'=>null,'created_at'=>null,'approved_by'=>null,'approved_by_name'=>'','approved_at'=>null,'cancellation_status'=>null,'cancellation_reason'=>null,'cancellation_requested_at'=>null,'soft_status'=>null,'soft_approved_by'=>null,'soft_approved_by_name'=>'','soft_approved_at'=>null];
 if (!isset($days)) $days = [];
 if (!isset($balance)) $balance = null;
 $r = $request;
@@ -58,6 +58,10 @@ $badge = '<span class="label ' . ($badge_map[$r->status] ?? 'label-default') . '
                 <td><a href="<?php echo admin_url('hr_module/leave/download/' . $r->id); ?>" target="_blank"><i class="fa fa-paperclip"></i> View Attachment</a></td></tr>
               <?php endif; ?>
               <tr><th><?php echo _l('hr_created_at'); ?></th><td><?php echo _dt($r->created_at); ?></td></tr>
+              <?php if (!empty($r->soft_approved_by)): ?>
+              <tr><th><?php echo ($r->soft_status == 'approved' ? _l('hr_leave_soft_approve') : _l('hr_leave_soft_reject')) . 'd by'; ?></th>
+                <td><?php echo htmlspecialchars($r->soft_approved_by_name); ?> &mdash; <?php echo _dt($r->soft_approved_at); ?></td></tr>
+              <?php endif; ?>
               <?php if ($r->approved_by): ?>
               <tr><th><?php echo ($r->status == 'approved' ? _l('hr_leave_approve') : _l('hr_leave_reject')) . 'd by'; ?></th>
                 <td><?php echo htmlspecialchars($r->approved_by_name); ?> &mdash; <?php echo _dt($r->approved_at); ?></td></tr>
@@ -111,6 +115,29 @@ $badge = '<span class="label ' . ($badge_map[$r->status] ?? 'label-default') . '
         <div class="panel_s">
           <div class="panel-body">
             <h6 class="tw-font-semibold tw-mb-3"><?php echo _l('hr_actions'); ?></h6>
+
+            <?php if ($r->status === 'pending' && staff_can('soft_approve', 'hr_leave')): ?>
+            <!-- Soft Approve/Reject: informational-only pre-approval, never blocks the real Approve/Reject below -->
+            <?php if (!empty($r->soft_approved_by)): ?>
+            <div class="alert alert-info tw-py-2 tw-mb-3 tw-text-sm">
+              <?php echo ($r->soft_status == 'approved' ? _l('hr_leave_soft_approve') : _l('hr_leave_soft_reject')) . 'd by'; ?>
+              <strong><?php echo htmlspecialchars($r->soft_approved_by_name); ?></strong> &mdash; <?php echo _dt($r->soft_approved_at); ?>
+            </div>
+            <?php endif; ?>
+            <form action="<?php echo admin_url('hr_module/leave/soft_approve/' . $r->id); ?>" method="post" class="tw-mb-2">
+              <?php echo form_hidden($this->security->get_csrf_token_name(), $this->security->get_csrf_hash()); ?>
+              <button type="submit" class="btn btn-success btn-outline btn-block btn-sm">
+                <i class="fa fa-check tw-mr-1"></i><?php echo _l('hr_leave_soft_approve'); ?>
+              </button>
+            </form>
+            <form action="<?php echo admin_url('hr_module/leave/soft_reject/' . $r->id); ?>" method="post" class="tw-mb-3">
+              <?php echo form_hidden($this->security->get_csrf_token_name(), $this->security->get_csrf_hash()); ?>
+              <button type="submit" class="btn btn-danger btn-outline btn-block btn-sm">
+                <i class="fa fa-times tw-mr-1"></i><?php echo _l('hr_leave_soft_reject'); ?>
+              </button>
+            </form>
+            <hr>
+            <?php endif; ?>
 
             <?php if ($r->status === 'pending' && (staff_can('approve', 'hr_leave') || is_admin())): ?>
             <!-- Approve -->

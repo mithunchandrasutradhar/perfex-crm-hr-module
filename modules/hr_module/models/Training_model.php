@@ -52,6 +52,34 @@ class Training_model extends App_Model
             ->get(db_prefix() . $this->parts_table)->row();
     }
 
+    // Whether at least one participant of this training belongs to $department_id -
+    // used by the 'view_department' capability (a department head sees a training
+    // if any of their department's employees are enrolled in it).
+    public function has_department_participant($training_id, $department_id)
+    {
+        if (!$department_id) return false;
+        return (bool) $this->db->query(
+            'SELECT 1 FROM ' . db_prefix() . $this->parts_table . ' p
+             JOIN ' . db_prefix() . 'hr_employees e ON e.id = p.employee_id
+             WHERE p.training_id = ? AND e.department_id = ? LIMIT 1',
+            [$training_id, $department_id]
+        )->row();
+    }
+
+    // Whether at least one training exists with a participant from $department_id -
+    // lets a department head reach their own list/menu item without needing
+    // module-wide view/view_own permission. Mirrors has_own_or_instructor() above.
+    public function has_department_training($department_id)
+    {
+        if (!$department_id) return false;
+        return (bool) $this->db->query(
+            'SELECT 1 FROM ' . db_prefix() . $this->parts_table . ' p
+             JOIN ' . db_prefix() . 'hr_employees e ON e.id = p.employee_id
+             WHERE e.department_id = ? LIMIT 1',
+            [$department_id]
+        )->row();
+    }
+
     // Whether this staff member is enrolled in (as employee) or assigned to (as
     // instructor) at least one training - lets them reach their own list/menu item
     // without needing module-wide view/view_own permission on their role.
@@ -95,6 +123,11 @@ class Training_model extends App_Model
                 ->group_end();
         } elseif (!empty($filters['participant_employee_id'])) {
             $this->db->where('EXISTS (SELECT 1 FROM ' . db_prefix() . $this->parts_table . ' p2 WHERE p2.training_id = t.id AND p2.employee_id = ' . (int) $filters['participant_employee_id'] . ')', null, false);
+        } elseif (!empty($filters['department_id'])) {
+            // 'view_department': trainings with at least one participant from this department.
+            $this->db->where('EXISTS (SELECT 1 FROM ' . db_prefix() . $this->parts_table . ' p2
+                JOIN ' . db_prefix() . 'hr_employees e2 ON e2.id = p2.employee_id
+                WHERE p2.training_id = t.id AND e2.department_id = ' . (int) $filters['department_id'] . ')', null, false);
         }
 
         return $this->db->order_by('t.start_date DESC')->get()->result();
@@ -122,6 +155,9 @@ class Training_model extends App_Model
         $this->db->insert(db_prefix() . $this->table, $record);
         $id = $this->db->insert_id();
         if ($id && !empty($data['sessions'])) $this->save_sessions($id, $data['sessions']);
+        if ($id) {
+            log_activity('HR Training Program Created [ID: ' . $id . ', Title: ' . $data['title'] . ']');
+        }
         return $id ? ['success' => true, 'id' => $id, 'message' => _l('hr_training_added')]
                    : ['success' => false, 'message' => _l('hr_error_saving')];
     }
@@ -145,6 +181,7 @@ class Training_model extends App_Model
             $this->save_sessions($id, $data['sessions']);
         }
 
+        log_activity('HR Training Updated [ID: ' . $id . ']');
         return ['success' => true, 'message' => _l('hr_training_updated')];
     }
 
@@ -158,6 +195,7 @@ class Training_model extends App_Model
         ];
         if ($note !== null && $note !== '') $update['completion_note'] = $note;
         $this->db->where('id', $id)->update(db_prefix() . $this->table, $update);
+        log_activity('HR Training Marked Complete [ID: ' . $id . ']');
         return ['success' => true, 'message' => _l('hr_training_marked_complete')];
     }
 
@@ -167,6 +205,7 @@ class Training_model extends App_Model
         $this->db->where('training_id', $id)->delete(db_prefix() . $this->attendance_table);
         $this->db->where('training_id', $id)->delete(db_prefix() . $this->sessions_table);
         $this->db->where('id', $id)->delete(db_prefix() . $this->table);
+        log_activity('HR Training Deleted [ID: ' . $id . ']');
         return ['success' => true, 'message' => _l('hr_training_deleted')];
     }
 
@@ -254,6 +293,7 @@ class Training_model extends App_Model
             [$training_id, $employee_id, $date, $status, get_staff_user_id(), date('Y-m-d H:i:s')]
         );
         $this->_recompute_overall_status($training_id, $employee_id);
+        log_activity('HR Training Daily Attendance Confirmed [Training ID: ' . $training_id . ', Employee ID: ' . $employee_id . ', Date: ' . $date . ', Status: ' . $status . ']');
         return ['success' => true, 'message' => $status === 'present' ? _l('hr_training_marked_present') : _l('hr_training_marked_absent')];
     }
 
@@ -343,6 +383,9 @@ class Training_model extends App_Model
             $added++;
             $enrolled_ids[] = $eid;
         }
+        if ($added > 0) {
+            log_activity('HR Training Employees Enrolled [Training ID: ' . $training_id . ', Count: ' . $added . ']');
+        }
         return ['success' => true, 'message' => "$added participant(s) enrolled.", 'enrolled_ids' => $enrolled_ids];
     }
 
@@ -352,6 +395,7 @@ class Training_model extends App_Model
             ->delete(db_prefix() . $this->parts_table);
         $this->db->where(['training_id' => $training_id, 'employee_id' => $employee_id])
             ->delete(db_prefix() . $this->attendance_table);
+        log_activity('HR Training Participant Removed [Training ID: ' . $training_id . ', Employee ID: ' . $employee_id . ']');
         return ['success' => true];
     }
 
@@ -383,6 +427,7 @@ class Training_model extends App_Model
                 'completed'         => $status === 'present' ? 1 : 0,
                 'completion_date'   => $status === 'present' ? ($date ?: date('Y-m-d')) : null,
             ]);
+        log_activity('HR Training Overall Attendance Marked [Training ID: ' . $training_id . ', Employee ID: ' . $employee_id . ', Status: ' . $status . ']');
         return ['success' => true, 'message' => $status === 'present' ? _l('hr_training_marked_present') : _l('hr_training_marked_absent')];
     }
 }

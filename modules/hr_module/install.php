@@ -126,6 +126,7 @@ if (!$CI->db->table_exists(db_prefix() . 'hr_leave_types')) {
       `requires_attachment` tinyint(1) NOT NULL DEFAULT 0,
       `allow_half_day` tinyint(1) NOT NULL DEFAULT 1,
       `is_date_range` tinyint(1) NOT NULL DEFAULT 0,
+      `gender` varchar(10) DEFAULT NULL,
       `description` text DEFAULT NULL,
       `status` tinyint(1) NOT NULL DEFAULT 1,
       `created_at` datetime NOT NULL,
@@ -138,13 +139,13 @@ if (!$CI->db->table_exists(db_prefix() . 'hr_leave_types')) {
 
     // Default leave types
     $now = date('Y-m-d H:i:s');
-    $CI->db->query("INSERT INTO `" . db_prefix() . "hr_leave_types` (`name`, `days_per_year`, `hours_per_day`, `carry_forward`, `requires_attachment`, `allow_half_day`, `is_date_range`, `description`, `status`, `created_at`) VALUES
-      ('Annual Leave', 15, 8.0, 1, 0, 1, 0, 'Regular annual leave entitlement', 1, '$now'),
-      ('Sick Leave', 14, 8.0, 0, 1, 1, 0, 'Sick leave with medical certificate', 1, '$now'),
-      ('Casual Leave', 10, 8.0, 0, 0, 1, 0, 'Casual leave for personal reasons', 1, '$now'),
-      ('Maternity Leave', 120, 8.0, 0, 1, 0, 1, 'Maternity leave for female employees', 1, '$now'),
-      ('Paternity Leave', 5, 8.0, 0, 0, 0, 0, 'Paternity leave for male employees', 1, '$now'),
-      ('Unpaid Leave', 0, 8.0, 0, 0, 1, 0, 'Leave without pay', 1, '$now')");
+    $CI->db->query("INSERT INTO `" . db_prefix() . "hr_leave_types` (`name`, `days_per_year`, `hours_per_day`, `carry_forward`, `requires_attachment`, `allow_half_day`, `is_date_range`, `gender`, `description`, `status`, `created_at`) VALUES
+      ('Annual Leave', 15, 8.0, 1, 0, 1, 0, NULL, 'Regular annual leave entitlement', 1, '$now'),
+      ('Sick Leave', 14, 8.0, 0, 1, 1, 0, NULL, 'Sick leave with medical certificate', 1, '$now'),
+      ('Casual Leave', 10, 8.0, 0, 0, 1, 0, NULL, 'Casual leave for personal reasons', 1, '$now'),
+      ('Maternity Leave', 120, 8.0, 0, 1, 0, 1, 'female', 'Maternity leave for female employees', 1, '$now'),
+      ('Paternity Leave', 5, 8.0, 0, 0, 0, 0, 'male', 'Paternity leave for male employees', 1, '$now'),
+      ('Unpaid Leave', 0, 8.0, 0, 0, 1, 0, NULL, 'Leave without pay', 1, '$now')");
 }
 // Upgrade: add hours_per_day column if the table existed before it was added to the schema
 if ($CI->db->table_exists(db_prefix() . 'hr_leave_types')) {
@@ -161,6 +162,17 @@ if ($CI->db->table_exists(db_prefix() . 'hr_leave_types')) {
         $CI->db->query("ALTER TABLE `" . db_prefix() . "hr_leave_types` ADD COLUMN `is_date_range` tinyint(1) NOT NULL DEFAULT 0 AFTER `allow_half_day`");
         // Best-effort: flag any existing "Maternity"/"Paternity"-named type as range-based by default
         $CI->db->query("UPDATE `" . db_prefix() . "hr_leave_types` SET `is_date_range` = 1 WHERE `name` LIKE '%maternity%' OR `name` LIKE '%paternity%'");
+    }
+}
+// Upgrade: add gender column (restricts a leave type to 'male'/'female' employees;
+// NULL/'' means open to any gender) if the table existed before it was added to the schema
+if ($CI->db->table_exists(db_prefix() . 'hr_leave_types')) {
+    $col = $CI->db->query("SHOW COLUMNS FROM `" . db_prefix() . "hr_leave_types` LIKE 'gender'")->num_rows();
+    if ($col === 0) {
+        $CI->db->query("ALTER TABLE `" . db_prefix() . "hr_leave_types` ADD COLUMN `gender` varchar(10) DEFAULT NULL AFTER `is_date_range`");
+        // Best-effort: restrict any existing "Maternity"/"Paternity"-named type by gender
+        $CI->db->query("UPDATE `" . db_prefix() . "hr_leave_types` SET `gender` = 'female' WHERE `name` LIKE '%maternity%'");
+        $CI->db->query("UPDATE `" . db_prefix() . "hr_leave_types` SET `gender` = 'male' WHERE `name` LIKE '%paternity%'");
     }
 }
 

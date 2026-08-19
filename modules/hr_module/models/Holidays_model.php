@@ -206,7 +206,11 @@ class Holidays_model extends App_Model
         $data['created_by'] = get_staff_user_id();
         $data['created_at'] = date('Y-m-d H:i:s');
         $this->db->insert($this->tbl, $data);
-        return $this->db->insert_id();
+        $id = $this->db->insert_id();
+        if ($id) {
+            log_activity('HR Holiday Added [ID: ' . $id . ', Name: ' . $data['name'] . ', Date: ' . $data['holiday_date'] . ']');
+        }
+        return $id;
     }
 
     public function update($id, $data)
@@ -214,12 +218,20 @@ class Holidays_model extends App_Model
         $data['end_date'] = !empty($data['end_date']) ? $data['end_date'] : null;
         $data['year'] = (int) date('Y', strtotime($data['holiday_date']));
         $this->db->where('id', $id)->update($this->tbl, $data);
-        return $this->db->affected_rows() > 0;
+        $updated = $this->db->affected_rows() > 0;
+        if ($updated) {
+            log_activity('HR Holiday Edited [ID: ' . $id . ']');
+        }
+        return $updated;
     }
 
     public function delete($id)
     {
         $this->db->where('id', $id)->delete($this->tbl);
-        return $this->db->affected_rows() > 0;
+        $deleted = $this->db->affected_rows() > 0;
+        if ($deleted) {
+            log_activity('HR Holiday Deleted [ID: ' . $id . ']');
+        }
+        return $deleted;
     }
 }

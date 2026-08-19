@@ -11,7 +11,11 @@ foreach (['employee_id', 'department_id', 'shift_type_id', 'status'] as $key) {
 }
 
 if (!is_admin() && !staff_can('view', 'hr_shifts')) {
-    $filters['employee_id'] = hr_get_own_employee_id();
+    if (staff_can('view_department', 'hr_shifts')) {
+        $filters['department_id'] = hr_get_own_department_id();
+    } else {
+        $filters['employee_id'] = hr_get_own_employee_id();
+    }
 }
 
 $rows = $CI->Shifts_model->get_all($filters);

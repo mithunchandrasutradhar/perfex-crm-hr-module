@@ -16,6 +16,7 @@ class Leave_model extends App_Model
         $this->tbl_types         = db_prefix() . 'hr_leave_types';
         $this->tbl_balances      = db_prefix() . 'hr_leave_balances';
         $this->_ensure_cancellation_columns();
+        $this->_ensure_soft_approval_columns();
     }
 
     // Lets an employee request cancellation of an already-approved leave (reviewed
@@ -31,6 +32,22 @@ class Leave_model extends App_Model
                 ADD COLUMN `cancellation_requested_at` DATETIME DEFAULT NULL,
                 ADD COLUMN `cancellation_reviewed_by` INT(11) DEFAULT NULL,
                 ADD COLUMN `cancellation_reviewed_at` DATETIME DEFAULT NULL");
+        }
+    }
+
+    // Informational-only pre-approval step: a staff member holding the
+    // 'soft_approve' capability (e.g. a department head) can record their own
+    // approve/reject on a still-pending request. Purely advisory - it's just
+    // displayed on the request, and never blocks or replaces the real
+    // approve()/reject() below. Columns added on first use, same as above.
+    private function _ensure_soft_approval_columns()
+    {
+        $col = $this->db->query("SHOW COLUMNS FROM `" . $this->tbl_requests . "` LIKE 'soft_status'")->num_rows();
+        if ($col === 0) {
+            $this->db->query("ALTER TABLE `" . $this->tbl_requests . "`
+                ADD COLUMN `soft_status` VARCHAR(20) DEFAULT NULL,
+                ADD COLUMN `soft_approved_by` INT(11) DEFAULT NULL,
+                ADD COLUMN `soft_approved_at` DATETIME DEFAULT NULL");
         }
     }
 
@@ -56,14 +73,41 @@ class Leave_model extends App_Model
     {
         $data['created_at'] = date('Y-m-d H:i:s');
         $this->db->insert($this->tbl_types, $data);
-        return $this->db->insert_id();
+        $id = $this->db->insert_id();
+        if ($id) {
+            log_activity('HR Leave Type Created [ID: ' . $id . ', Name: ' . $data['name'] . ']');
+        }
+        return $id;
     }
 
     public function update_type($data, $id)
     {
         $data['updated_at'] = date('Y-m-d H:i:s');
         $this->db->where('id', $id)->update($this->tbl_types, $data);
+        log_activity('HR Leave Type Edited [ID: ' . $id . ']');
+        if (array_key_exists('days_per_year', $data)) {
+            $this->sync_allocated_days_for_unused_balances($id, $data['days_per_year']);
+        }
         return true;
+    }
+
+    // Keeps this year's already-allocated balance rows in sync when a leave type's
+    // max days changes - only for rows with no usage yet (used_days = 0), so an
+    // employee who has already taken leave against the old allocation isn't silently
+    // rewritten. Past years are left untouched (they're a closed historical record).
+    public function sync_allocated_days_for_unused_balances($leave_type_id, $days_per_year)
+    {
+        $this->db->where('leave_type_id', $leave_type_id)
+            ->where('year', (int) date('Y'))
+            ->where('used_days', 0)
+            ->update($this->tbl_balances, [
+                'allocated_days' => $days_per_year,
+                'updated_at'     => date('Y-m-d H:i:s'),
+            ]);
+        $synced = $this->db->affected_rows();
+        if ($synced > 0) {
+            log_activity('HR Leave Balances Synced To New Type Allocation [Leave Type ID: ' . $leave_type_id . ', Days: ' . $days_per_year . ', Rows: ' . $synced . ']');
+        }
     }
 
     public function delete_type($id)
@@ -73,6 +117,7 @@ class Leave_model extends App_Model
             return ['success' => false, 'message' => 'Leave type has existing requests and cannot be deleted.'];
         }
         $this->db->where('id', $id)->delete($this->tbl_types);
+        log_activity('HR Leave Type Deleted [ID: ' . $id . ']');
         return ['success' => true];
     }
 
@@ -84,19 +129,23 @@ class Leave_model extends App_Model
             CONCAT(e.first_name," ",e.last_name) as employee_name, e.employee_code, e.email as employee_email,
             e.staff_id as employee_staff_id,
             d.name as department_name, ds.name as designation_name,
-            CONCAT(sa.firstname," ",sa.lastname) as approved_by_name', false)
+            CONCAT(sa.firstname," ",sa.lastname) as approved_by_name,
+            CONCAT(sha.firstname," ",sha.lastname) as soft_approved_by_name,
+            e.department_id as employee_department_id', false)
             ->from($this->tbl_requests . ' r')
             ->join(db_prefix() . 'hr_leave_types lt', 'lt.id = r.leave_type_id', 'left')
             ->join(db_prefix() . 'hr_employees e', 'e.id = r.employee_id', 'left')
             ->join(db_prefix() . 'departments d', 'd.departmentid = e.department_id', 'left')
             ->join(db_prefix() . 'hr_designations ds', 'ds.id = e.designation_id', 'left')
-            ->join(db_prefix() . 'staff sa', 'sa.staffid = r.approved_by', 'left');
+            ->join(db_prefix() . 'staff sa', 'sa.staffid = r.approved_by', 'left')
+            ->join(db_prefix() . 'staff sha', 'sha.staffid = r.soft_approved_by', 'left');
 
         if ($id) {
             $this->db->where('r.id', $id);
             return $this->db->get()->row();
         }
         if (!empty($filters['employee_id']))  $this->db->where('r.employee_id', $filters['employee_id']);
+        if (!empty($filters['department_id'])) $this->db->where('e.department_id', $filters['department_id']);
         if (!empty($filters['status']))       $this->db->where('r.status', $filters['status']);
         if (!empty($filters['leave_type_id'])) $this->db->where('r.leave_type_id', $filters['leave_type_id']);
         if (!empty($filters['year']))         $this->db->where('YEAR(r.from_date)', $filters['year']);
@@ -116,6 +165,14 @@ class Leave_model extends App_Model
         $type = $this->get_type($data['leave_type_id']);
         if (!$type) {
             return ['success' => false, 'message' => _l('hr_error_not_found')];
+        }
+
+        if (!empty($type->gender)) {
+            $employee = $this->db->select('gender')->where('id', $data['employee_id'])
+                ->get(db_prefix() . 'hr_employees')->row();
+            if (!$employee || strtolower((string) $employee->gender) !== strtolower($type->gender)) {
+                return ['success' => false, 'message' => _l('hr_leave_gender_mismatch')];
+            }
         }
 
         if ($type->requires_attachment && empty($data['attachment'])) {
@@ -187,6 +244,7 @@ class Leave_model extends App_Model
             unset($pd);
             $this->db->insert_batch($this->tbl_request_days, $prepared_days);
             hooks()->do_action('hr_leave_applied', $this->get_request($id));
+            log_activity('HR Leave Request Submitted [ID: ' . $id . ', Employee ID: ' . $data['employee_id'] . ', Leave Type ID: ' . $data['leave_type_id'] . ']');
         }
         return ['success' => true, 'id' => $id];
     }
@@ -247,6 +305,7 @@ class Leave_model extends App_Model
         $year = date('Y', strtotime($request->from_date));
         $this->_deduct_balance($request->employee_id, $request->leave_type_id, $year, $request->total_days);
         hooks()->do_action('hr_leave_approved', $request);
+        log_activity('HR Leave Request Approved [ID: ' . $id . ']');
         return ['success' => true];
     }
 
@@ -264,6 +323,35 @@ class Leave_model extends App_Model
             'updated_at'       => date('Y-m-d H:i:s'),
         ]);
         hooks()->do_action('hr_leave_rejected', $request);
+        log_activity('HR Leave Request Rejected [ID: ' . $id . ']');
+        return ['success' => true];
+    }
+
+    // Informational-only pre-approval: records who soft-approved/rejected a still
+    // pending request. Never touches status/balance and never blocks approve()/
+    // reject() above - purely a note shown alongside the real decision.
+    public function soft_approve($id)
+    {
+        return $this->_soft_decide($id, 'approved');
+    }
+
+    public function soft_reject($id)
+    {
+        return $this->_soft_decide($id, 'rejected');
+    }
+
+    private function _soft_decide($id, $decision)
+    {
+        $request = $this->get_request($id);
+        if (!$request || $request->status !== 'pending') {
+            return ['success' => false, 'message' => 'Only a pending leave request can be soft ' . $decision . '.'];
+        }
+        $this->db->where('id', $id)->update($this->tbl_requests, [
+            'soft_status'      => $decision,
+            'soft_approved_by' => get_staff_user_id(),
+            'soft_approved_at' => date('Y-m-d H:i:s'),
+        ]);
+        log_activity('HR Leave Request Soft ' . ucfirst($decision) . ' [ID: ' . $id . ']');
         return ['success' => true];
     }
 
@@ -294,6 +382,7 @@ class Leave_model extends App_Model
             $year = date('Y', strtotime($request->from_date));
             $this->_restore_balance($request->employee_id, $request->leave_type_id, $year, $request->total_days);
         }
+        log_activity('HR Leave Cancelled [ID: ' . $id . ']');
         return ['success' => true];
     }
 
@@ -318,6 +407,7 @@ class Leave_model extends App_Model
             'cancellation_reviewed_at'  => null,
             'updated_at'                => date('Y-m-d H:i:s'),
         ]);
+        log_activity('HR Leave Cancellation Requested [ID: ' . $id . ']');
         return ['success' => true];
     }
 
@@ -335,6 +425,7 @@ class Leave_model extends App_Model
             'cancellation_reviewed_by' => get_staff_user_id(),
             'cancellation_reviewed_at' => date('Y-m-d H:i:s'),
         ]);
+        log_activity('HR Leave Cancellation Approved [ID: ' . $id . ']');
         return ['success' => true];
     }
 
@@ -351,6 +442,7 @@ class Leave_model extends App_Model
             'cancellation_reviewed_at' => date('Y-m-d H:i:s'),
             'updated_at'                => date('Y-m-d H:i:s'),
         ]);
+        log_activity('HR Leave Cancellation Rejected [ID: ' . $id . ']');
         return ['success' => true];
     }
 
@@ -366,7 +458,11 @@ class Leave_model extends App_Model
         }
         $this->db->where('leave_request_id', $id)->delete($this->tbl_request_days);
         $this->db->where('id', $id)->delete($this->tbl_requests);
-        return $this->db->affected_rows() > 0;
+        $deleted = $this->db->affected_rows() > 0;
+        if ($deleted) {
+            log_activity('HR Leave Request Deleted [ID: ' . $id . ']');
+        }
+        return $deleted;
     }
 
     // ── Leave Balances ───────────────────────────────────────────────────
@@ -441,6 +537,7 @@ class Leave_model extends App_Model
                 }
             }
         }
+        log_activity('HR Leave Balances Allocated [Year: ' . $year . ', Count: ' . $count . ']');
         return $count;
     }
 

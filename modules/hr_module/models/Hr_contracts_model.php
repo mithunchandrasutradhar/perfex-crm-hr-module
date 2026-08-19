@@ -64,6 +64,9 @@ class Hr_contracts_model extends App_Model
         if (!empty($data['attachment'])) $record['attachment'] = $data['attachment'];
         $this->db->insert(db_prefix() . $this->table, $record);
         $id = $this->db->insert_id();
+        if ($id) {
+            log_activity('HR Contract Created [ID: ' . $id . ', Employee ID: ' . $record['employee_id'] . ']');
+        }
         return $id ? ['success' => true, 'id' => $id, 'message' => _l('hr_contract_added')]
                    : ['success' => false, 'message' => _l('hr_error_saving')];
     }
@@ -86,6 +89,7 @@ class Hr_contracts_model extends App_Model
         ];
         if (!empty($data['attachment'])) $update['attachment'] = $data['attachment'];
         $this->db->where('id', $id)->update(db_prefix() . $this->table, $update);
+        log_activity('HR Contract Updated [ID: ' . $id . ']');
         return ['success' => true, 'message' => _l('hr_contract_updated')];
     }
 
@@ -96,6 +100,7 @@ class Hr_contracts_model extends App_Model
             'signed_date' => $date ?: date('Y-m-d'),
             'updated_at'  => date('Y-m-d H:i:s'),
         ]);
+        log_activity('HR Contract Marked Signed [ID: ' . $id . ']');
         return ['success' => true, 'message' => 'Contract marked as signed.'];
     }
 
@@ -105,12 +110,14 @@ class Hr_contracts_model extends App_Model
             'status'     => $status,
             'updated_at' => date('Y-m-d H:i:s'),
         ]);
+        log_activity('HR Contract Status Changed [ID: ' . $id . ', Status: ' . $status . ']');
         return ['success' => true];
     }
 
     public function delete($id)
     {
         $this->db->where('id', $id)->delete(db_prefix() . $this->table);
+        log_activity('HR Contract Deleted [ID: ' . $id . ']');
         return ['success' => true, 'message' => _l('hr_contract_deleted')];
     }
 
@@ -124,6 +131,10 @@ class Hr_contracts_model extends App_Model
                 'status'     => 'expired',
                 'updated_at' => date('Y-m-d H:i:s'),
             ]);
+        $expired = $this->db->affected_rows();
+        if ($expired > 0) {
+            log_activity('HR Contracts Auto-Expired [Count: ' . $expired . ']');
+        }
     }
 
     public function get_expiring_soon($days = 30)

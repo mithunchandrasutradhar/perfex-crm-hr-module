@@ -7,6 +7,7 @@
 /** @var string $holidays_json   */
 /** @var string $weekly_off_json */
 /** @var string $balances_json   */
+/** @var string $employee_genders_json */
 if (!isset($employees))        $employees        = [];
 if (!isset($leave_types))      $leave_types      = [];
 if (!isset($own_only))         $own_only         = false;
@@ -14,6 +15,7 @@ if (!isset($own_emp_id))       $own_emp_id       = 0;
 if (!isset($holidays_json))    $holidays_json    = '[]';
 if (!isset($weekly_off_json))  $weekly_off_json  = '[5]';
 if (!isset($balances_json))    $balances_json    = '{}';
+if (!isset($employee_genders_json)) $employee_genders_json = '{}';
 ?>
 <?php init_head(); ?>
 <div id="wrapper">
@@ -56,7 +58,8 @@ if (!isset($balances_json))    $balances_json    = '{}';
                     <option value="<?php echo $t->id; ?>"
                             data-half="<?php echo $t->allow_half_day; ?>"
                             data-hours-per-day="<?php echo $t->hours_per_day; ?>"
-                            data-is-range="<?php echo $t->is_date_range; ?>">
+                            data-is-range="<?php echo $t->is_date_range; ?>"
+                            data-gender="<?php echo htmlspecialchars(strtolower($t->gender ?? '')); ?>">
                       <?php echo htmlspecialchars($t->name); ?>
                     </option>
                     <?php endforeach; ?>
@@ -148,7 +151,34 @@ if (!isset($balances_json))    $balances_json    = '{}';
     var gHolidays  = <?php echo isset($holidays_json)  ? $holidays_json  : '[]'; ?>;
     var gWeeklyOff = <?php echo isset($weekly_off_json) ? $weekly_off_json : '[5]'; ?>;
     var gBalances  = <?php echo $balances_json; ?>;
+    var gEmployeeGenders = <?php echo $employee_genders_json; ?>;
     var rowIndex = 0;
+
+    // Hides leave-type options that are restricted to a gender other than the
+    // selected employee's (e.g. Maternity Leave doesn't even appear for a male
+    // employee) - mirrors the authoritative server-side check in
+    // Leave_model::apply(). bootstrap-select excludes any <option hidden> from
+    // its rendered list entirely (see optionSelector in bootstrap-select.js),
+    // so this actually removes it from view rather than just graying it out.
+    function applyGenderFilter() {
+        var emp = $('#leave-employee').val();
+        var gender = (emp && gEmployeeGenders.hasOwnProperty(emp)) ? gEmployeeGenders[emp] : '';
+        var selectedNowInvalid = false;
+        $('#leave-type option').each(function(){
+            var $opt = $(this);
+            if (!$opt.val()) return; // placeholder option
+            var reqGender = $opt.data('gender') || '';
+            var allowed = !reqGender || !gender || reqGender === gender;
+            $opt.prop('hidden', !allowed).prop('disabled', !allowed);
+            if (!allowed && $opt.is(':selected')) selectedNowInvalid = true;
+        });
+        $('#leave-type').selectpicker('refresh');
+        if (selectedNowInvalid) {
+            $('#leave-type').val('').selectpicker('refresh');
+            $('#balance-box').hide();
+            updateModeVisibility();
+        }
+    }
 
     function parseDateLocal(str) {
         if (!str) return null;
@@ -457,6 +487,7 @@ if (!isset($balances_json))    $balances_json    = '{}';
         $('#leave-employee, #leave-type').on('change changed.bs.select', function(){
             loadBalance();
         });
+        $('#leave-employee').on('change changed.bs.select', applyGenderFilter);
         $('#leave-type').on('change changed.bs.select', function(){
             updateModeVisibility();
             // Re-check every row's warnings (half-day support, holiday notes) against
@@ -501,6 +532,7 @@ if (!isset($balances_json))    $balances_json    = '{}';
         });
 
         addDayRow();
+        applyGenderFilter();
     });
 })();
 </script>

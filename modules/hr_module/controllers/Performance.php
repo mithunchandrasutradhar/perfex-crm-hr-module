@@ -14,7 +14,7 @@ class Performance extends AdminController
 
     public function index()
     {
-        if (staff_cant('view', 'hr_performance') && staff_cant('view_own', 'hr_performance')) access_denied('hr_performance');
+        if (staff_cant('view', 'hr_performance') && staff_cant('view_own', 'hr_performance') && staff_cant('view_department', 'hr_performance')) access_denied('hr_performance');
         if ($this->input->is_ajax_request()) {
             $this->app->get_table_data(module_views_path('hr_module', 'performance/table'));
             return;
@@ -102,9 +102,14 @@ class Performance extends AdminController
             if ($st->is_evaluator) $is_evaluator_on_target = true;
         }
 
+        $in_own_department = staff_can('view_department', 'hr_performance')
+            && $target->employee_department_id
+            && (int) $target->employee_department_id === hr_get_own_department_id();
+
         if (staff_cant('view', 'hr_performance')
             && !(staff_can('view_own', 'hr_performance') && $is_owner)
-            && !$is_evaluator_on_target) {
+            && !$is_evaluator_on_target
+            && !$in_own_department) {
             access_denied('hr_performance');
         }
 

@@ -66,6 +66,9 @@ class Helpdesk_model extends App_Model
         if (!empty($data['attachment'])) $record['attachment'] = $data['attachment'];
         $this->db->insert(db_prefix() . $this->table, $record);
         $id = $this->db->insert_id();
+        if ($id) {
+            log_activity('HR Helpdesk Ticket Submitted [ID: ' . $id . ']');
+        }
         return $id ? ['success' => true, 'id' => $id, 'message' => _l('hr_helpdesk_added')]
                    : ['success' => false, 'message' => _l('hr_error_saving')];
     }
@@ -88,6 +91,7 @@ class Helpdesk_model extends App_Model
                 'updated_at' => date('Y-m-d H:i:s'),
             ]);
         }
+        log_activity('HR Helpdesk Ticket Reply Posted [ID: ' . $ticket_id . ']');
         return ['success' => true, 'message' => 'Reply posted.'];
     }
 
@@ -106,6 +110,7 @@ class Helpdesk_model extends App_Model
         if ($ticket && $ticket->status === 'open') $update['status'] = 'in_progress';
 
         $this->db->where('id', $ticket_id)->update(db_prefix() . $this->table, $update);
+        log_activity('HR Helpdesk Ticket Internal Note Saved [ID: ' . $ticket_id . ']');
         return ['success' => true, 'message' => _l('hr_helpdesk_note_saved')];
     }
 
@@ -115,6 +120,7 @@ class Helpdesk_model extends App_Model
             'assigned_to' => $staff_id ?: null,
             'updated_at'  => date('Y-m-d H:i:s'),
         ]);
+        log_activity('HR Helpdesk Ticket Assigned [ID: ' . $ticket_id . ', Staff ID: ' . $staff_id . ']');
         return ['success' => true];
     }
 
@@ -124,6 +130,7 @@ class Helpdesk_model extends App_Model
             'status'     => $status,
             'updated_at' => date('Y-m-d H:i:s'),
         ]);
+        log_activity('HR Helpdesk Ticket Status Changed [ID: ' . $ticket_id . ', Status: ' . $status . ']');
         return ['success' => true];
     }
 
@@ -131,6 +138,7 @@ class Helpdesk_model extends App_Model
     {
         $this->db->where('ticket_id', $ticket_id)->delete(db_prefix() . $this->reply_table);
         $this->db->where('id', $ticket_id)->delete(db_prefix() . $this->table);
+        log_activity('HR Helpdesk Ticket Deleted [ID: ' . $ticket_id . ']');
         return ['success' => true];
     }
 }

@@ -14,7 +14,7 @@ class Leave extends AdminController
 
     public function index()
     {
-        if (staff_cant('view', 'hr_leave') && staff_cant('view_own', 'hr_leave')) {
+        if (staff_cant('view', 'hr_leave') && staff_cant('view_own', 'hr_leave') && staff_cant('view_department', 'hr_leave')) {
             access_denied('hr_leave');
         }
         if ($this->input->is_ajax_request()) {
@@ -140,21 +140,29 @@ class Leave extends AdminController
             $data['employees'] = $own_emp_id && $emp
                 ? [$own_emp_id => $emp->first_name . ' ' . $emp->last_name]
                 : [];
+            $data['employee_genders_json'] = json_encode($own_emp_id && $emp
+                ? [$own_emp_id => strtolower((string) $emp->gender)]
+                : []);
         } else {
             $data['employees'] = $this->Hr_module_model->get_active_employees_dropdown();
+            $data['employee_genders_json'] = json_encode($this->Hr_module_model->get_active_employees_genders());
         }
         $this->load->view('hr_module/leave/apply', $data);
     }
 
     public function view($id)
     {
-        if (staff_cant('view', 'hr_leave') && staff_cant('view_own', 'hr_leave')) {
+        if (staff_cant('view', 'hr_leave') && staff_cant('view_own', 'hr_leave') && staff_cant('view_department', 'hr_leave')) {
             access_denied('hr_leave');
         }
         $request = $this->Leave_model->get_request($id);
         if (!$request) show_404();
-        if (!staff_can('view', 'hr_leave') && staff_can('view_own', 'hr_leave')) {
-            if ((int) $request->employee_id !== hr_get_own_employee_id()) {
+        if (!staff_can('view', 'hr_leave')) {
+            $allowed = staff_can('view_own', 'hr_leave') && (int) $request->employee_id === hr_get_own_employee_id();
+            if (!$allowed && staff_can('view_department', 'hr_leave')) {
+                $allowed = $request->employee_department_id && (int) $request->employee_department_id === hr_get_own_department_id();
+            }
+            if (!$allowed) {
                 access_denied('hr_leave');
             }
         }
@@ -284,6 +292,38 @@ class Leave extends AdminController
         }
         set_alert($result['success'] ? 'success' : 'danger',
             $result['success'] ? _l('hr_leave_rejected_msg') : $result['message']);
+        redirect(admin_url('hr_module/leave/view/' . $id));
+    }
+
+    // Informational-only pre-approval step (see Leave_model::soft_approve()) -
+    // gated by its own 'soft_approve' capability, independent of 'approve'.
+    public function soft_approve($id)
+    {
+        if (staff_cant('soft_approve', 'hr_leave') && !is_admin()) {
+            access_denied('hr_leave');
+        }
+        $result = $this->Leave_model->soft_approve($id);
+        if ($this->input->is_ajax_request()) {
+            echo json_encode($result);
+            return;
+        }
+        set_alert($result['success'] ? 'success' : 'danger',
+            $result['success'] ? _l('hr_leave_soft_approve') : $result['message']);
+        redirect(admin_url('hr_module/leave/view/' . $id));
+    }
+
+    public function soft_reject($id)
+    {
+        if (staff_cant('soft_approve', 'hr_leave') && !is_admin()) {
+            access_denied('hr_leave');
+        }
+        $result = $this->Leave_model->soft_reject($id);
+        if ($this->input->is_ajax_request()) {
+            echo json_encode($result);
+            return;
+        }
+        set_alert($result['success'] ? 'success' : 'danger',
+            $result['success'] ? _l('hr_leave_soft_reject') : $result['message']);
         redirect(admin_url('hr_module/leave/view/' . $id));
     }
 

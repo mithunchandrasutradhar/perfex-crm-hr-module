@@ -21,7 +21,7 @@ class Performance_model extends App_Model
     public function get_target($id)
     {
         return $this->db
-            ->select('t.*, e.first_name, e.last_name, e.employee_code,
+            ->select('t.*, e.first_name, e.last_name, e.employee_code, e.department_id as employee_department_id,
                       d.name as department_name, ds.name as designation_name,
                       CONCAT(s.firstname," ",s.lastname) as assigned_by_name', false)
             ->from(db_prefix() . $this->targets_table . ' t')
@@ -114,6 +114,7 @@ class Performance_model extends App_Model
             $this->add_sub_target($target_id, $st);
         }
 
+        log_activity('HR Performance Target Assigned [ID: ' . $target_id . ', Employee ID: ' . $data['employee_id'] . ']');
         return ['success' => true, 'id' => $target_id, 'message' => _l('hr_performance_target_assigned')];
     }
 
@@ -129,6 +130,7 @@ class Performance_model extends App_Model
             'due_date'    => $data['due_date'] ?: null,
             'updated_at'  => date('Y-m-d H:i:s'),
         ]);
+        log_activity('HR Performance Target Updated [ID: ' . $id . ']');
         return ['success' => true, 'message' => _l('hr_performance_target_updated')];
     }
 
@@ -141,6 +143,7 @@ class Performance_model extends App_Model
         }
         $this->db->where('target_id', $id)->delete(db_prefix() . $this->sub_targets_table);
         $this->db->where('id', $id)->delete(db_prefix() . $this->targets_table);
+        log_activity('HR Performance Target Deleted [ID: ' . $id . ']');
         return ['success' => true, 'message' => _l('hr_performance_target_deleted')];
     }
 
@@ -201,6 +204,7 @@ class Performance_model extends App_Model
         if (!$sub_target_id) return ['success' => false, 'message' => _l('hr_error_saving')];
 
         $this->_sync_evaluators($sub_target_id, $data['evaluator_ids'] ?? []);
+        log_activity('HR Performance Sub-Target Added [ID: ' . $sub_target_id . ', Target ID: ' . $target_id . ']');
         return ['success' => true, 'id' => $sub_target_id, 'message' => _l('hr_performance_sub_target_added')];
     }
 
@@ -219,6 +223,7 @@ class Performance_model extends App_Model
             'updated_at'  => date('Y-m-d H:i:s'),
         ]);
         $this->_sync_evaluators($id, $data['evaluator_ids'] ?? []);
+        log_activity('HR Performance Sub-Target Updated [ID: ' . $id . ']');
         return ['success' => true, 'message' => _l('hr_performance_sub_target_updated')];
     }
 
@@ -234,6 +239,7 @@ class Performance_model extends App_Model
         $this->db->where('sub_target_id', $id)->delete(db_prefix() . $this->evaluators_table);
         $this->db->where('sub_target_id', $id)->delete(db_prefix() . $this->feedback_table);
         $this->db->where('id', $id)->delete(db_prefix() . $this->sub_targets_table);
+        log_activity('HR Performance Sub-Target Deleted [ID: ' . $id . ']');
         return ['success' => true, 'message' => _l('hr_performance_sub_target_deleted')];
     }
 
@@ -263,6 +269,7 @@ class Performance_model extends App_Model
         if ($note !== null) $update['employee_note'] = $note;
 
         $this->db->where('id', $id)->update(db_prefix() . $this->sub_targets_table, $update);
+        log_activity('HR Performance Sub-Target Status Updated [ID: ' . $id . ', Status: ' . $status . ']');
         return ['success' => true, 'message' => _l('hr_performance_status_updated')];
     }
 
@@ -278,7 +285,11 @@ class Performance_model extends App_Model
             'rating'        => $rating ?: null,
             'created_at'    => date('Y-m-d H:i:s'),
         ]);
-        return $this->db->insert_id()
+        $feedback_id = $this->db->insert_id();
+        if ($feedback_id) {
+            log_activity('HR Performance Feedback Added [Sub-Target ID: ' . $sub_target_id . ', Evaluator ID: ' . $evaluator_id . ']');
+        }
+        return $feedback_id
             ? ['success' => true, 'message' => _l('hr_performance_feedback_added')]
             : ['success' => false, 'message' => _l('hr_error_saving')];
     }

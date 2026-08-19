@@ -12,6 +12,21 @@ class Shifts_model extends App_Model
         $this->tbl_types       = db_prefix() . 'hr_shift_types';
         $this->tbl_assignments = db_prefix() . 'hr_shift_assignments';
         $this->_ensure_tables();
+        $this->_ensure_soft_approval_columns();
+    }
+
+    // Informational-only pre-approval step (see soft_approve()/soft_reject()
+    // below) - added on first use, same self-healing approach _ensure_tables()
+    // already uses, so this works immediately without reactivating the module.
+    private function _ensure_soft_approval_columns()
+    {
+        $col = $this->db->query("SHOW COLUMNS FROM `" . $this->tbl_assignments . "` LIKE 'soft_status'")->num_rows();
+        if ($col === 0) {
+            $this->db->query("ALTER TABLE `" . $this->tbl_assignments . "`
+                ADD COLUMN `soft_status` VARCHAR(20) DEFAULT NULL,
+                ADD COLUMN `soft_approved_by` INT(11) DEFAULT NULL,
+                ADD COLUMN `soft_approved_at` DATETIME DEFAULT NULL");
+        }
     }
 
     // Lazily creates the shift tables on first use, so this works immediately
@@ -80,13 +95,21 @@ class Shifts_model extends App_Model
     {
         $data['created_at'] = date('Y-m-d H:i:s');
         $this->db->insert($this->tbl_types, $data);
-        return $this->db->insert_id();
+        $id = $this->db->insert_id();
+        if ($id) {
+            log_activity('HR Shift Type Created [ID: ' . $id . ', Name: ' . $data['name'] . ']');
+        }
+        return $id;
     }
 
     public function update_type($data, $id)
     {
         $data['updated_at'] = date('Y-m-d H:i:s');
-        return $this->db->where('id', $id)->update($this->tbl_types, $data);
+        $updated = $this->db->where('id', $id)->update($this->tbl_types, $data);
+        if ($updated) {
+            log_activity('HR Shift Type Updated [ID: ' . $id . ']');
+        }
+        return $updated;
     }
 
     public function delete_type($id)
@@ -95,6 +118,7 @@ class Shifts_model extends App_Model
             return ['success' => false, 'message' => 'This shift is already assigned to employees and cannot be deleted.'];
         }
         $this->db->where('id', $id)->delete($this->tbl_types);
+        log_activity('HR Shift Type Deleted [ID: ' . $id . ']');
         return ['success' => true];
     }
 
@@ -104,10 +128,11 @@ class Shifts_model extends App_Model
     {
         return $this->db->select('a.*, st.name as shift_name, st.start_time, st.end_time,
                 CONCAT(e.first_name," ",e.last_name) as employee_name, e.employee_code, e.staff_id as employee_staff_id,
-                e.email as employee_email,
+                e.email as employee_email, e.department_id as employee_department_id,
                 d.name as department_name, ds.name as designation_name,
                 CONCAT(cb.firstname," ",cb.lastname) as created_by_name,
-                CONCAT(ab.firstname," ",ab.lastname) as approved_by_name', false)
+                CONCAT(ab.firstname," ",ab.lastname) as approved_by_name,
+                CONCAT(shb.firstname," ",shb.lastname) as soft_approved_by_name', false)
             ->from($this->tbl_assignments . ' a')
             ->join($this->tbl_types . ' st', 'st.id = a.shift_type_id', 'left')
             ->join(db_prefix() . 'hr_employees e', 'e.id = a.employee_id', 'left')
@@ -115,6 +140,7 @@ class Shifts_model extends App_Model
             ->join(db_prefix() . 'hr_designations ds', 'ds.id = e.designation_id', 'left')
             ->join(db_prefix() . 'staff cb', 'cb.staffid = a.created_by', 'left')
             ->join(db_prefix() . 'staff ab', 'ab.staffid = a.approved_by', 'left')
+            ->join(db_prefix() . 'staff shb', 'shb.staffid = a.soft_approved_by', 'left')
             ->where('a.id', $id)
             ->get()->row();
     }
@@ -218,10 +244,42 @@ class Shifts_model extends App_Model
         return ['success' => true];
     }
 
+    // Informational-only pre-approval: records who soft-approved/rejected a still
+    // pending assignment. Never touches status/payroll sync and never blocks
+    // approve()/reject() above - purely a note shown alongside the real decision.
+    public function soft_approve($id)
+    {
+        return $this->_soft_decide($id, 'approved');
+    }
+
+    public function soft_reject($id)
+    {
+        return $this->_soft_decide($id, 'rejected');
+    }
+
+    private function _soft_decide($id, $decision)
+    {
+        $assignment = $this->get($id);
+        if (!$assignment || $assignment->status !== 'pending') {
+            return ['success' => false, 'message' => 'Only a pending shift assignment can be soft ' . $decision . '.'];
+        }
+        $this->db->where('id', $id)->update($this->tbl_assignments, [
+            'soft_status'      => $decision,
+            'soft_approved_by' => get_staff_user_id(),
+            'soft_approved_at' => date('Y-m-d H:i:s'),
+        ]);
+        log_activity('HR Shift Assignment Soft ' . ucfirst($decision) . ' [ID: ' . $id . ']');
+        return ['success' => true];
+    }
+
     public function delete($id)
     {
         $this->db->where('id', $id)->delete($this->tbl_assignments);
-        return $this->db->affected_rows() > 0;
+        $deleted = $this->db->affected_rows() > 0;
+        if ($deleted) {
+            log_activity('HR Shift Assignment Deleted [ID: ' . $id . ']');
+        }
+        return $deleted;
     }
 
     // Groups every active employee by their shift on a specific date - any

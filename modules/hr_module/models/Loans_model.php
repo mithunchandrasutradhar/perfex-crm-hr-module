@@ -134,6 +134,9 @@ class Loans_model extends App_Model
 
         $this->db->insert(db_prefix() . $this->table, $record);
         $id = $this->db->insert_id();
+        if ($id) {
+            log_activity('HR Loan Requested [ID: ' . $id . ', Employee ID: ' . $record['employee_id'] . ', Amount: ' . $amount . ']');
+        }
         return $id ? ['success' => true, 'id' => $id, 'message' => _l('hr_loan_applied_msg')]
                    : ['success' => false, 'message' => _l('hr_error_saving')];
     }
@@ -151,6 +154,7 @@ class Loans_model extends App_Model
             'disbursement_date' => $disbursement_date ?: date('Y-m-d'),
             'updated_at'        => date('Y-m-d H:i:s'),
         ]);
+        log_activity('HR Loan Approved [ID: ' . $id . ', Amount: ' . $loan->amount . ']');
         return ['success' => true, 'message' => _l('hr_loan_approved_msg')];
     }
 
@@ -165,6 +169,7 @@ class Loans_model extends App_Model
             'rejection_reason' => $reason,
             'updated_at'       => date('Y-m-d H:i:s'),
         ]);
+        log_activity('HR Loan Rejected [ID: ' . $id . ']');
         return ['success' => true, 'message' => _l('hr_loan_rejected_msg')];
     }
 
@@ -193,6 +198,7 @@ class Loans_model extends App_Model
             'status'       => $status,
             'updated_at'   => date('Y-m-d H:i:s'),
         ]);
+        log_activity('HR Loan Manual Repayment Recorded [Loan ID: ' . $loan_id . ', Amount: ' . $amount . ']');
         return ['success' => true, 'message' => 'Repayment recorded.'];
     }
 
@@ -205,6 +211,7 @@ class Loans_model extends App_Model
         $this->db->where('loan_id', $id)->delete(db_prefix() . $this->repay_table);
         $this->db->where('loan_id', $id)->delete(db_prefix() . $this->deduct_table);
         $this->db->where('id', $id)->delete(db_prefix() . $this->table);
+        log_activity('HR Loan Deleted [ID: ' . $id . ']');
         return ['success' => true];
     }
 
@@ -277,6 +284,7 @@ class Loans_model extends App_Model
             $record['reviewed_by'] = null;
             $record['reviewed_at'] = null;
             $this->db->where('id', $existing->id)->update(db_prefix() . $this->deduct_table, $record);
+            log_activity('HR Loan Deduction Request Updated [ID: ' . $existing->id . ', Loan ID: ' . $loan_id . ', Amount: ' . $amount . ']');
             return ['success' => true, 'message' => 'Deduction request updated.'];
         }
 
@@ -288,7 +296,11 @@ class Loans_model extends App_Model
         $record['created_at']  = date('Y-m-d H:i:s');
 
         $this->db->insert(db_prefix() . $this->deduct_table, $record);
-        return $this->db->insert_id()
+        $deduction_id = $this->db->insert_id();
+        if ($deduction_id) {
+            log_activity('HR Loan Deduction Request Submitted [ID: ' . $deduction_id . ', Loan ID: ' . $loan_id . ', Amount: ' . $amount . ']');
+        }
+        return $deduction_id
             ? ['success' => true, 'message' => 'Deduction request submitted.']
             : ['success' => false, 'message' => _l('hr_error_saving')];
     }
@@ -368,6 +380,7 @@ class Loans_model extends App_Model
         $this->load->model('hr_module/Payroll_model');
         $this->Payroll_model->sync_loan_deduction_for_period($req->employee_id, $req->pay_month, $req->pay_year);
 
+        log_activity('HR Loan Deduction Request Approved [ID: ' . $id . ']');
         return ['success' => true, 'message' => 'Deduction request approved.'];
     }
 
@@ -382,6 +395,7 @@ class Loans_model extends App_Model
             'reviewed_by' => get_staff_user_id(),
             'reviewed_at' => date('Y-m-d H:i:s'),
         ]);
+        log_activity('HR Loan Deduction Request Rejected [ID: ' . $id . ']');
         return ['success' => true, 'message' => 'Deduction request rejected.'];
     }
 
@@ -409,6 +423,7 @@ class Loans_model extends App_Model
             return ['success' => false, 'message' => 'Only a pending request can be deleted.'];
         }
         $this->db->where('id', $id)->delete(db_prefix() . $this->deduct_table);
+        log_activity('HR Loan Deduction Request Deleted [ID: ' . $id . ']');
         return ['success' => true, 'message' => 'Deduction request deleted.'];
     }
 }

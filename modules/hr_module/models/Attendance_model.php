@@ -94,6 +94,9 @@ class Attendance_model extends App_Model
         $data['created_at']    = date('Y-m-d H:i:s');
         $this->db->insert($this->table, $data);
         $id = $this->db->insert_id();
+        if ($id) {
+            log_activity('HR Attendance Record Added [ID: ' . $id . ', Employee ID: ' . $data['employee_id'] . ', Date: ' . $data['attendance_date'] . ']');
+        }
         return $id ? ['success' => true, 'id' => $id] : ['success' => false, 'message' => _l('hr_error_save_failed')];
     }
 
@@ -109,6 +112,7 @@ class Attendance_model extends App_Model
         $data['status']        = $this->_normalize_status($data);
         $data['updated_at']    = date('Y-m-d H:i:s');
         $this->db->where('id', $id)->update($this->table, $data);
+        log_activity('HR Attendance Record Edited [ID: ' . $id . ']');
         return ['success' => true];
     }
 
@@ -128,7 +132,11 @@ class Attendance_model extends App_Model
     public function delete($id)
     {
         $this->db->where('id', $id)->delete($this->table);
-        return $this->db->affected_rows() > 0;
+        $deleted = $this->db->affected_rows() > 0;
+        if ($deleted) {
+            log_activity('HR Attendance Record Deleted [ID: ' . $id . ']');
+        }
+        return $deleted;
     }
 
     public function record_exists($employee_id, $date, $exclude_id = null)
@@ -187,6 +195,7 @@ class Attendance_model extends App_Model
             $merged++;
         }
 
+        log_activity('HR Attendance Bulk Import Completed [Saved: ' . $saved . ', Merged: ' . $merged . ', Skipped: ' . $skipped . ']');
         return ['saved' => $saved, 'merged' => $merged, 'skipped' => $skipped];
     }
 
@@ -216,6 +225,7 @@ class Attendance_model extends App_Model
                     'status'       => $this->_determine_status($in, $employee_id, $date),
                     'updated_at'   => date('Y-m-d H:i:s'),
                 ]);
+                log_activity('HR Attendance Record Updated From Device [Employee ID: ' . $employee_id . ', Date: ' . $date . ', Device ID: ' . $device_id . ']');
             }
             return false;
         }
@@ -231,6 +241,7 @@ class Attendance_model extends App_Model
             'device_id'       => $device_id,
             'created_at'      => date('Y-m-d H:i:s'),
         ]);
+        log_activity('HR Attendance Record Added From Device [Employee ID: ' . $employee_id . ', Date: ' . $date . ', Device ID: ' . $device_id . ']');
         return true;
     }
 

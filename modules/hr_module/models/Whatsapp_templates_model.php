@@ -73,11 +73,15 @@ class Whatsapp_templates_model extends App_Model
 
     public function update_template($id, $subject, $body)
     {
-        return $this->db->where('id', $id)->update(db_prefix() . $this->table, [
+        $updated = $this->db->where('id', $id)->update(db_prefix() . $this->table, [
             'subject'    => $subject,
             'body'       => $body,
             'updated_at' => date('Y-m-d H:i:s'),
         ]);
+        if ($updated) {
+            log_activity('HR WhatsApp Template Updated [ID: ' . $id . ']');
+        }
+        return $updated;
     }
 
     // Fetches the template by key and substitutes {placeholder} tokens - plain

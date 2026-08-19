@@ -15,7 +15,7 @@ class Shifts extends AdminController
 
     public function index()
     {
-        if (staff_cant('view', 'hr_shifts') && staff_cant('view_own', 'hr_shifts')) {
+        if (staff_cant('view', 'hr_shifts') && staff_cant('view_own', 'hr_shifts') && staff_cant('view_department', 'hr_shifts')) {
             access_denied('hr_shifts');
         }
         if ($this->input->is_ajax_request()) {
@@ -119,19 +119,24 @@ class Shifts extends AdminController
 
     public function view($id)
     {
-        if (staff_cant('view', 'hr_shifts') && staff_cant('view_own', 'hr_shifts')) {
+        if (staff_cant('view', 'hr_shifts') && staff_cant('view_own', 'hr_shifts') && staff_cant('view_department', 'hr_shifts')) {
             access_denied('hr_shifts');
         }
         $assignment = $this->Shifts_model->get($id);
         if (!$assignment) show_404();
-        if (!staff_can('view', 'hr_shifts') && staff_can('view_own', 'hr_shifts')) {
-            if ((int) $assignment->employee_id !== hr_get_own_employee_id()) {
+        if (!staff_can('view', 'hr_shifts')) {
+            $allowed = staff_can('view_own', 'hr_shifts') && (int) $assignment->employee_id === hr_get_own_employee_id();
+            if (!$allowed && staff_can('view_department', 'hr_shifts')) {
+                $allowed = $assignment->employee_department_id && (int) $assignment->employee_department_id === hr_get_own_department_id();
+            }
+            if (!$allowed) {
                 access_denied('hr_shifts');
             }
         }
-        $data['title']       = _l('hr_shift_view');
-        $data['assignment']  = $assignment;
-        $data['can_approve'] = is_admin() || staff_can('approve', 'hr_shifts');
+        $data['title']            = _l('hr_shift_view');
+        $data['assignment']       = $assignment;
+        $data['can_approve']      = is_admin() || staff_can('approve', 'hr_shifts');
+        $data['can_soft_approve'] = staff_can('soft_approve', 'hr_shifts');
         $this->load->view('hr_module/shifts/view', $data);
     }
 
@@ -169,6 +174,38 @@ class Shifts extends AdminController
         }
         set_alert($result['success'] ? 'success' : 'danger',
             $result['success'] ? _l('hr_shift_rejected_msg') : $result['message']);
+        redirect(admin_url('hr_module/shifts/view/' . $id));
+    }
+
+    // Informational-only pre-approval step (see Shifts_model::soft_approve()) -
+    // gated by its own 'soft_approve' capability, independent of 'approve'.
+    public function soft_approve($id)
+    {
+        if (staff_cant('soft_approve', 'hr_shifts') && !is_admin()) {
+            access_denied('hr_shifts');
+        }
+        $result = $this->Shifts_model->soft_approve($id);
+        if ($this->input->is_ajax_request()) {
+            echo json_encode($result);
+            return;
+        }
+        set_alert($result['success'] ? 'success' : 'danger',
+            $result['success'] ? _l('hr_shift_soft_approve') : $result['message']);
+        redirect(admin_url('hr_module/shifts/view/' . $id));
+    }
+
+    public function soft_reject($id)
+    {
+        if (staff_cant('soft_approve', 'hr_shifts') && !is_admin()) {
+            access_denied('hr_shifts');
+        }
+        $result = $this->Shifts_model->soft_reject($id);
+        if ($this->input->is_ajax_request()) {
+            echo json_encode($result);
+            return;
+        }
+        set_alert($result['success'] ? 'success' : 'danger',
+            $result['success'] ? _l('hr_shift_soft_reject') : $result['message']);
         redirect(admin_url('hr_module/shifts/view/' . $id));
     }
 

@@ -11,7 +11,11 @@ foreach (['status', 'leave_type_id', 'employee_id'] as $key) {
 }
 
 if (!is_admin() && !staff_can('view', 'hr_leave')) {
-    $filters['employee_id'] = hr_get_own_employee_id();
+    if (staff_can('view_department', 'hr_leave')) {
+        $filters['department_id'] = hr_get_own_department_id();
+    } else {
+        $filters['employee_id'] = hr_get_own_employee_id();
+    }
 }
 
 $rows = $CI->Leave_model->get_request(null, $filters);

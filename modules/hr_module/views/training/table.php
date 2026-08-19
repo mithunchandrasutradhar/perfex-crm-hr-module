@@ -16,7 +16,11 @@ if (!empty($filters['from_date'])) $filters['from_date'] = to_sql_date($filters[
 if (!empty($filters['to_date']))   $filters['to_date']   = to_sql_date($filters['to_date']);
 
 if (!is_admin() && !staff_can('view', 'hr_training')) {
-    $filters['own_or_instructor'] = ['employee_id' => hr_get_own_employee_id(), 'staff_id' => get_staff_user_id()];
+    if (staff_can('view_department', 'hr_training')) {
+        $filters['department_id'] = hr_get_own_department_id();
+    } else {
+        $filters['own_or_instructor'] = ['employee_id' => hr_get_own_employee_id(), 'staff_id' => get_staff_user_id()];
+    }
 }
 
 $rows = $CI->Training_model->get_for_table($filters);

@@ -23,7 +23,7 @@ define('HR_MODULE_NAME', 'hr_module');
 // bump this number whenever install.php gains a new guarded table/column, and
 // every site running this module will pick it up automatically on its very
 // next admin page load - no manual reactivation step, ever, on any install.
-define('HR_MODULE_SCHEMA_VERSION', 3);
+define('HR_MODULE_SCHEMA_VERSION', 4);
 
 // ─── Hook registrations ────────────────────────────────────────────────────
 
@@ -121,6 +121,20 @@ function hr_module_register_permissions()
     ];
     // Personal-data features that also have an approval workflow
     $cap_personal_approve = array_merge($cap_personal, ['approve' => $approve]);
+    // Leave/Shifts/Overtime additionally get a "soft approve" step - a role-based
+    // middle-man (e.g. a department head) can record an informational
+    // approve/reject on a still-pending request before the real approve/reject
+    // above happens. Purely advisory: it never blocks or replaces the capability
+    // above, it just adds a visible "soft approved/rejected by X" note.
+    $cap_personal_soft_approve = array_merge($cap_personal_approve, ['soft_approve' => 'Soft Approve/Reject']);
+    // Leave/Overtime/Shifts/Performance/Training additionally get a
+    // "view own department" tier - a role-based middle-man (e.g. a department
+    // head) sees every record belonging to employees in their own department,
+    // without needing the full company-wide 'view' capability. Independent of
+    // (and stacks with) everything else above.
+    $view_department              = 'View (Own Department)';
+    $cap_personal_dept            = array_merge($cap_personal, ['view_department' => $view_department]);
+    $cap_personal_soft_approve_dept = array_merge($cap_personal_soft_approve, ['view_department' => $view_department]);
     // Config/reference tables: no view_own, just global view + CRUD
     $cap_config = [
         'view'   => $view_global,
@@ -131,13 +145,13 @@ function hr_module_register_permissions()
 
     register_staff_capabilities('hr_employees',   ['capabilities' => $cap_personal],         _l('hr_perm_employees'));
     register_staff_capabilities('hr_departments',  ['capabilities' => $cap_config],            _l('hr_perm_departments'));
-    register_staff_capabilities('hr_leave',        ['capabilities' => $cap_personal_approve],  _l('hr_perm_leave'));
+    register_staff_capabilities('hr_leave',        ['capabilities' => $cap_personal_soft_approve_dept], _l('hr_perm_leave'));
     register_staff_capabilities('hr_attendance',   ['capabilities' => $cap_personal],          _l('hr_perm_attendance'));
     register_staff_capabilities('hr_payroll',      ['capabilities' => $cap_personal_approve],  _l('hr_perm_payroll'));
     register_staff_capabilities('hr_loans',        ['capabilities' => $cap_personal_approve],  _l('hr_perm_loans'));
-    register_staff_capabilities('hr_overtime',     ['capabilities' => $cap_personal_approve],  _l('hr_perm_overtime'));
-    register_staff_capabilities('hr_performance',  ['capabilities' => $cap_personal],          _l('hr_perm_performance'));
-    register_staff_capabilities('hr_training',     ['capabilities' => $cap_personal],          _l('hr_perm_training'));
+    register_staff_capabilities('hr_overtime',     ['capabilities' => $cap_personal_soft_approve_dept], _l('hr_perm_overtime'));
+    register_staff_capabilities('hr_performance',  ['capabilities' => $cap_personal_dept],      _l('hr_perm_performance'));
+    register_staff_capabilities('hr_training',     ['capabilities' => $cap_personal_dept],      _l('hr_perm_training'));
     register_staff_capabilities('hr_helpdesk',     ['capabilities' => $cap_personal],          _l('hr_perm_helpdesk'));
     register_staff_capabilities('hr_contracts',    ['capabilities' => $cap_personal],          _l('hr_perm_contracts'));
     register_staff_capabilities('hr_zkteco',       ['capabilities' => $cap_config],            _l('hr_perm_zkteco'));
@@ -145,7 +159,7 @@ function hr_module_register_permissions()
     register_staff_capabilities('hr_settings',     ['capabilities' => ['view' => $view_global, 'edit' => $edit]], _l('hr_perm_settings'));
     register_staff_capabilities('hr_holidays',     ['capabilities' => ['view' => $view_global, 'edit' => $edit]], _l('hr_perm_holidays'));
     register_staff_capabilities('hr_policies',     ['capabilities' => $cap_personal],          _l('hr_perm_policies'));
-    register_staff_capabilities('hr_shifts',       ['capabilities' => $cap_personal_approve],  _l('hr_perm_shifts'));
+    register_staff_capabilities('hr_shifts',       ['capabilities' => $cap_personal_soft_approve_dept], _l('hr_perm_shifts'));
 }
 
 /**
@@ -176,6 +190,24 @@ function hr_get_own_employee_id()
     }
     $emp = $CI->Employees_model->get_by_staff_id(get_staff_user_id());
     return $emp ? (int) $emp->id : 0;
+}
+
+/**
+ * Returns the hr_employees.department_id of the currently logged-in staff
+ * member's own HR profile, or 0 if none/not linked. Used for the
+ * 'view_department' capability (Leave/Overtime/Shifts/Performance/Training) -
+ * a role-scoped middle-man (e.g. a department head) sees every record
+ * belonging to employees in their own department, without needing the
+ * full company-wide 'view' capability.
+ */
+function hr_get_own_department_id()
+{
+    $CI = &get_instance();
+    if (!class_exists('Employees_model', false)) {
+        $CI->load->model('hr_module/Employees_model');
+    }
+    $emp = $CI->Employees_model->get_by_staff_id(get_staff_user_id());
+    return ($emp && $emp->department_id) ? (int) $emp->department_id : 0;
 }
 
 /**

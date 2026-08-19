@@ -15,7 +15,7 @@ class Overtime extends AdminController
 
     public function index()
     {
-        if (staff_cant('view', 'hr_overtime') && staff_cant('view_own', 'hr_overtime')) access_denied('hr_overtime');
+        if (staff_cant('view', 'hr_overtime') && staff_cant('view_own', 'hr_overtime') && staff_cant('view_department', 'hr_overtime')) access_denied('hr_overtime');
         if ($this->input->is_ajax_request()) {
             $this->app->get_table_data(module_views_path('hr_module', 'overtime/table'));
             return;
@@ -140,15 +140,20 @@ class Overtime extends AdminController
 
     public function view($id)
     {
-        if (staff_cant('view', 'hr_overtime') && staff_cant('view_own', 'hr_overtime')) access_denied('hr_overtime');
+        if (staff_cant('view', 'hr_overtime') && staff_cant('view_own', 'hr_overtime') && staff_cant('view_department', 'hr_overtime')) access_denied('hr_overtime');
         $overtime = $this->Overtime_model->get($id);
         if (!$overtime) show_404();
-        if (!staff_can('view', 'hr_overtime') && staff_can('view_own', 'hr_overtime')) {
-            if ((int) $overtime->employee_id !== hr_get_own_employee_id()) access_denied('hr_overtime');
+        if (!staff_can('view', 'hr_overtime')) {
+            $allowed = staff_can('view_own', 'hr_overtime') && (int) $overtime->employee_id === hr_get_own_employee_id();
+            if (!$allowed && staff_can('view_department', 'hr_overtime')) {
+                $allowed = $overtime->employee_department_id && (int) $overtime->employee_department_id === hr_get_own_department_id();
+            }
+            if (!$allowed) access_denied('hr_overtime');
         }
-        $data['title']    = _l('hr_overtime_view');
-        $data['overtime'] = $overtime;
-        $data['dates']    = $this->Overtime_model->get_dates($id);
+        $data['title']            = _l('hr_overtime_view');
+        $data['overtime']         = $overtime;
+        $data['dates']            = $this->Overtime_model->get_dates($id);
+        $data['can_soft_approve'] = staff_can('soft_approve', 'hr_overtime');
         $this->load->view('hr_module/overtime/view', $data);
     }
 
@@ -181,6 +186,27 @@ class Overtime extends AdminController
         $reason = $this->input->post('rejection_reason', true);
         $result = $this->Overtime_model->reject($id, $reason);
         if ($result['success']) set_alert('success', $result['message']);
+        else                    set_alert('danger',  $result['message']);
+        redirect(admin_url('hr_module/overtime/view/' . $id));
+    }
+
+    // Informational-only pre-approval step (see Overtime_model::soft_approve()) -
+    // gated by its own 'soft_approve' capability, independent of 'edit' (which is
+    // what gates the real approve/reject above).
+    public function soft_approve($id)
+    {
+        if (staff_cant('soft_approve', 'hr_overtime')) access_denied('hr_overtime');
+        $result = $this->Overtime_model->soft_approve($id);
+        if ($result['success']) set_alert('success', _l('hr_overtime_soft_approve'));
+        else                    set_alert('danger',  $result['message']);
+        redirect(admin_url('hr_module/overtime/view/' . $id));
+    }
+
+    public function soft_reject($id)
+    {
+        if (staff_cant('soft_approve', 'hr_overtime')) access_denied('hr_overtime');
+        $result = $this->Overtime_model->soft_reject($id);
+        if ($result['success']) set_alert('success', _l('hr_overtime_soft_reject'));
         else                    set_alert('danger',  $result['message']);
         redirect(admin_url('hr_module/overtime/view/' . $id));
     }

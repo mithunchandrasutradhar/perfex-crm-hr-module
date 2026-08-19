@@ -68,6 +68,7 @@ class Hr_module_model extends App_Model
         // same request (there isn't currently a caller that does, but a
         // future one shouldn't silently get stale values) sees the update.
         $this->_settings_cache = null;
+        log_activity('HR Module Settings Updated [Keys: ' . implode(', ', array_keys($data)) . ']');
         return true;
     }
 
@@ -447,18 +448,25 @@ class Hr_module_model extends App_Model
             ->get(db_prefix() . 'hr_attendance')->row();
         $stats['attendance_today'] = $att ? $att->status : null;
 
-        // Leave balance — total remaining days this year
-        $this->db->select('SUM(allocated_days + carry_forward_days - used_days) as remaining', false)
-            ->where('employee_id', $employee_id)
-            ->where('year', $year);
-        $bal = $this->db->get(db_prefix() . 'hr_leave_balances')->row();
+        // Leave balance — Casual Leave remaining days this year (dashboard widget
+        // shows only this one leave type, not a combined total across all types)
+        $this->db->select('SUM(b.allocated_days + b.carry_forward_days - b.used_days) as remaining', false)
+            ->from(db_prefix() . 'hr_leave_balances b')
+            ->join(db_prefix() . 'hr_leave_types lt', 'lt.id = b.leave_type_id', 'left')
+            ->where('b.employee_id', $employee_id)
+            ->where('b.year', $year)
+            ->where('lt.name', 'Casual Leave');
+        $bal = $this->db->get()->row();
         $stats['leave_balance_remaining'] = ($bal && $bal->remaining !== null) ? (float) $bal->remaining : 0;
 
-        // Used leave days this year
-        $this->db->select('SUM(used_days) as used', false)
-            ->where('employee_id', $employee_id)
-            ->where('year', $year);
-        $used = $this->db->get(db_prefix() . 'hr_leave_balances')->row();
+        // Used Casual Leave days this year
+        $this->db->select('SUM(b.used_days) as used', false)
+            ->from(db_prefix() . 'hr_leave_balances b')
+            ->join(db_prefix() . 'hr_leave_types lt', 'lt.id = b.leave_type_id', 'left')
+            ->where('b.employee_id', $employee_id)
+            ->where('b.year', $year)
+            ->where('lt.name', 'Casual Leave');
+        $used = $this->db->get()->row();
         $stats['leave_days_used'] = ($used && $used->used !== null) ? (float) $used->used : 0;
 
         // Pending leave requests
@@ -471,9 +479,13 @@ class Hr_module_model extends App_Model
             ->where('YEAR(from_date)', $year);
         $stats['approved_leaves'] = $this->db->count_all_results(db_prefix() . 'hr_leave_requests');
 
-        // Active loan
+        // Active loan - 'approved' and 'active' both mean "still owed" everywhere
+        // else in the module (Loans_model, loans/view.php, loans/table.php): a loan
+        // stays 'approved' until its first payroll deduction flips it to 'active'
+        // (see Payroll_model), so checking 'active' alone missed a just-approved
+        // loan that hasn't had a payroll cycle run against it yet.
         $loan = $this->db->where('employee_id', $employee_id)
-            ->where('status', 'active')
+            ->where_in('status', ['approved', 'active'])
             ->order_by('id', 'DESC')
             ->limit(1)
             ->get(db_prefix() . 'hr_loans')->row();
@@ -483,14 +495,15 @@ class Hr_module_model extends App_Model
         $this->db->where('employee_id', $employee_id)->where('status', 'pending');
         $stats['pending_overtime'] = $this->db->count_all_results(db_prefix() . 'hr_overtime');
 
-        // Approved overtime hours this month
-        $this->db->select('SUM(hours) as total_hours', false)
-            ->where('employee_id', $employee_id)
+        // Approved overtime days this month - overtime is tracked per day (see
+        // Overtime_model), not hourly, so this counts approved day-rows rather
+        // than summing the unused legacy 'hours' column (never populated by
+        // Overtime_model::request()/update(), always 0).
+        $this->db->where('employee_id', $employee_id)
             ->where('status', 'approved')
             ->where('MONTH(overtime_date)', $month)
             ->where('YEAR(overtime_date)', $year);
-        $ot = $this->db->get(db_prefix() . 'hr_overtime')->row();
-        $stats['approved_overtime_hours'] = ($ot && $ot->total_hours !== null) ? (float) $ot->total_hours : 0;
+        $stats['approved_overtime_days'] = $this->db->count_all_results(db_prefix() . 'hr_overtime');
 
         // Open helpdesk tickets
         $this->db->where('employee_id', $employee_id)->where_in('status', ['open', 'in_progress']);
@@ -655,6 +668,20 @@ class Hr_module_model extends App_Model
         $result = [];
         foreach ($rows as $row) {
             $result[$row->id] = $row->employee_code . ' - ' . $row->name;
+        }
+        return $result;
+    }
+
+    // employee_id => gender map for active employees - used by Leave::apply() to
+    // filter gender-restricted leave types (e.g. Maternity/Paternity) client-side
+    // once a staff member picks who they're applying on behalf of.
+    public function get_active_employees_genders()
+    {
+        $rows = $this->db->select('id, gender')->where('status', 1)
+            ->get(db_prefix() . 'hr_employees')->result();
+        $result = [];
+        foreach ($rows as $row) {
+            $result[$row->id] = strtolower((string) $row->gender);
         }
         return $result;
     }

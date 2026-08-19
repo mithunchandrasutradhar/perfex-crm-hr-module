@@ -11,8 +11,12 @@ foreach (['employee_id', 'department_id', 'status', 'year'] as $key) {
 }
 
 if (!is_admin() && !staff_can('view', 'hr_performance')) {
-    $filters['own_or_evaluator'] = ['employee_id' => hr_get_own_employee_id(), 'staff_id' => get_staff_user_id()];
-    unset($filters['employee_id']);
+    if (staff_can('view_department', 'hr_performance')) {
+        $filters['department_id'] = hr_get_own_department_id();
+    } else {
+        $filters['own_or_evaluator'] = ['employee_id' => hr_get_own_employee_id(), 'staff_id' => get_staff_user_id()];
+        unset($filters['employee_id']);
+    }
 }
 
 $rows = $CI->Performance_model->get_for_table($filters);

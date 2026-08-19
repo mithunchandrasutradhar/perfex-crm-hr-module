@@ -85,6 +85,7 @@ class Leave_types extends AdminController
             'requires_attachment'    => $this->input->post('requires_attachment') ? 1 : 0,
             'allow_half_day'         => $this->input->post('allow_half_day') ? 1 : 0,
             'is_date_range'          => $this->input->post('is_date_range') ? 1 : 0,
+            'gender'                 => $this->input->post('gender') ?: null,
             'description'            => $this->input->post('description', true),
             'status'                 => $this->input->post('status') ? 1 : 0,
         ];
