@@ -509,36 +509,67 @@ class Leave_model extends App_Model
         if (!$year) $year = date('Y');
         $employees = $this->db->where('status', 1)->get(db_prefix() . 'hr_employees')->result();
         $types     = $this->get_active_types();
-        $now       = date('Y-m-d H:i:s');
         $count     = 0;
         foreach ($employees as $emp) {
             foreach ($types as $type) {
-                $existing = $this->get_balance($emp->id, $type->id, $year);
-                if (!$existing) {
-                    // Carry forward from previous year
-                    $carry = 0;
-                    if ($type->carry_forward) {
-                        $prev = $this->get_balance($emp->id, $type->id, $year - 1);
-                        if ($prev) {
-                            $leftover = $prev->allocated_days + $prev->carry_forward_days - $prev->used_days;
-                            $carry    = max(0, min($leftover, $type->max_carry_forward_days));
-                        }
-                    }
-                    $this->db->insert($this->tbl_balances, [
-                        'employee_id'       => $emp->id,
-                        'leave_type_id'     => $type->id,
-                        'year'              => $year,
-                        'allocated_days'    => $type->days_per_year,
-                        'used_days'         => 0,
-                        'carry_forward_days'=> $carry,
-                        'created_at'        => $now,
-                    ]);
+                if ($this->_allocate_balance_row($emp->id, $type, $year)) {
                     $count++;
                 }
             }
         }
         log_activity('HR Leave Balances Allocated [Year: ' . $year . ', Count: ' . $count . ']');
         return $count;
+    }
+
+    // Allocates every active leave type's balance row for a single employee -
+    // called right after a new HR employee profile is created, so they show up
+    // on the Leave Balances page and have a balance to apply against immediately
+    // instead of waiting for the next site-wide "Allocate" run. Uses the exact
+    // same row-creation logic as allocate_balances() above (shared via
+    // _allocate_balance_row()), so behavior for existing rows/carry-forward is
+    // identical - this just narrows the scope to one employee.
+    public function allocate_for_employee($employee_id, $year = null)
+    {
+        if (!$year) $year = date('Y');
+        $types = $this->get_active_types();
+        $count = 0;
+        foreach ($types as $type) {
+            if ($this->_allocate_balance_row($employee_id, $type, $year)) {
+                $count++;
+            }
+        }
+        if ($count > 0) {
+            log_activity('HR Leave Balances Allocated For New Employee [Employee ID: ' . $employee_id . ', Year: ' . $year . ', Count: ' . $count . ']');
+        }
+        return $count;
+    }
+
+    // Creates the balance row for one employee/type/year if it doesn't already
+    // exist. Returns true if a row was created, false if one already existed.
+    private function _allocate_balance_row($employee_id, $type, $year)
+    {
+        if ($this->get_balance($employee_id, $type->id, $year)) {
+            return false;
+        }
+        // Carry forward from previous year
+        $carry = 0;
+        if ($type->carry_forward) {
+            $prev = $this->get_balance($employee_id, $type->id, $year - 1);
+            if ($prev) {
+                $leftover = $prev->allocated_days + $prev->carry_forward_days - $prev->used_days;
+                $carry    = max(0, min($leftover, $type->max_carry_forward_days));
+            }
+        }
+        $this->db->insert($this->tbl_balances, [
+            'employee_id'        => $employee_id,
+            'leave_type_id'      => $type->id,
+            'year'               => $year,
+            'allocated_days'     => $type->days_per_year,
+            'used_days'          => 0,
+            'carry_forward_days' => $carry,
+            'created_at'         => date('Y-m-d H:i:s'),
+        ]);
+        return true;
     }
 
     // ── Private helpers ──────────────────────────────────────────────────

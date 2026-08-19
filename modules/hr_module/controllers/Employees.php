@@ -61,6 +61,12 @@ class Employees extends AdminController
 
             $id = $this->Employees_model->add($data);
             if ($id) {
+                // Allocate this year's leave balances immediately so the new
+                // employee shows up on the Leave Balances page and can apply for
+                // leave right away, instead of being invisible until the next
+                // site-wide "Allocate" run.
+                $this->load->model('hr_module/Leave_model');
+                $this->Leave_model->allocate_for_employee($id);
                 set_alert('success', _l('hr_employee_added'));
                 redirect(admin_url('hr_module/employees/view/' . $id));
             }
