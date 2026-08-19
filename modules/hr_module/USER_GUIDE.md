@@ -8,6 +8,8 @@ This guide explains how to use the HR Management module inside the CRM. It's wri
 
 You'll only see the menu items and buttons your account has permission for — if something mentioned here doesn't appear on your screen, you likely don't have that permission, and your admin or HR manager can grant it if you need it.
 
+If you're setting up or operating the module (roles, integrations, cron, troubleshooting) rather than just using it, see [`ADMIN_GUIDE.md`](ADMIN_GUIDE.md) instead.
+
 ---
 
 ## 1. Getting started: the HR Dashboard

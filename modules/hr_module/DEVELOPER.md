@@ -6,6 +6,8 @@
 
 This document describes the module **as it exists today** — architecture, database schema, permission model, settings, integrations, and the conventions to follow when extending it. It is kept in the repo next to the code so it stays versioned alongside it.
 
+For how to *use* the module day to day, see [`USER_GUIDE.md`](USER_GUIDE.md). For how to *set up and operate* it (roles, integrations, cron, troubleshooting), see [`ADMIN_GUIDE.md`](ADMIN_GUIDE.md).
+
 ---
 
 ## 1. Ground rules
