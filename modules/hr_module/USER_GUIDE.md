@@ -41,7 +41,7 @@ Your profile has three tabs:
 - **Personal Info** — contact details, date of birth, blood group, marital status, national ID/passport, emergency contact, and address.
 - **Bank Info** — bank name, account number, branch, and TIN.
 
-HR/admins can add a new employee (linking an existing staff account to a new HR profile) or edit an existing one from this page. Your name, email, and phone always stay in sync with your linked staff account — they're not editable separately here.
+HR/admins can add a new employee (linking an existing staff account to a new HR profile) or edit an existing one from this page. Your name, email, and phone always stay in sync with your linked staff account — they're not editable separately here. When adding a new employee, picking a staff member auto-fills the Department field from whatever department that staff account already has on the CRM side, and this year's leave balances are set up automatically the moment you save — no separate step needed.
 
 ---
 
@@ -56,11 +56,17 @@ Click **Apply for Leave**. Pick the leave type first — this determines how you
 - **Regular leave types** (Casual, Sick, etc.) use a **day-by-day builder**: add one or more specific dates, and for each one choose Full Day, Half Day (before/after lunch), or Hourly. Click "Add another date" to cover multiple non-consecutive days in one request. As soon as you pick an employee and leave type, you'll see your **remaining balance** for that leave type update instantly.
 - **Range-based leave types** (e.g. Maternity Leave) instead show a simple **From / To date range**.
 
+Some leave types are restricted to one gender (e.g. Maternity Leave to female employees, Paternity Leave to male employees) — once an employee is selected, any leave type that doesn't apply to them simply won't appear in the Leave Type list, whether you're applying for yourself or (as HR) on someone else's behalf.
+
 If two days you pick are separated only by a weekend or a public holiday, the system automatically counts that gap day too (the "sandwich rule") — you'll see it called out before you submit.
 
 ### Checking your balance and requests
 
-The main Leave page lists every request with its status. **HR Management > Leave > Leave Balances** (visible to HR/managers) shows the full balance grid for every employee and leave type for a given year, with a button to bulk-allocate a new year's balances.
+The main Leave page lists every request with its status. **HR Management > Leave > Leave Balances** (visible to HR/managers) shows the full balance grid for every employee and leave type for a given year — a sortable, filterable table like every other list in the module — with a button to bulk-allocate a new year's balances. A new employee's balances are allocated automatically the moment their HR profile is created, so they don't need to wait for the next bulk-allocate run.
+
+### Before HR's final decision: soft approval
+
+If your role has been given the **Soft Approve/Reject** permission for Leave (typically a department head), you'll see extra "Soft Approve"/"Soft Reject" buttons on a pending request from someone in scope, above the real Approve/Reject buttons. This is purely a heads-up for whoever makes the real decision — your name and choice show right on the request, but it never blocks or changes what HR/the approver ultimately does. See [§17](#17-roles-in-plain-terms) for how this permission gets assigned.
 
 ### Cancelling a leave
 
@@ -112,6 +118,10 @@ Once your loan is active, its normal installment is deducted automatically from 
 
 Click **Request Overtime** to submit one or more dates worked. You can only select dates within the **current calendar month** — this is intentional, since an earlier or later month's payroll may already be finalized by the time you'd otherwise pick a date from it. Each date is checked automatically for eligibility (weekend, government holiday, or company holiday) as you enter it.
 
+Your dashboard's Overtime widget shows this month's **approved days** (overtime here is tracked per day, not hourly).
+
+If your role has the **Soft Approve/Reject** permission for Overtime, the same pre-review step described under [Leave](#3-leave) is available here too.
+
 ---
 
 ## 7. Shifts
@@ -119,6 +129,8 @@ Click **Request Overtime** to submit one or more dates worked. You can only sele
 **HR Management > Shifts**
 
 Request a shift assignment for one or more dates, picking a different shift type per date if needed (e.g. Night shift on one day, Morning on another). HR/managers review and approve or reject; you can still edit or delete your own request while it's pending.
+
+If your role has the **Soft Approve/Reject** permission for Shifts, the same pre-review step described under [Leave](#3-leave) is available here too.
 
 ---
 
@@ -208,11 +220,15 @@ Covers general configuration (employee ID prefix, currency, fiscal year start, p
 |---|---|
 | Nothing (no HR profile, no permissions) | Not access the HR module |
 | An HR profile only | See and manage your own leave, attendance, payroll, loans, overtime, tickets, contracts, and performance — nothing company-wide |
+| "View (Own Department)" on a feature (Leave, Overtime, Shifts, Performance, or Training) | See and manage that feature for every employee **in your own department** — a middle ground between your own data only and the whole company |
 | A specific "view" permission on a feature (e.g. Leave) | See and manage that feature for *every* employee, in addition to your own data everywhere else |
+| "Soft Approve/Reject" on Leave, Overtime, or Shifts | Record an informational pre-approval on a pending request (your name and decision show on it) before HR's real decision — this never blocks or replaces the actual Approve/Reject |
 | Full HR access | Manage everything across every feature |
 | Admin | Everything above, plus Settings, notification setup, and the Danger Zone |
 
 Permissions are granted per feature (Leave, Attendance, Payroll, Loans, Overtime, Performance, Training, Helpdesk, Contracts, Shifts, Policies, Reports, Settings, etc.) under **Setup > Staff > Roles** — every HR-related permission there is prefixed "HR " to keep it easy to find and tell apart from unrelated CRM permissions.
+
+**Setting up a department head:** there's no separate "assign a department head" screen — it's just two ordinary permission checkboxes. Create or edit a role under **Setup > Staff > Roles**, and for Leave/Overtime/Shifts (and optionally Performance/Training) check **"View (Own Department)"** so they see their department's requests, and **"Soft Approve/Reject"** (Leave/Overtime/Shifts only) so they can record their pre-review. Assign that role to whichever staff member(s) should act as department head — they immediately see and can act on records for employees in their own department, nothing more.
 
 ---
 
@@ -229,3 +245,9 @@ Your maximum loan amount is a total ceiling, not a per-request limit — see [Lo
 
 **Does hiding my Net Salary on the dashboard hide it anywhere else, like on my payslip?**
 No — the eye-toggle only affects that one dashboard widget, purely for a quick glance. Your payslip page always shows the full breakdown.
+
+**Why don't I see Maternity Leave (or Paternity Leave) in the Leave Type list?**
+Some leave types are restricted by gender — Maternity Leave to female employees, Paternity Leave to male employees, by default. Once you (or the employee you're applying on behalf of) are selected, only the leave types that actually apply to them are shown.
+
+**What does "Soft Approved by [Name]" mean on my Leave/Overtime/Shift request?**
+It means someone with the Soft Approve/Reject permission (typically your department head) has recorded an informational pre-review. It's just a note for whoever makes the real decision — it doesn't change your request's status, and HR/the approver still has to Approve or Reject it themselves.
