@@ -40,23 +40,27 @@ $editing = !empty($device);
               </div>
 
               <div class="row">
-                <div class="col-md-6">
+                <div class="col-md-4">
                   <div class="form-group">
-                    <label>IP Address <span class="text-danger">*</span></label>
-                    <input type="text" name="ip_address" class="form-control" required
-                           value="<?php echo $editing ? htmlspecialchars($device->ip_address) : ''; ?>"
-                           placeholder="192.168.1.201">
+                    <label><?php echo _l('hr_zkteco_serial_number'); ?> <span class="text-danger">*</span></label>
+                    <input type="text" name="serial_number" class="form-control" required
+                           value="<?php echo $editing ? htmlspecialchars($device->serial_number ?? '') : ''; ?>"
+                           placeholder="e.g. COAW221060606">
+                    <p class="text-muted" style="font-size:0.8rem;margin-top:4px">
+                      Must match the Serial Number of the physical device exactly - this is how the device
+                      identifies itself when it pushes attendance data.
+                    </p>
                   </div>
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-4">
                   <div class="form-group">
-                    <label>Port <span class="text-danger">*</span></label>
-                    <input type="number" name="port" class="form-control" required
-                           value="<?php echo $editing ? $device->port : 4370; ?>"
-                           min="1" max="65535">
+                    <label>Last Seen IP</label>
+                    <input type="text" name="ip_address" class="form-control"
+                           value="<?php echo $editing ? htmlspecialchars($device->ip_address ?? '') : ''; ?>"
+                           placeholder="Optional - informational only">
                   </div>
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-4">
                   <div class="form-group">
                     <label>Location</label>
                     <input type="text" name="location" class="form-control"
@@ -65,6 +69,7 @@ $editing = !empty($device);
                   </div>
                 </div>
               </div>
+              <input type="hidden" name="port" value="<?php echo $editing ? $device->port : 4370; ?>">
 
               <div class="form-group">
                 <label>Notes</label>
@@ -74,8 +79,10 @@ $editing = !empty($device);
 
               <div class="alert alert-info" style="font-size:0.85rem">
                 <i class="fa fa-info-circle tw-mr-1"></i>
-                Ensure the ZKTeco device is on the same network and the port is not blocked by a firewall.
-                Default port for ZKTeco devices is <strong>4370</strong>.
+                This device pushes attendance data to this server (ADMS protocol) - the server does not
+                connect out to the device. On the device's own keypad, set <strong>Comm. &rarr; Cloud Server
+                Setting / ADMS</strong>, point <strong>Server Address</strong> / <strong>Server Port</strong>
+                at this server, and leave <strong>Request Path</strong> as <code>/iclock/cdata</code>.
               </div>
 
               <div class="tw-flex tw-gap-2 tw-mt-3">
@@ -85,11 +92,6 @@ $editing = !empty($device);
                 <a href="<?php echo admin_url('hr_module/zkteco'); ?>" class="btn btn-default">
                   <?php echo _l('hr_cancel'); ?>
                 </a>
-                <?php if ($editing): ?>
-                <button type="button" id="btn-test" class="btn btn-success">
-                  <i class="fa fa-plug tw-mr-1"></i>Test Connection
-                </button>
-                <?php endif; ?>
               </div>
             <?php echo form_close(); ?>
           </div>
@@ -99,15 +101,3 @@ $editing = !empty($device);
   </div>
 </div>
 <?php init_tail(); ?>
-<?php if ($editing): ?>
-<script>
-$('#btn-test').on('click', function(){
-    var $btn = $(this).prop('disabled', true).text('Testing...');
-    $.getJSON('<?php echo admin_url('hr_module/zkteco/test_connection/'.$device->id); ?>', function(res){
-        alert_float(res.success ? 'success' : 'danger', res.message);
-    }).always(function(){
-        $btn.prop('disabled', false).html('<i class="fa fa-plug mr-1"></i>Test Connection');
-    });
-});
-</script>
-<?php endif; ?>

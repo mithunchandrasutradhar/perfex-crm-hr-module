@@ -2,7 +2,7 @@
 
 **Module slug:** `hr_module` · **Display name:** HR Management · **Version:** 1.0.0
 **Requires:** Perfex CRM 3.3.x (CodeIgniter 3 MVC) · **Author:** Alpha Net BD
-**Schema version:** see `HR_MODULE_SCHEMA_VERSION` in `hr_module.php` (currently `4`)
+**Schema version:** see `HR_MODULE_SCHEMA_VERSION` in `hr_module.php` (currently `6`)
 
 This document describes the module **as it exists today** — architecture, database schema, permission model, settings, integrations, and the conventions to follow when extending it. It is kept in the repo next to the code so it stays versioned alongside it.
 
@@ -30,11 +30,12 @@ modules/hr_module/
 ├── uninstall.php              # Drops tables only if allow_data_removal_on_uninstall is on
 ├── config/routes.php          # Explicit route map
 ├── controllers/                # One controller per feature area (see §3)
+│   └── Iclock.php              # Public ADMS push receiver for ZKTeco devices (no admin auth) - see §10
 ├── models/                     # One model per controller, plus Hr_module_model (shared helpers)
 ├── views/<feature>/            # index / form / view / table (DataTable AJAX endpoints)
 ├── libraries/
-│   ├── Waha_lib.php            # WhatsApp (WAHA) HTTP client
-│   └── Zkteco_lib.php           # ZKTeco binary TCP protocol client
+│   └── Waha_lib.php            # WhatsApp (WAHA) HTTP client
+├── config/csrf_exclude_uris.php # Exempts iclock/.+ from CSRF (device can't send a token)
 ├── language/english/hr_module_lang.php
 └── assets/css|js/               # Placeholders only — styling is Tailwind utility classes (tw-*) inline in views
 ```
@@ -247,7 +248,7 @@ All settings live in the generic key/value `hr_settings` table and are read via 
 | `whatsapp_base_url`, `whatsapp_session`, `whatsapp_api_key`, `whatsapp_group_id`, `whatsapp_phone_number` | WAHA connection + broadcast target; `api_key` is a password field never re-rendered (blank submit = keep existing) |
 | `whatsapp_notify_leave_announcement`, `whatsapp_notify_leave_cancellation_announcement`, `whatsapp_notify_holiday_reminder`, `whatsapp_notify_policy_announcement` | Per-event WhatsApp toggles |
 | `holiday_reminder_enabled`, `holiday_reminder_time` | Day-before holiday broadcast (cron-driven) |
-| `zkteco_enabled`, `zkteco_sync_interval` (5–1440 min) | Biometric device auto-sync |
+| `zkteco_enabled` | Gates the `/iclock/*` push receiver (see [§10](#10-zkteco-device-integration)) |
 | `allow_data_removal_on_uninstall` | Admin-only "Danger Zone" flag — deliberately excluded from `$allowed_keys`, written only when `is_admin()` |
 | `_schema_version` | Internal — not user-editable |
 
@@ -337,9 +338,18 @@ Implementation note if you ever touch this: don't use a fixed `window.addEventLi
 
 ## 10. ZKTeco device integration
 
-- **`libraries/Zkteco_lib.php`** — hand-rolled ZKTeco binary TCP protocol client over `fsockopen` (default port 4370, 10s timeout). Public entry point `fetch_attendance($ip, $port)`.
-- **`models/Zkteco_model.php`** — device CRUD, connection test, `sync($device_id)` (fetch punches → resolve device user id to an employee via the mapping table → create/update the day's attendance row, recomputing working hours on a later punch → log the sync), `auto_sync_all_devices()` for cron.
-- Punches enter the system through **three independent paths** that all resolve employees through the same mapping table: live device sync, cron auto-sync (`zkteco_enabled` + `zkteco_sync_interval`), and the Attendance screen's file import (CSV/XLSX/raw `.dat`/`.txt` ATTLOG export).
+The device **pushes** to us over ZKTeco's ADMS protocol - the server never opens an outbound connection to a device. This replaced an earlier TCP-pull design (`fsockopen` to the device's IP:4370 speaking ZKTeco's binary protocol); that whole approach - and `libraries/Zkteco_lib.php` with it - is gone.
+
+- **`controllers/Iclock.php`** — public, unauthenticated (`extends App_Controller`, not `AdminController` - same pattern as the `Ideal`/`Paypal` payment-webhook controllers). Reachable via three fixed paths declared in `application/config/my_routes.php` (a bare `iclock/...` URL can't be routed from inside `modules/hr_module/config/routes.php` itself - MX's module router only consults a module's own routes file once the URI's first segment already matches that module's folder name):
+  - `GET /iclock/cdata?SN=...&options=all` — handshake. Responds with the `Stamp=/Delay=30/Realtime=1` plain-text block from readme.md's own example - fixed, not configurable, since the F18's Cloud Server Setting screen has no field for it either.
+  - `POST /iclock/cdata?SN=...&table=ATTLOG` — attendance push. Body is tab-separated, one punch per line (`device_user_id\ttimestamp\tstate\tverify_mode\t...`). Responds `OK: <count>`.
+  - `GET /iclock/getrequest?SN=...` — heartbeat/command poll. Always responds `OK` (no command queue is implemented - devicecmd/getrequest are ack-only).
+  - `POST|GET /iclock/devicecmd?SN=...` — command execution ack. Drains the body, responds `OK`.
+  - Every hit is gated by `_authorize_device()`: `zkteco_enabled` setting must be `1`, `SN` must match an **active** row in `hr_zkteco_devices.serial_number` (this, not IP/port, is now a device's identity - the unique index added in schema v5 tolerates existing `NULL` rows), `User-Agent` must contain `iClock`/`ZKTeco`, and the device must be under a hardcoded 100 req/min rate limit. Any failure → a plain-text 4xx, never a redirect or JSON (a device firmware can't handle either). No admin-configurable knobs beyond `zkteco_enabled` - schema v6 dropped the unused `zkteco_sync_interval` setting since the real F18 UI never exposed a matching field.
+  - CSRF is exempted for `iclock/.+` via `config/csrf_exclude_uris.php` (same mechanism `modules/ideal` uses for its Stripe webhook) — no core file was touched for this.
+- **`models/Zkteco_model.php`** — device CRUD (now persists `serial_number`), `find_device_by_serial()`, `record_contact()` (updates `last_sync_at` on every authorized hit — this is what the admin UI's Online/Offline badge is computed from), `rate_limit_ok()`, `save_attlog_batch()` (parse → resolve device-user-id to an employee via the mapping table → create/update the day's `hr_attendance` row, recomputing working hours on a later punch — this is the exact same logic the old pull-based `sync()` used, just invoked from the push path instead of a cron/manual pull), `log_push()` (writes to `hr_zkteco_sync_logs`, reused as-is for push history).
+- There is no "Test Connection" or "Sync Now" action anymore — nothing to test/pull from a device that only ever calls out to us. The device list instead shows an Online/Offline badge derived from `last_sync_at` vs a fixed 300s threshold (10× the fixed 30s heartbeat).
+- Punches enter the system through **two independent paths** that both resolve employees through the same mapping table: the ADMS push receiver above, and the Attendance screen's file import (CSV/XLSX/raw `.dat`/`.txt` ATTLOG export) — unchanged.
 
 ---
 
@@ -357,14 +367,15 @@ Every call site is wrapped in `notifications_enabled('notify_xxx')`, which **def
 
 ### 11.3 Cron (`hr_module_cron_tasks`, hooked on `after_cron_run`)
 
-1. Auto-sync all ZKTeco devices (if enabled)
-2. Auto-expire contracts past `end_date`
-3. 30-day-ahead contract expiry warnings
-4. Day-before holiday reminder broadcast (email + WhatsApp)
+1. Auto-expire contracts past `end_date`
+2. 30-day-ahead contract expiry warnings
+3. Day-before holiday reminder broadcast (email + WhatsApp)
+
+ZKTeco devices are no longer polled here — see [§10](#10-zkteco-device-integration); they push to `/iclock/*` on their own schedule instead.
 
 ### 11.4 Activity logging
 
-Every mutating action across the module — leave apply/approve/reject/cancel/soft-decide, holiday CRUD, contract CRUD/sign, loan apply/approve/reject/repay/deduction, overtime request/approve/reject/soft-decide, payroll generate/mark-paid/revert/delete, performance target/sub-target CRUD/status, training CRUD/enroll/attendance, ZKTeco device CRUD/sync, shift type CRUD/assignment delete/soft-decide, settings saves, and email/WhatsApp template edits — writes to Perfex's **core** activity log via the global `log_activity($description)` helper (no `load->helper()` needed). Convention, followed everywhere:
+Every mutating action across the module — leave apply/approve/reject/cancel/soft-decide, holiday CRUD, contract CRUD/sign, loan apply/approve/reject/repay/deduction, overtime request/approve/reject/soft-decide, payroll generate/mark-paid/revert/delete, performance target/sub-target CRUD/status, training CRUD/enroll/attendance, ZKTeco device CRUD/mapping, shift type CRUD/assignment delete/soft-decide, settings saves, and email/WhatsApp template edits — writes to Perfex's **core** activity log via the global `log_activity($description)` helper (no `load->helper()` needed). Convention, followed everywhere:
 
 ```php
 log_activity('HR <Entity> <Action> [ID: ' . $id . ', <extra identifying info>]');

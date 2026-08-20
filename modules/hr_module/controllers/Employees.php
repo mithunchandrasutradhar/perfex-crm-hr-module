@@ -10,6 +10,7 @@ class Employees extends AdminController
         $this->load->model('hr_module/Departments_model');
         $this->load->model('hr_module/Designations_model');
         $this->load->model('hr_module/Hr_module_model');
+        $this->load->model('hr_module/Zkteco_model');
     }
 
     public function index()
@@ -67,6 +68,9 @@ class Employees extends AdminController
                 // site-wide "Allocate" run.
                 $this->load->model('hr_module/Leave_model');
                 $this->Leave_model->allocate_for_employee($id);
+                $this->Zkteco_model->set_employee_device_mapping(
+                    $id, $this->input->post('zkteco_device_id'), $this->input->post('device_user_id', true)
+                );
                 set_alert('success', _l('hr_employee_added'));
                 redirect(admin_url('hr_module/employees/view/' . $id));
             }
@@ -79,6 +83,9 @@ class Employees extends AdminController
         $data['departments']   = $this->Departments_model->get_active();
         $data['designations']  = $this->Designations_model->get_active();
         $data['staff_members'] = $this->Employees_model->get_unlinked_staff();
+        $data['devices']         = $this->Zkteco_model->get_devices(true);
+        $data['device_mappings'] = [];
+        $data['employee_id_prefix'] = $this->Hr_module_model->get_setting('employee_id_prefix', 'EMP');
         $data['next_code']     = $this->Employees_model->get_next_code(
             $this->Hr_module_model->get_setting('employee_id_prefix', 'EMP')
         );
@@ -122,6 +129,9 @@ class Employees extends AdminController
             }
 
             $this->Employees_model->update($data, $id);
+            $this->Zkteco_model->set_employee_device_mapping(
+                $id, $this->input->post('zkteco_device_id'), $this->input->post('device_user_id', true)
+            );
             set_alert('success', _l('hr_employee_updated'));
             redirect(admin_url('hr_module/employees/view/' . $id));
         }
@@ -131,6 +141,9 @@ class Employees extends AdminController
         $data['employee']     = $employee;
         $data['departments']  = $this->Departments_model->get_active();
         $data['designations'] = $this->Designations_model->get_active();
+        $data['devices']         = $this->Zkteco_model->get_devices(true);
+        $data['device_mappings'] = $this->Zkteco_model->get_mappings_for_employee($id);
+        $data['employee_id_prefix'] = $this->Hr_module_model->get_setting('employee_id_prefix', 'EMP');
         $data['staff_members'] = $this->db->select('staffid, firstname, lastname, email, phonenumber, profile_image')
             ->where('active', 1)
             ->order_by('firstname', 'ASC')

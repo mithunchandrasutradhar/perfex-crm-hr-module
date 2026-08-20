@@ -1,7 +1,4 @@
-<?php defined('BASEPATH') or exit('No direct script access allowed');
-$status_badge = ['present'=>'success','absent'=>'danger','late'=>'warning','half_day'=>'info'];
-$months = ['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-?>
+<?php defined('BASEPATH') or exit('No direct script access allowed'); ?>
 <?php init_head(); ?>
 <div id="wrapper"><div class="content">
 <div class="row"><div class="col-md-12">
@@ -10,100 +7,60 @@ $months = ['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov',
     <li class="active"><?php echo $title; ?></li>
   </ol>
 
-  <!-- Filters -->
-  <div class="panel_s tw-mb-3">
-    <div class="panel-body">
-      <?php echo form_open(admin_url('hr_module/reports/attendance'), ['method'=>'get']); ?>
-      <div class="row">
-        <div class="col-md-2">
-          <select name="month" class="form-control input-sm">
-            <?php for($m=1;$m<=12;$m++): ?>
-            <option value="<?php echo $m; ?>" <?php if(($filters['month']??'') == $m) echo 'selected'; ?>><?php echo $months[$m]; ?></option>
-            <?php endfor; ?>
-          </select>
-        </div>
-        <div class="col-md-2">
-          <select name="year" class="form-control input-sm">
-            <?php for($y=date('Y');$y>=date('Y')-3;$y--): ?>
-            <option value="<?php echo $y; ?>" <?php if(($filters['year']??'') == $y) echo 'selected'; ?>><?php echo $y; ?></option>
-            <?php endfor; ?>
-          </select>
-        </div>
-        <div class="col-md-2">
-          <select name="department_id" class="form-control input-sm">
-            <option value="">All Departments</option>
-            <?php foreach ($departments as $d): ?>
-            <option value="<?php echo $d->id; ?>" <?php if(($filters['department_id']??'')==$d->id) echo 'selected'; ?>><?php echo htmlspecialchars($d->name); ?></option>
-            <?php endforeach; ?>
-          </select>
-        </div>
-        <div class="col-md-2">
-          <select name="status" class="form-control input-sm">
-            <option value="">All Status</option>
-            <?php foreach(['present','absent','late','half_day'] as $s): ?>
-            <option value="<?php echo $s; ?>" <?php if(($filters['status']??'')==$s) echo 'selected'; ?>><?php echo ucfirst(str_replace('_',' ',$s)); ?></option>
-            <?php endforeach; ?>
-          </select>
-        </div>
-        <div class="col-md-2">
-          <button type="submit" class="btn btn-primary btn-sm btn-block">Filter</button>
-        </div>
-        <div class="col-md-2">
-          <a href="<?php echo admin_url('hr_module/reports/attendance?'.http_build_query($filters).'&export=csv'); ?>" class="btn btn-default btn-sm btn-block">
-            <i class="fa fa-download tw-mr-1"></i>CSV
-          </a>
-        </div>
+  <div class="tw-mb-2 tw-flex tw-flex-wrap tw-items-center tw-justify-between tw-gap-2">
+    <h4 class="tw-font-semibold tw-text-lg tw-text-neutral-700"><?php echo $title; ?></h4>
+    <?php echo form_open(admin_url('hr_module/reports/attendance'), ['method' => 'get', 'class' => 'tw-flex tw-flex-wrap tw-gap-2 tw-items-center']); ?>
+      <div class="input-group date" style="width:150px">
+        <input type="text" name="from_date" class="form-control datepicker" autocomplete="off"
+               value="<?php echo _d($filters['from_date']); ?>" placeholder="From date">
+        <div class="input-group-addon"><i class="fa-regular fa-calendar calendar-icon"></i></div>
       </div>
-      <?php echo form_close(); ?>
-    </div>
-  </div>
-
-  <!-- Summary -->
-  <div class="row tw-mb-3">
-    <?php
-    $cards = [
-      ['label'=>'Present',   'val'=>$summary['present'],   'color'=>'#059669'],
-      ['label'=>'Absent',    'val'=>$summary['absent'],    'color'=>'#dc2626'],
-      ['label'=>'Late',      'val'=>$summary['late'],      'color'=>'#d97706'],
-      ['label'=>'Half Day',  'val'=>$summary['half_day'],  'color'=>'#0891b2'],
-      ['label'=>'Total Hours','val'=>number_format($summary['total_hours'],1), 'color'=>'#7c3aed'],
-    ];
-    foreach($cards as $c): ?>
-    <div class="col-md-2 col-sm-4">
-      <div style="background:#fff;border-radius:8px;padding:12px 16px;border-left:3px solid <?php echo $c['color']; ?>;box-shadow:0 1px 3px rgba(0,0,0,.08)">
-        <div style="font-size:1.4rem;font-weight:700;color:<?php echo $c['color']; ?>"><?php echo $c['val']; ?></div>
-        <div style="font-size:0.78rem;color:#64748b"><?php echo $c['label']; ?></div>
+      <div class="input-group date" style="width:150px">
+        <input type="text" name="to_date" class="form-control datepicker" autocomplete="off"
+               value="<?php echo _d($filters['to_date']); ?>" placeholder="To date">
+        <div class="input-group-addon"><i class="fa-regular fa-calendar calendar-icon"></i></div>
       </div>
-    </div>
-    <?php endforeach; ?>
+      <select name="department_id" class="selectpicker" data-width="200px">
+        <option value=""><?php echo _l('hr_all') . ' Dept'; ?></option>
+        <?php foreach ($departments as $d): ?>
+        <option value="<?php echo $d->id; ?>" <?php if(($filters['department_id']??'')==$d->id) echo 'selected'; ?>><?php echo htmlspecialchars($d->name); ?></option>
+        <?php endforeach; ?>
+      </select>
+      <select name="employee_id" class="selectpicker" data-width="220px" data-live-search="true"
+              data-none-selected-text="<?php echo _l('hr_all') . ' Employees'; ?>">
+        <option value="">All Employees</option>
+        <?php foreach ($employees as $id => $name): ?>
+        <option value="<?php echo $id; ?>" <?php if(($filters['employee_id']??'')==$id) echo 'selected'; ?>><?php echo htmlspecialchars($name); ?></option>
+        <?php endforeach; ?>
+      </select>
+      <button type="submit" class="btn btn-primary">
+        <i class="fa-solid fa-filter tw-mr-1"></i><?php echo _l('hr_filter'); ?>
+      </button>
+      <a href="<?php echo admin_url('hr_module/reports/attendance?'.http_build_query($filters).'&export=csv'); ?>" class="btn btn-default">
+        <i class="fa-solid fa-download tw-mr-1"></i>CSV
+      </a>
+    <?php echo form_close(); ?>
   </div>
 
   <!-- Table -->
   <div class="panel_s"><div class="panel-body panel-table-full">
     <table class="table table-hover">
       <thead><tr>
-        <th>Date</th><th>Employee</th><th>Department</th>
-        <th>Status</th><th>In</th><th>Out</th><th>Hours</th>
+        <th>Employee</th><th>Employee Code</th><th>Department</th>
+        <th>Present</th><th>Late</th><th>Absent</th>
       </tr></thead>
       <tbody>
       <?php if(empty($rows)): ?>
-      <tr><td colspan="7" class="text-center text-muted" style="padding:30px">No records found.</td></tr>
+      <tr><td colspan="6" class="text-center text-muted" style="padding:30px">No employees found.</td></tr>
       <?php else: ?>
       <?php foreach($rows as $r): ?>
-      <?php
-        $hrs = '';
-        if ($r->in_time && $r->out_time) {
-            $hrs = number_format((strtotime($r->out_time)-strtotime($r->in_time))/3600, 1).'h';
-        }
-      ?>
       <tr>
-        <td><?php echo date('d M Y', strtotime($r->attendance_date)); ?></td>
-        <td><?php echo htmlspecialchars($r->first_name.' '.$r->last_name); ?><br><small class="text-muted"><?php echo $r->employee_code; ?></small></td>
+        <td><?php echo htmlspecialchars($r->first_name.' '.$r->last_name); ?></td>
+        <td><?php echo htmlspecialchars($r->employee_code); ?></td>
         <td><?php echo htmlspecialchars($r->department_name ?? '-'); ?></td>
-        <td><span class="label label-<?php echo $status_badge[$r->status] ?? 'default'; ?>"><?php echo ucfirst(str_replace('_',' ',$r->status)); ?></span></td>
-        <td><?php echo $r->in_time ? date('H:i', strtotime($r->in_time)) : '-'; ?></td>
-        <td><?php echo $r->out_time ? date('H:i', strtotime($r->out_time)) : '-'; ?></td>
-        <td><?php echo $hrs ?: '-'; ?></td>
+        <td><span class="label label-success"><i class="fa fa-check tw-mr-1"></i><?php echo $r->present; ?></span></td>
+        <td><span class="label label-warning"><i class="fa fa-clock tw-mr-1"></i><?php echo $r->late; ?></span></td>
+        <td><span class="label label-danger"><i class="fa fa-xmark tw-mr-1"></i><?php echo $r->absent; ?></span></td>
       </tr>
       <?php endforeach; ?>
       <?php endif; ?>

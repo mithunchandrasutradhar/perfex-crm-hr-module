@@ -36,6 +36,30 @@ class Attendance extends AdminController
         $this->load->view('hr_module/attendance/index', $data);
     }
 
+    // AJAX only - raw punch history for one employee+date, for the
+    // attendance list's "View Log" popup.
+    public function punches($employee_id, $date)
+    {
+        if (staff_cant('view', 'hr_attendance') && staff_cant('view_own', 'hr_attendance')) {
+            echo json_encode([]);
+            return;
+        }
+        if (!is_admin() && !staff_can('view', 'hr_attendance') && (int) $employee_id !== (int) hr_get_own_employee_id()) {
+            echo json_encode([]);
+            return;
+        }
+        $this->load->model('hr_module/Zkteco_model');
+        $rows = $this->Zkteco_model->get_punches((int) $employee_id, $date);
+        echo json_encode(array_map(function ($r) {
+            return [
+                'time'            => date('H:i:s', strtotime($r->punch_time)),
+                'device_name'     => $r->device_name ?: '-',
+                'device_location' => $r->device_location ?: '-',
+                'verify_mode'     => $r->verify_mode ?: '-',
+            ];
+        }, $rows));
+    }
+
     public function add()
     {
         if (!$this->input->is_ajax_request()) show_404();

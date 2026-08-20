@@ -21,20 +21,22 @@ class Reports extends AdminController
     public function attendance()
     {
         if (staff_cant('view', 'hr_reports')) access_denied('hr_reports');
-        $f = $this->_get_filters(['employee_id','department_id','status','month','year']);
-        if (empty($f['year'])) $f['year'] = date('Y');
-        if (empty($f['month'])) $f['month'] = date('m');
+        $f = $this->_get_filters(['employee_id','department_id','from_date','to_date']);
+        if (empty($f['from_date'])) $f['from_date'] = date('Y-m-01');
+        else $f['from_date'] = to_sql_date($f['from_date']);
+        if (empty($f['to_date'])) $f['to_date'] = date('Y-m-d');
+        else $f['to_date'] = to_sql_date($f['to_date']);
 
-        $rows    = $this->Reports_model->attendance($f);
-        $summary = $this->Reports_model->attendance_summary($f);
+        $this->load->model('hr_module/Employees_model');
+        $this->load->model('hr_module/Holidays_model');
+        $rows = $this->Reports_model->attendance_summary_by_employee($f);
 
         if ($this->input->get('export') === 'csv') {
-            $this->_export_csv($rows, ['employee_code','first_name','last_name','department_name','attendance_date','status','in_time','out_time'], 'attendance_report');
+            $this->_export_csv($rows, ['employee_code','first_name','last_name','department_name','present','late','absent'], 'attendance_report');
             return;
         }
         $data['title']       = 'Attendance Report';
         $data['rows']        = $rows;
-        $data['summary']     = $summary;
         $data['filters']     = $f;
         $data['departments'] = $this->Departments_model->get_active();
         $data['employees']   = $this->Hr_module_model->get_active_employees_dropdown();

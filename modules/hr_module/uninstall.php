@@ -47,6 +47,7 @@ $tables = [
     'hr_payroll_details',
     'hr_payroll',
     'hr_payroll_items',
+    'hr_zkteco_punches',
     'hr_zkteco_sync_logs',
     'hr_zkteco_mapping',
     'hr_zkteco_devices',

@@ -183,7 +183,6 @@ class Settings extends AdminController
             'shift_allowance_night_amount'   => [0, null, 'Night shift allowance cannot be negative.'],
             'fiscal_year_start_month'        => [1, 12,   'Fiscal year start month must be between 1 and 12.'],
             'payroll_generation_day'         => [1, 31,   'Payroll generation day must be between 1 and 31.'],
-            'zkteco_sync_interval'           => [5, 1440, 'ZKTeco sync interval must be between 5 and 1440 minutes.'],
             'default_max_loan_amount'        => [0, 99999999.99, 'Default maximum loan amount must be between 0 and 99,999,999.99.'],
         ];
         foreach ($numeric_ranges as $key => list($min, $max, $message)) {
@@ -224,7 +223,6 @@ class Settings extends AdminController
             'notify_payroll',
             'hr_notification_email',
             'zkteco_enabled',
-            'zkteco_sync_interval',
             'holiday_reminder_enabled',
             'holiday_reminder_time',
             'whatsapp_enabled',

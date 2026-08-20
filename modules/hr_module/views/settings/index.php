@@ -498,14 +498,6 @@ $can_edit = staff_can('edit', 'hr_settings') || is_admin();
                                 </div>
                                 <div class="col-md-3 col-sm-6">
                                     <div class="form-group">
-                                        <label><?php echo _l('hr_settings_zkteco_sync_interval'); ?></label>
-                                        <input type="number" name="zkteco_sync_interval" class="form-control" min="5" max="1440"
-                                            value="<?php echo isset($settings['zkteco_sync_interval']) ? (int)$settings['zkteco_sync_interval'] : 30; ?>"
-                                            <?php echo !$can_edit ? 'readonly' : ''; ?>>
-                                    </div>
-                                </div>
-                                <div class="col-md-3 col-sm-6">
-                                    <div class="form-group">
                                         <label class="tw-block">&nbsp;</label>
                                         <a href="<?php echo admin_url('hr_module/zkteco'); ?>" class="btn btn-default btn-sm">
                                             <i class="fa fa-microchip"></i> <?php echo _l('hr_zkteco_devices'); ?>

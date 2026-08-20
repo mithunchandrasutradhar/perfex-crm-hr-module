@@ -210,7 +210,7 @@ Eleven ready-made reports: Attendance, Leave, Payroll, Loan, Overtime, Performan
 
 **HR Management > Settings**
 
-Covers general configuration (employee ID prefix, currency, fiscal year start, payroll day, **default maximum loan amount**), attendance/working-hours defaults and overtime rates, shift types, notification toggles (which HR inbox receives request notifications, and which events trigger an email), WhatsApp broadcast setup (for company-wide announcements only — never individual messages), the day-before holiday reminder, and ZKTeco device sync frequency. A "Danger Zone" section (admin-only) controls whether uninstalling the module deletes all its data or preserves it — it's off by default, so uninstalling never destroys your HR records unless you deliberately turn this on first.
+Covers general configuration (employee ID prefix, currency, fiscal year start, payroll day, **default maximum loan amount**), attendance/working-hours defaults and overtime rates, shift types, notification toggles (which HR inbox receives request notifications, and which events trigger an email), WhatsApp broadcast setup (for company-wide announcements only — never individual messages), the day-before holiday reminder, and enabling/disabling the ZKTeco device integration. A "Danger Zone" section (admin-only) controls whether uninstalling the module deletes all its data or preserves it — it's off by default, so uninstalling never destroys your HR records unless you deliberately turn this on first.
 
 **Email Templates** and **WhatsApp Templates** (reached via buttons on the Settings page) let you customize the wording of every automated notification, with a "send test" option to preview one before relying on it.
 

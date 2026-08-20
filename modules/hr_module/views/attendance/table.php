@@ -41,6 +41,10 @@ foreach ($rows as $r) {
         $employee_cell .= '<div class="row-options">' . implode(' | ', $options) . '</div>';
     }
 
+    $log_btn = '<button type="button" class="btn btn-default btn-xs hr-view-log" data-employee="' . $r->employee_id
+        . '" data-date="' . $r->attendance_date . '" data-name="' . htmlspecialchars($r->employee_name) . '">'
+        . '<i class="fa fa-list-ul"></i> ' . _l('hr_attendance_view_log') . '</button>';
+
     $row = [
         $employee_cell,
         $r->department_name ? htmlspecialchars($r->department_name) : '-',
@@ -50,6 +54,7 @@ foreach ($rows as $r) {
         $r->working_hours ? $r->working_hours . ' h' : '-',
         $status_badge,
         $source_icon,
+        $log_btn,
     ];
     $row['DT_RowClass'] = 'has-row-options';
     $output['aaData'][] = $row;

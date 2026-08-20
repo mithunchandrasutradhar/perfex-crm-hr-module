@@ -18,7 +18,7 @@ If you're looking for "how do I apply for leave" or "how do I approve a request,
 8. **Configure notifications** — which inbox receives request notifications, and which events trigger an email (Settings page).
 9. **Optional: WhatsApp broadcast** — see [§6](#6-whatsapp-waha-integration).
 10. **Optional: ZKTeco biometric devices** — see [§7](#7-zkteco-device-integration).
-11. **Set up the server cron job** — see [§8](#8-cron-job) — several automated features (day-before holiday reminders, contract auto-expiry, ZKTeco auto-sync) silently do nothing without this.
+11. **Set up the server cron job** — see [§8](#8-cron-job) — several automated features (day-before holiday reminders, contract auto-expiry) silently do nothing without this.
 
 ---
 
@@ -116,15 +116,25 @@ If you don't see any working session at all, you need to start one on the WAHA s
 
 ## 7. ZKTeco device integration
 
-**HR Management > ZKTeco Devices.** Add each biometric device's IP address and port, then use **Test Connection** to confirm reachability before relying on it. Map each device's internal user IDs to HR employee profiles under **Mapping** — attendance only resolves correctly for mapped employees.
+The device **pushes** attendance data to this server (ZKTeco's ADMS protocol) — the server never connects out to the device, so there's no IP/port to reach and nothing to "test" from this end.
 
-Sync happens three ways, all independent: a manual **Sync Now** on the device page, the module's own cron-driven auto-sync (enable **ZKTeco Auto-Sync** in Settings and set an interval), and the Attendance page's file import (CSV/XLSX/raw `.dat`/`.txt` export) for devices you can't connect to directly over the network. All three resolve punches through the same employee mapping table, so set that up first regardless of which sync method you use.
+**HR Management > ZKTeco Devices > Add Device.** Enter the device's **Serial Number** exactly as shown on the device itself — this is how an incoming push is matched to a device record and authorized (unregistered or inactive serial numbers are rejected). Then, on the device's own keypad, go to **Comm. > Cloud Server Setting** and set:
+- **Server Mode:** `ADMS`
+- **Server Address:** this server's address (IP or domain)
+- **Server Port:** this server's port
+- **Enable Proxy Server:** `OFF`
+
+That's the whole on-device side — this particular screen has no "Request Path" field to fill in; the path (`/iclock/cdata`) is fixed on the server side and isn't something you configure per device.
+
+Within a few seconds of restarting, the device will start pushing, and the device list will show it **Online** with a "Last Contact" timestamp. Map each device's internal user IDs to HR employee profiles under **Mapping** — attendance only resolves correctly for mapped employees.
+
+Punches arrive two ways, both independent and both resolving through the same employee mapping table: the live ADMS push above, and the Attendance page's file import (CSV/XLSX/raw `.dat`/`.txt` export) for a device you can't point at this server directly. **ZKTeco Enabled** in Settings gates the whole integration — while off, every device request is rejected outright. There's no sync-interval setting to configure; the device is told to check in every 30 seconds as a fixed part of the handshake response.
 
 ---
 
 ## 8. Cron job
 
-Several features are entirely cron-dependent and will **silently never fire** without a working cron job: the day-before holiday reminder (email + WhatsApp), automatic contract expiry + 30-day expiry warnings, and ZKTeco auto-sync (if enabled).
+Several features are entirely cron-dependent and will **silently never fire** without a working cron job: the day-before holiday reminder (email + WhatsApp), and automatic contract expiry + 30-day expiry warnings. ZKTeco attendance is not cron-dependent — devices push on their own schedule.
 
 Setup > Settings > Cron Job tab shows the exact command Perfex expects:
 ```

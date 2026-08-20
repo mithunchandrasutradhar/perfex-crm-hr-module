@@ -276,6 +276,10 @@ $lang['hr_attendance_deleted']             = 'Attendance record deleted';
 $lang['hr_attendance_report']              = 'Attendance Report';
 $lang['hr_attendance_monthly']             = 'Monthly Attendance';
 $lang['hr_attendance_import']              = 'Import Attendance';
+$lang['hr_attendance_view_log']            = 'View Log';
+$lang['hr_attendance_punch_log']           = 'Punch Log';
+$lang['hr_attendance_punch_time']          = 'Time';
+$lang['hr_attendance_verify_method']       = 'Verify Method';
 
 // ZKTeco
 $lang['hr_zkteco_devices']                 = 'ZKTeco Devices';
@@ -288,7 +292,7 @@ $lang['hr_zkteco_ip_address']              = 'IP Address';
 $lang['hr_zkteco_port']                    = 'Port';
 $lang['hr_zkteco_serial_number']           = 'Serial Number';
 $lang['hr_zkteco_location']                = 'Location';
-$lang['hr_zkteco_sync_now']                = 'Sync Now';
+$lang['hr_zkteco_last_contact']             = 'Last Contact';
 $lang['hr_zkteco_last_sync']               = 'Last Synced';
 $lang['hr_zkteco_sync_logs']               = 'Sync Logs';
 $lang['hr_zkteco_records_synced']          = 'Records Synced';
@@ -636,7 +640,6 @@ $lang['hr_settings_notification_email_hint'] = 'Receives an email with a direct 
 $lang['hr_settings_policy_approver']      = 'Policy Approvers';
 $lang['hr_settings_policy_approver_hint'] = 'Only these selected admins can approve/reject policies and their updates, and only they receive the policy review email - not every admin. Leave unset to allow any admin (fallback).';
 $lang['hr_settings_zkteco_enabled']        = 'Enable ZKTeco Integration';
-$lang['hr_settings_zkteco_sync_interval']  = 'Sync Interval (minutes)';
 $lang['hr_settings_holiday_reminder']              = 'Holiday Reminder';
 $lang['hr_settings_holiday_reminder_enabled']      = 'Send Day-Before Holiday Reminder to All Employees';
 $lang['hr_settings_holiday_reminder_time']         = 'Send At Time (Bangladesh Standard Time)';

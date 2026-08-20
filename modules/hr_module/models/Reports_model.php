@@ -18,6 +18,61 @@ class Reports_model extends App_Model
         return $this->db->order_by('a.attendance_date DESC')->get()->result();
     }
 
+    // One row per employee: Present/Late/Absent counts for a date range.
+    // "Absent" includes both explicit absent rows AND any expected working
+    // day (excluding weekly-off days/company holidays) with no attendance
+    // record at all - otherwise an employee tracked purely via live device
+    // punches would show 0 absences even on days they never showed up,
+    // since nothing writes an explicit 'absent' row for a plain no-show.
+    public function attendance_summary_by_employee($f = [])
+    {
+        $CI = &get_instance();
+        $CI->load->model('hr_module/Employees_model');
+        $CI->load->model('hr_module/Holidays_model');
+
+        $where = ['e.status' => 1];
+        if (!empty($f['department_id'])) $where['e.department_id'] = $f['department_id'];
+        if (!empty($f['employee_id']))   $where['e.id'] = $f['employee_id'];
+        $employees = $CI->Employees_model->get(null, $where);
+
+        $from_date = $f['from_date'];
+        $to_date   = $f['to_date'];
+        // Never count a not-yet-happened day as a missing/absent day.
+        $today = date('Y-m-d');
+        $clamped_to = ($to_date > $today) ? $today : $to_date;
+        $expected_days = ($clamped_to >= $from_date) ? $CI->Holidays_model->count_working_days($from_date, $clamped_to) : 0;
+
+        $rows = [];
+        foreach ($employees as $emp) {
+            $this->db->select('status, COUNT(*) as cnt')
+                ->where('employee_id', $emp->id)
+                ->where('attendance_date >=', $from_date)
+                ->where('attendance_date <=', $to_date)
+                ->group_by('status');
+            $counts = ['present' => 0, 'late' => 0, 'half_day' => 0, 'absent' => 0];
+            foreach ($this->db->get(db_prefix() . 'hr_attendance')->result() as $c) {
+                if (isset($counts[$c->status])) $counts[$c->status] = (int) $c->cnt;
+            }
+
+            $attended        = $counts['present'] + $counts['half_day'] + $counts['late'];
+            $explicit_absent = $counts['absent'];
+            $missing         = max(0, $expected_days - $attended - $explicit_absent);
+
+            $rows[] = (object) [
+                'employee_id'     => $emp->id,
+                'employee_code'   => $emp->employee_code,
+                'first_name'      => $emp->first_name,
+                'last_name'       => $emp->last_name,
+                'department_name' => $emp->department_name,
+                'present'         => $counts['present'] + $counts['half_day'],
+                'late'            => $counts['late'],
+                'absent'          => $explicit_absent + $missing,
+            ];
+        }
+
+        return $rows;
+    }
+
     public function attendance_summary($f = [])
     {
         $rows = $this->attendance($f);

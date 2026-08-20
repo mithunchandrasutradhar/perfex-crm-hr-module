@@ -3,9 +3,8 @@ defined('BASEPATH') or exit('No direct script access allowed');
 
 /**
  * WAHA (WhatsApp HTTP API) Client Library.
- * Stateless - base URL/session/API key are passed into each call (same
- * convention as Zkteco_lib.php) since they come from admin-configurable
- * Settings rather than a fixed constructor config.
+ * Stateless - base URL/session/API key are passed into each call since they
+ * come from admin-configurable Settings rather than a fixed constructor config.
  */
 class Waha_lib
 {

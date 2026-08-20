@@ -23,7 +23,7 @@ define('HR_MODULE_NAME', 'hr_module');
 // bump this number whenever install.php gains a new guarded table/column, and
 // every site running this module will pick it up automatically on its very
 // next admin page load - no manual reactivation step, ever, on any install.
-define('HR_MODULE_SCHEMA_VERSION', 4);
+define('HR_MODULE_SCHEMA_VERSION', 7);
 
 // ─── Hook registrations ────────────────────────────────────────────────────
 
@@ -515,11 +515,8 @@ function hr_module_cron_tasks()
     $CI = &get_instance();
     $CI->load->model('hr_module/Hr_module_model');
 
-    // Auto-sync ZKTeco devices if enabled
-    if ($CI->Hr_module_model->get_setting('zkteco_enabled') == '1') {
-        $CI->load->model('hr_module/Zkteco_model');
-        $CI->Zkteco_model->auto_sync_all_devices();
-    }
+    // ZKTeco devices push attendance data to /iclock/cdata on their own
+    // schedule (ADMS protocol) - there's nothing left to poll here.
 
     // Auto-expire contracts past their end_date
     $CI->load->model('hr_module/Hr_contracts_model');

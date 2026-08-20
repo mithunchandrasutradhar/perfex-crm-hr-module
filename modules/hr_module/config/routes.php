@@ -74,6 +74,7 @@ $route['hr_module/attendance']                    = 'hr_module/Attendance/index'
 $route['hr_module/attendance/add']                = 'hr_module/Attendance/add';
 $route['hr_module/attendance/edit/(:num)']        = 'hr_module/Attendance/edit/$1';
 $route['hr_module/attendance/delete/(:num)']      = 'hr_module/Attendance/delete/$1';
+$route['hr_module/attendance/punches/(:num)/(:any)'] = 'hr_module/Attendance/punches/$1/$2';
 $route['hr_module/attendance/report']             = 'hr_module/Attendance/report';
 $route['hr_module/attendance/monthly']            = 'hr_module/Attendance/monthly';
 $route['hr_module/attendance/import']             = 'hr_module/Attendance/import';
@@ -83,11 +84,7 @@ $route['hr_module/zkteco']                        = 'hr_module/Zkteco/index';
 $route['hr_module/zkteco/add']                    = 'hr_module/Zkteco/add';
 $route['hr_module/zkteco/edit/(:num)']            = 'hr_module/Zkteco/edit/$1';
 $route['hr_module/zkteco/delete/(:num)']          = 'hr_module/Zkteco/delete/$1';
-$route['hr_module/zkteco/sync/(:num)']            = 'hr_module/Zkteco/sync/$1';
 $route['hr_module/zkteco/sync_logs']              = 'hr_module/Zkteco/sync_logs';
-$route['hr_module/zkteco/mapping']                = 'hr_module/Zkteco/mapping';
-$route['hr_module/zkteco/test_connection/(:num)'] = 'hr_module/Zkteco/test_connection/$1';
-$route['hr_module/zkteco/delete_mapping/(:num)']  = 'hr_module/Zkteco/delete_mapping/$1';
 
 // Payroll
 $route['hr_module/payroll']                       = 'hr_module/Payroll/index';

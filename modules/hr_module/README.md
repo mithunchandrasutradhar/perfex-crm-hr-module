@@ -38,7 +38,7 @@ This module lives inside a full Perfex CRM codebase checkout, at `modules/hr_mod
 <tr><td width="50%" valign="top">
 
 **Time & presence**
-- Attendance (ZKTeco biometric sync)
+- Attendance (ZKTeco biometric push via ADMS)
 - Shifts
 - Overtime
 - Official Calendar

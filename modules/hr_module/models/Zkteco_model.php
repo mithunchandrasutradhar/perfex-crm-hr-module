@@ -22,16 +22,23 @@ class Zkteco_model extends App_Model
             ->get(db_prefix() . $this->devices_table)->result();
     }
 
+    public function find_device_by_serial($serial_number)
+    {
+        return $this->db->where('serial_number', $serial_number)
+            ->get(db_prefix() . $this->devices_table)->row();
+    }
+
     public function add_device($data)
     {
         $record = [
-            'name'       => $data['name'],
-            'ip_address' => $data['ip_address'],
-            'port'       => (int) ($data['port'] ?? 4370),
-            'location'   => $data['location'] ?? null,
-            'notes'      => $data['notes'] ?? null,
-            'status'     => 1,
-            'created_at' => date('Y-m-d H:i:s'),
+            'name'          => $data['name'],
+            'ip_address'    => $data['ip_address'],
+            'port'          => (int) ($data['port'] ?? 4370),
+            'serial_number' => $data['serial_number'] ?? null,
+            'location'      => $data['location'] ?? null,
+            'notes'         => $data['notes'] ?? null,
+            'status'        => 1,
+            'created_at'    => date('Y-m-d H:i:s'),
         ];
         $this->db->insert(db_prefix() . $this->devices_table, $record);
         $id = $this->db->insert_id();
@@ -45,13 +52,14 @@ class Zkteco_model extends App_Model
     public function update_device($data, $id)
     {
         $this->db->where('id', $id)->update(db_prefix() . $this->devices_table, [
-            'name'       => $data['name'],
-            'ip_address' => $data['ip_address'],
-            'port'       => (int) ($data['port'] ?? 4370),
-            'location'   => $data['location'] ?? null,
-            'notes'      => $data['notes'] ?? null,
-            'status'     => $data['status'] ?? 1,
-            'updated_at' => date('Y-m-d H:i:s'),
+            'name'          => $data['name'],
+            'ip_address'    => $data['ip_address'],
+            'port'          => (int) ($data['port'] ?? 4370),
+            'serial_number' => $data['serial_number'] ?? null,
+            'location'      => $data['location'] ?? null,
+            'notes'         => $data['notes'] ?? null,
+            'status'        => $data['status'] ?? 1,
+            'updated_at'    => date('Y-m-d H:i:s'),
         ]);
         log_activity('HR ZKTeco Device Updated [ID: ' . $id . ']');
         return ['success' => true, 'message' => _l('hr_zkteco_device_updated')];
@@ -66,101 +74,156 @@ class Zkteco_model extends App_Model
         return ['success' => true, 'message' => _l('hr_zkteco_device_deleted')];
     }
 
-    // ── Sync ─────────────────────────────────────────────────────────────────
+    // ── ADMS Push Ingestion ──────────────────────────────────────────────────
 
-    public function test_connection($ip, $port = 4370)
+    // Called on every authorized /iclock/* hit (handshake, heartbeat, push,
+    // command ack) so the admin UI can show when the device was last heard
+    // from - there's no outbound connection to the device to "test" anymore.
+    public function record_contact($device_id)
     {
-        $timeout = 5;
-        $sock = @fsockopen($ip, (int) $port, $errno, $errstr, $timeout);
-        if ($sock) {
-            fclose($sock);
-            return ['success' => true, 'message' => 'Connection successful to ' . $ip . ':' . $port];
-        }
-        return ['success' => false, 'message' => 'Cannot connect to ' . $ip . ':' . $port . ' — ' . $errstr];
-    }
-
-    public function sync($device_id)
-    {
-        $this->load->model('hr_module/Attendance_model');
-
-        $device = $this->get_device($device_id);
-        if (!$device) return ['success' => false, 'message' => 'Device not found.'];
-
-        $conn = $this->test_connection($device->ip_address, $device->port);
-        if (!$conn['success']) {
-            $this->_log_sync($device_id, 0, 0, 'failed', $conn['message']);
-            return $conn;
-        }
-
-        $this->load->library('hr_module/Zkteco_lib');
-        $result = $this->zkteco_lib->fetch_attendance($device->ip_address, $device->port);
-
-        if (!$result['success']) {
-            $this->_log_sync($device_id, 0, 0, 'failed', $result['message']);
-            return $result;
-        }
-
-        $records_fetched = count($result['records']);
-        $records_saved   = 0;
-
-        foreach ($result['records'] as $rec) {
-            $employee_id = $this->resolve_employee($device_id, $rec['user_id']);
-            if (!$employee_id) continue;
-
-            $check_date = date('Y-m-d', strtotime($rec['timestamp']));
-            $check_time = date('H:i:s', strtotime($rec['timestamp']));
-
-            // Check if attendance record already exists for this employee/date
-            $existing = $this->db
-                ->where('employee_id', $employee_id)
-                ->where('attendance_date', $check_date)
-                ->get(db_prefix() . 'hr_attendance')->row();
-
-            if (!$existing) {
-                $resolved = $this->Attendance_model->resolve_status_and_hours($employee_id, $check_date, $check_time, null);
-                $this->db->insert(db_prefix() . 'hr_attendance', [
-                    'employee_id'     => $employee_id,
-                    'attendance_date' => $check_date,
-                    'in_time'         => $check_time,
-                    'status'          => $resolved['status'],
-                    'source'          => 'zkteco',
-                    'created_at'      => date('Y-m-d H:i:s'),
-                ]);
-                $records_saved++;
-            } elseif (empty($existing->out_time) && $check_time > $existing->in_time) {
-                // Update out_time if later than in_time, and recompute hours now
-                // that both punches are known.
-                $resolved = $this->Attendance_model->resolve_status_and_hours($employee_id, $check_date, $existing->in_time, $check_time);
-                $this->db->where('id', $existing->id)->update(db_prefix() . 'hr_attendance', [
-                    'out_time'      => $check_time,
-                    'working_hours' => $resolved['working_hours'],
-                ]);
-            }
-        }
-
-        // Update last_sync_at
         $this->db->where('id', $device_id)->update(db_prefix() . $this->devices_table, [
             'last_sync_at' => date('Y-m-d H:i:s'),
         ]);
-
-        $this->_log_sync($device_id, $records_fetched, $records_saved, 'success');
-
-        log_activity('HR ZKTeco Sync Completed [Device ID: ' . $device_id . ', Fetched: ' . $records_fetched . ', Saved: ' . $records_saved . ']');
-
-        return [
-            'success'         => true,
-            'records_fetched' => $records_fetched,
-            'records_saved'   => $records_saved,
-            'message'         => "Sync complete. Fetched: $records_fetched, Saved: $records_saved",
-        ];
     }
 
-    public function auto_sync_all_devices()
+    // Hardcoded per readme.md's Production Security Requirements (100
+    // req/min/device). Counts pushes logged in log_push() over the last
+    // 60 seconds for this device.
+    public function rate_limit_ok($device_id, $max_per_minute = 100)
     {
-        $devices = $this->get_devices(true);
-        foreach ($devices as $device) {
-            $this->sync($device->id);
+        $since = date('Y-m-d H:i:s', time() - 60);
+        $count = $this->db->where('device_id', $device_id)
+            ->where('sync_at >=', $since)
+            ->count_all_results(db_prefix() . $this->logs_table);
+        return $count < $max_per_minute;
+    }
+
+    // Maps the ATTLOG verify-mode code to a human label. readme.md's own
+    // Verification Modes table (0/3=Card, 1=Fingerprint, 2=Password,
+    // 15=Face) is incomplete for this device's actual firmware, which was
+    // confirmed sending 4 for a real ID Card scan - kept alongside 0/3
+    // rather than replacing them, since other devices/firmware may still
+    // use those. An RFID tag/fob is read through the same physical reader
+    // as an ID card - the device can't tell the two apart, so a tag punch
+    // is expected to register under this same code too.
+    private function _verify_mode_label($code)
+    {
+        $map = ['1' => 'Fingerprint', '15' => 'Face', '0' => 'ID Card', '3' => 'ID Card', '4' => 'ID Card', '2' => 'Password'];
+        return $map[(string) $code] ?? ('Code ' . $code);
+    }
+
+    // Parses the raw tab-separated ATTLOG body pushed by the device (one
+    // punch per line: device_user_id, timestamp, state, verify_mode, ...).
+    //
+    // Every individual punch is kept in hr_zkteco_punches (for the
+    // attendance list's "View Log" popup). hr_attendance itself only ever
+    // stores one row per employee+date: in_time is the first punch ever
+    // seen for that day (set once, never overwritten by later batches),
+    // out_time is always the latest punch seen so far - an employee can
+    // step out and back any number of times during the day and the last
+    // punch always wins, across any number of separate push batches.
+    public function save_attlog_batch($device_id, array $lines)
+    {
+        $this->load->model('hr_module/Attendance_model');
+        $saved = 0;
+
+        // Group by employee+date and sort chronologically first - a
+        // single push batch isn't guaranteed to list punches in order.
+        $groups = [];
+        foreach ($lines as $line) {
+            $cols = preg_split('/\t+/', trim($line));
+            if (count($cols) < 2) continue;
+
+            $device_user_id = $cols[0];
+            $timestamp      = $cols[1];
+            $verify_mode    = $cols[3] ?? null;
+
+            $employee_id = $this->resolve_employee($device_id, $device_user_id);
+            if (!$employee_id) continue;
+
+            $ts = strtotime($timestamp);
+            if ($ts === false) continue;
+
+            $date = date('Y-m-d', $ts);
+            $groups[$employee_id . '|' . $date][] = [
+                'employee_id'  => $employee_id,
+                'date'         => $date,
+                'time'         => date('H:i:s', $ts),
+                'verify_mode'  => $verify_mode,
+            ];
         }
+
+        foreach ($groups as $punches) {
+            usort($punches, function ($a, $b) { return strcmp($a['time'], $b['time']); });
+
+            $employee_id = $punches[0]['employee_id'];
+            $date        = $punches[0]['date'];
+            $existing = $this->db
+                ->where('employee_id', $employee_id)
+                ->where('attendance_date', $date)
+                ->get(db_prefix() . 'hr_attendance')->row();
+
+            foreach ($punches as $p) {
+                $this->db->insert(db_prefix() . 'hr_zkteco_punches', [
+                    'employee_id'     => $employee_id,
+                    'attendance_date' => $date,
+                    'punch_time'      => $p['time'],
+                    'device_id'       => $device_id,
+                    'verify_mode'     => $this->_verify_mode_label($p['verify_mode']),
+                    'created_at'      => date('Y-m-d H:i:s'),
+                ]);
+
+                if (!$existing) {
+                    $resolved = $this->Attendance_model->resolve_status_and_hours($employee_id, $date, $p['time'], null);
+                    $this->db->insert(db_prefix() . 'hr_attendance', [
+                        'employee_id'     => $employee_id,
+                        'attendance_date' => $date,
+                        'in_time'         => $p['time'],
+                        'status'          => $resolved['status'],
+                        'source'          => 'zkteco',
+                        'device_id'       => $device_id,
+                        'created_at'      => date('Y-m-d H:i:s'),
+                    ]);
+                    $saved++;
+                    // Reflect the row we just inserted so later punches in
+                    // this same group update it instead of inserting again.
+                    $existing = (object) [
+                        'id' => $this->db->insert_id(),
+                        'in_time' => $p['time'],
+                        'out_time' => null,
+                    ];
+                    continue;
+                }
+
+                if ($p['time'] > $existing->in_time) {
+                    $new_out = $existing->out_time ? max($existing->out_time, $p['time']) : $p['time'];
+                    if ($new_out !== $existing->out_time) {
+                        $resolved = $this->Attendance_model->resolve_status_and_hours($employee_id, $date, $existing->in_time, $new_out);
+                        $this->db->where('id', $existing->id)->update(db_prefix() . 'hr_attendance', [
+                            'out_time'      => $new_out,
+                            'working_hours' => $resolved['working_hours'],
+                        ]);
+                        $existing->out_time = $new_out;
+                        $saved++;
+                    }
+                }
+            }
+        }
+
+        return $saved;
+    }
+
+    // Raw punch history for an employee+date, for the attendance list's
+    // "View Log" popup - latest punch first.
+    public function get_punches($employee_id, $date)
+    {
+        $this->db->select('p.*, d.name as device_name, d.location as device_location')
+            ->from(db_prefix() . 'hr_zkteco_punches p')
+            ->join(db_prefix() . $this->devices_table . ' d', 'd.id = p.device_id', 'left')
+            ->where('p.employee_id', $employee_id)
+            ->where('p.attendance_date', $date)
+            ->order_by('p.punch_time', 'DESC');
+        return $this->db->get()->result();
     }
 
     // ── Employee Mapping ─────────────────────────────────────────────────────
@@ -205,18 +268,36 @@ class Zkteco_model extends App_Model
         return ['success' => true];
     }
 
-    // ── Sync Logs ─────────────────────────────────────────────────────────────
-
-    public function get_logs($device_id = null, $limit = 100)
+    // Used by the Employee form - an employee can be enrolled on several
+    // devices (multi-select), all sharing the same Device User ID, so this
+    // returns every mapping row the employee currently has.
+    public function get_mappings_for_employee($employee_id)
     {
-        $this->db->select('l.*, d.name as device_name, d.ip_address')
-            ->from(db_prefix() . $this->logs_table . ' l')
-            ->join(db_prefix() . $this->devices_table . ' d', 'd.id = l.device_id', 'left');
-        if ($device_id) $this->db->where('l.device_id', $device_id);
-        return $this->db->order_by('l.sync_at', 'DESC')->limit($limit)->get()->result();
+        return $this->db->where('employee_id', $employee_id)
+            ->get(db_prefix() . $this->mapping_table)->result();
     }
 
-    // ── Private Helpers ───────────────────────────────────────────────────────
+    // Employee form save: replaces the employee's whole set of device
+    // mappings with exactly the devices just submitted (all sharing the
+    // one Device User ID), removing mappings for any device that's no
+    // longer selected instead of leaving it stale alongside the new ones.
+    public function set_employee_device_mapping($employee_id, $device_ids, $device_user_id)
+    {
+        $device_ids     = array_values(array_unique(array_filter(array_map('intval', (array) $device_ids))));
+        $device_user_id = trim((string) $device_user_id);
+
+        if (empty($device_ids) || $device_user_id === '') {
+            $this->db->where('employee_id', $employee_id)->delete(db_prefix() . $this->mapping_table);
+            return;
+        }
+
+        $this->db->where('employee_id', $employee_id)->where_not_in('device_id', $device_ids)
+            ->delete(db_prefix() . $this->mapping_table);
+
+        foreach ($device_ids as $device_id) {
+            $this->save_mapping($employee_id, $device_id, $device_user_id);
+        }
+    }
 
     // Public so file-based imports (e.g. Attendance::_parse_attlog()) can
     // resolve the same device-user-id -> employee mappings set up on the
@@ -230,7 +311,18 @@ class Zkteco_model extends App_Model
         return $map ? $map->employee_id : null;
     }
 
-    private function _log_sync($device_id, $fetched, $saved, $status, $error = null)
+    // ── Push Logs ────────────────────────────────────────────────────────────
+
+    public function get_logs($device_id = null, $limit = 100)
+    {
+        $this->db->select('l.*, d.name as device_name, d.ip_address')
+            ->from(db_prefix() . $this->logs_table . ' l')
+            ->join(db_prefix() . $this->devices_table . ' d', 'd.id = l.device_id', 'left');
+        if ($device_id) $this->db->where('l.device_id', $device_id);
+        return $this->db->order_by('l.sync_at', 'DESC')->limit($limit)->get()->result();
+    }
+
+    public function log_push($device_id, $fetched, $saved, $status, $error = null)
     {
         $this->db->insert(db_prefix() . $this->logs_table, [
             'device_id'       => $device_id,

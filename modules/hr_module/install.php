@@ -310,6 +310,22 @@ if (!$CI->db->table_exists(db_prefix() . 'hr_zkteco_devices')) {
     $CI->db->query('ALTER TABLE `' . db_prefix() . 'hr_zkteco_devices`
       MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1;');
 }
+// Upgrade: ADMS push protocol identifies devices by serial_number, not
+// ip_address/port anymore - add a unique index (NULLs still allowed, so
+// existing devices without one aren't broken; the field is only required
+// going forward at the application layer).
+if ($CI->db->table_exists(db_prefix() . 'hr_zkteco_devices')) {
+    $idx = $CI->db->query("SHOW INDEX FROM `" . db_prefix() . "hr_zkteco_devices` WHERE Key_name = 'serial_number'")->num_rows();
+    if ($idx === 0) {
+        $CI->db->query("ALTER TABLE `" . db_prefix() . "hr_zkteco_devices` ADD UNIQUE KEY `serial_number` (`serial_number`)");
+    }
+}
+// Upgrade: the F18's own Cloud Server Setting screen has no configurable poll
+// interval, and Delay= is now a fixed value in the ADMS handshake response
+// (see Iclock::_handshake()) - drop the now-unused setting from existing installs.
+if ($CI->db->table_exists(db_prefix() . 'hr_settings')) {
+    $CI->db->where('setting_key', 'zkteco_sync_interval')->delete(db_prefix() . 'hr_settings');
+}
 
 // 9. ZKTeco User Mapping
 if (!$CI->db->table_exists(db_prefix() . 'hr_zkteco_mapping')) {
@@ -342,6 +358,26 @@ if (!$CI->db->table_exists(db_prefix() . 'hr_zkteco_sync_logs')) {
       ADD PRIMARY KEY (`id`),
       ADD KEY `device_id` (`device_id`);');
     $CI->db->query('ALTER TABLE `' . db_prefix() . 'hr_zkteco_sync_logs`
+      MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1;');
+}
+
+// 10b. ZKTeco Raw Punches - one row per individual punch, so a day's
+// aggregate hr_attendance in/out span can be inspected punch-by-punch
+// (device, time, verify method) from the attendance list's "View Log" popup.
+if (!$CI->db->table_exists(db_prefix() . 'hr_zkteco_punches')) {
+    $CI->db->query('CREATE TABLE `' . db_prefix() . 'hr_zkteco_punches` (
+      `id` int(11) NOT NULL,
+      `employee_id` int(11) NOT NULL,
+      `attendance_date` date NOT NULL,
+      `punch_time` time NOT NULL,
+      `device_id` int(11) DEFAULT NULL,
+      `verify_mode` varchar(30) DEFAULT NULL,
+      `created_at` datetime NOT NULL
+    ) ENGINE=InnoDB DEFAULT CHARSET=' . $CI->db->char_set . ';');
+    $CI->db->query('ALTER TABLE `' . db_prefix() . 'hr_zkteco_punches`
+      ADD PRIMARY KEY (`id`),
+      ADD KEY `employee_date` (`employee_id`, `attendance_date`);');
+    $CI->db->query('ALTER TABLE `' . db_prefix() . 'hr_zkteco_punches`
       MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1;');
 }
 
@@ -1087,7 +1123,6 @@ if (!$CI->db->table_exists(db_prefix() . 'hr_settings')) {
       ('notify_loan_apply', '1', '$now'),
       ('notify_payroll', '1', '$now'),
       ('zkteco_enabled', '0', '$now'),
-      ('zkteco_sync_interval', '30', '$now'),
       ('allow_data_removal_on_uninstall', '0', '$now')");
 }
 
