@@ -164,12 +164,14 @@ class Zkteco_model extends App_Model
                 ->get(db_prefix() . 'hr_attendance')->row();
 
             foreach ($punches as $p) {
+                $verify_label = $this->_verify_mode_label($p['verify_mode']);
+
                 $this->db->insert(db_prefix() . 'hr_zkteco_punches', [
                     'employee_id'     => $employee_id,
                     'attendance_date' => $date,
                     'punch_time'      => $p['time'],
                     'device_id'       => $device_id,
-                    'verify_mode'     => $this->_verify_mode_label($p['verify_mode']),
+                    'verify_mode'     => $verify_label,
                     'created_at'      => date('Y-m-d H:i:s'),
                 ]);
 
@@ -181,6 +183,7 @@ class Zkteco_model extends App_Model
                         'in_time'         => $p['time'],
                         'status'          => $resolved['status'],
                         'source'          => 'zkteco',
+                        'verify_mode'     => $verify_label,
                         'device_id'       => $device_id,
                         'created_at'      => date('Y-m-d H:i:s'),
                     ]);
@@ -199,9 +202,13 @@ class Zkteco_model extends App_Model
                     $new_out = $existing->out_time ? max($existing->out_time, $p['time']) : $p['time'];
                     if ($new_out !== $existing->out_time) {
                         $resolved = $this->Attendance_model->resolve_status_and_hours($employee_id, $date, $existing->in_time, $new_out);
+                        // This punch is now the latest for the day (it just
+                        // became out_time), so its verify method is what the
+                        // Attendance list's Source column should show.
                         $this->db->where('id', $existing->id)->update(db_prefix() . 'hr_attendance', [
                             'out_time'      => $new_out,
                             'working_hours' => $resolved['working_hours'],
+                            'verify_mode'   => $verify_label,
                         ]);
                         $existing->out_time = $new_out;
                         $saved++;

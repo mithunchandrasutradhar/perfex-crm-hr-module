@@ -2,7 +2,7 @@
 
 **Module slug:** `hr_module` · **Display name:** HR Management · **Version:** 1.0.0
 **Requires:** Perfex CRM 3.3.x (CodeIgniter 3 MVC) · **Author:** Alpha Net BD
-**Schema version:** see `HR_MODULE_SCHEMA_VERSION` in `hr_module.php` (currently `6`)
+**Schema version:** see `HR_MODULE_SCHEMA_VERSION` in `hr_module.php` (currently `9`)
 
 This document describes the module **as it exists today** — architecture, database schema, permission model, settings, integrations, and the conventions to follow when extending it. It is kept in the repo next to the code so it stays versioned alongside it.
 
@@ -340,7 +340,7 @@ Implementation note if you ever touch this: don't use a fixed `window.addEventLi
 
 The device **pushes** to us over ZKTeco's ADMS protocol - the server never opens an outbound connection to a device. This replaced an earlier TCP-pull design (`fsockopen` to the device's IP:4370 speaking ZKTeco's binary protocol); that whole approach - and `libraries/Zkteco_lib.php` with it - is gone.
 
-- **`controllers/Iclock.php`** — public, unauthenticated (`extends App_Controller`, not `AdminController` - same pattern as the `Ideal`/`Paypal` payment-webhook controllers). Reachable via three fixed paths declared in `application/config/my_routes.php` (a bare `iclock/...` URL can't be routed from inside `modules/hr_module/config/routes.php` itself - MX's module router only consults a module's own routes file once the URI's first segment already matches that module's folder name):
+- **`controllers/Iclock.php`** — public, unauthenticated (`extends App_Controller`, not `AdminController` - same pattern as the `Ideal`/`Paypal` payment-webhook controllers). Reachable via three fixed paths declared in `application/config/my_routes.php` (a bare `iclock/...` URL can't be routed from inside `modules/hr_module/config/routes.php` itself - MX's module router only consults a module's own routes file once the URI's first segment already matches that module's folder name). `install.php` writes this global route file automatically if it's missing (or appends to it if it already exists for something else) whenever the module activates or its schema version bumps, so a fresh install of this module gets working ADMS routing with no manual server-config step:
   - `GET /iclock/cdata?SN=...&options=all` — handshake. Responds with the `Stamp=/Delay=30/Realtime=1` plain-text block from readme.md's own example - fixed, not configurable, since the F18's Cloud Server Setting screen has no field for it either.
   - `POST /iclock/cdata?SN=...&table=ATTLOG` — attendance push. Body is tab-separated, one punch per line (`device_user_id\ttimestamp\tstate\tverify_mode\t...`). Responds `OK: <count>`.
   - `GET /iclock/getrequest?SN=...` — heartbeat/command poll. Always responds `OK` (no command queue is implemented - devicecmd/getrequest are ack-only).

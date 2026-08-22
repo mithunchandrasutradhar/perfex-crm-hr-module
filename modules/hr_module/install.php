@@ -289,6 +289,15 @@ if (!$CI->db->table_exists(db_prefix() . 'hr_attendance')) {
     $CI->db->query('ALTER TABLE `' . db_prefix() . 'hr_attendance`
       MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1;');
 }
+// Upgrade: records the verify method (Fingerprint/ID Card/Face/Password) of
+// the latest punch behind this row's out_time, so the Attendance list's
+// Source column can show it directly instead of a generic device icon.
+if ($CI->db->table_exists(db_prefix() . 'hr_attendance')) {
+    $col = $CI->db->query("SHOW COLUMNS FROM `" . db_prefix() . "hr_attendance` LIKE 'verify_mode'")->num_rows();
+    if ($col === 0) {
+        $CI->db->query("ALTER TABLE `" . db_prefix() . "hr_attendance` ADD COLUMN `verify_mode` varchar(30) DEFAULT NULL AFTER `source`");
+    }
+}
 
 // 8. ZKTeco Devices
 if (!$CI->db->table_exists(db_prefix() . 'hr_zkteco_devices')) {
@@ -379,6 +388,36 @@ if (!$CI->db->table_exists(db_prefix() . 'hr_zkteco_punches')) {
       ADD KEY `employee_date` (`employee_id`, `attendance_date`);');
     $CI->db->query('ALTER TABLE `' . db_prefix() . 'hr_zkteco_punches`
       MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1;');
+}
+
+// Upgrade: the /iclock/* ADMS push endpoints can only be routed into this
+// module via a route in application/config/my_routes.php - a module's own
+// routes.php is only consulted once the URI's first segment already matches
+// the module's own folder name (see DEVELOPER.md §10), so a bare
+// /iclock/... path needs this global route file to exist. Writes it
+// automatically (or appends to it if it already exists for something else)
+// so a fresh install of this module works out of the box, with no manual
+// server-config step required.
+$hr_module_my_routes_path = APPPATH . 'config/my_routes.php';
+$hr_module_iclock_routes  = "\$route['iclock/cdata']      = 'hr_module/iclock/cdata';\n"
+    . "\$route['iclock/getrequest'] = 'hr_module/iclock/getrequest';\n"
+    . "\$route['iclock/devicecmd']  = 'hr_module/iclock/devicecmd';\n";
+if (!file_exists($hr_module_my_routes_path)) {
+    $hr_module_my_routes_content = "<?php\n\ndefined('BASEPATH') or exit('No direct script access allowed');\n\n"
+        . "/**\n * ZKTeco ADMS push protocol routes.\n"
+        . " * These map the fixed device-facing paths required by the ZKTeco F18\n"
+        . " * ADMS spec into the hr_module's Iclock controller.\n"
+        . " * Auto-created by hr_module's installer - see modules/hr_module/install.php.\n"
+        . " */\n" . $hr_module_iclock_routes;
+    @file_put_contents($hr_module_my_routes_path, $hr_module_my_routes_content);
+} else {
+    $hr_module_my_routes_existing = @file_get_contents($hr_module_my_routes_path);
+    if ($hr_module_my_routes_existing !== false && strpos($hr_module_my_routes_existing, "'iclock/cdata'") === false) {
+        @file_put_contents(
+            $hr_module_my_routes_path,
+            $hr_module_my_routes_existing . "\n// Added by hr_module's installer for ZKTeco ADMS push routing.\n" . $hr_module_iclock_routes
+        );
+    }
 }
 
 // 11. Payroll Items (allowance/deduction definitions)

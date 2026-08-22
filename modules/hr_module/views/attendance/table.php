@@ -29,9 +29,21 @@ $badge = ['present' => 'success', 'late' => 'warning', 'absent' => 'danger', 'ha
 
 foreach ($rows as $r) {
     $status_badge = '<span class="label label-' . ($badge[$r->status] ?? 'default') . '">' . ucfirst(str_replace('_', ' ', $r->status)) . '</span>';
-    $source_icon  = $r->source === 'zkteco'
-        ? '<i class="fa fa-fingerprint text-info" title="ZKTeco"></i>'
-        : '<i class="fa fa-keyboard text-muted" title="Manual"></i>';
+
+    // Shows the verify method of whichever punch is currently latest for the
+    // day (drives out_time, or in_time before a second punch exists) rather
+    // than a generic device icon - lets you tell fingerprint/card/face/password
+    // apart at a glance instead of everything reading as "ZKTeco".
+    $verify_icon = ['Fingerprint' => 'fa-fingerprint text-info', 'Face' => 'fa-face-smile text-success',
+        'ID Card' => 'fa-id-card text-warning', 'Password' => 'fa-key text-muted'];
+    if ($r->source === 'zkteco' && !empty($r->verify_mode)) {
+        $icon = $verify_icon[$r->verify_mode] ?? 'fa-fingerprint text-info';
+        $source_icon = '<i class="fa ' . $icon . '" title="' . htmlspecialchars($r->verify_mode) . '"></i> ' . htmlspecialchars($r->verify_mode);
+    } elseif ($r->source === 'zkteco') {
+        $source_icon = '<i class="fa fa-fingerprint text-info" title="ZKTeco"></i>';
+    } else {
+        $source_icon = '<i class="fa fa-keyboard text-muted" title="Manual"></i>';
+    }
 
     $employee_cell = '<a href="' . admin_url('hr_module/employees/view/' . $r->employee_id) . '">' . htmlspecialchars($r->employee_name) . '</a><br><small class="text-muted">' . $r->employee_code . '</small>';
     $options = [];
