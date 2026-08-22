@@ -51,11 +51,15 @@ class Attendance extends AdminController
         $this->load->model('hr_module/Zkteco_model');
         $rows = $this->Zkteco_model->get_punches((int) $employee_id, $date);
         echo json_encode(array_map(function ($r) {
+            // device_name/device_location are admin-entered, but verify_mode
+            // traces back to an unauthenticated device push (ATTLOG's raw
+            // verify-mode field) - the client renders these via .html(), so
+            // all three must be escaped before they ever leave the server.
             return [
                 'time'            => date('H:i:s', strtotime($r->punch_time)),
-                'device_name'     => $r->device_name ?: '-',
-                'device_location' => $r->device_location ?: '-',
-                'verify_mode'     => $r->verify_mode ?: '-',
+                'device_name'     => htmlspecialchars($r->device_name ?: '-'),
+                'device_location' => htmlspecialchars($r->device_location ?: '-'),
+                'verify_mode'     => htmlspecialchars($r->verify_mode ?: '-'),
             ];
         }, $rows));
     }

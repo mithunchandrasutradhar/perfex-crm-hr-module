@@ -99,19 +99,13 @@ class Employees extends AdminController
         if (!$employee) show_404();
 
         if ($this->input->post()) {
-            $staff_id = (int) $this->input->post('staff_id');
-            if (!$staff_id) {
-                set_alert('danger', 'Staff member link is required.');
-                redirect(admin_url('hr_module/employees/edit/' . $id));
-            }
-            // If staff_id changed, make sure it's not already linked to another profile
-            if ($staff_id != $employee->staff_id) {
-                $conflict = $this->Employees_model->get_by_staff_id($staff_id);
-                if ($conflict && $conflict->id != $id) {
-                    set_alert('danger', 'This staff member already has an HR profile.');
-                    redirect(admin_url('hr_module/employees/edit/' . $id));
-                }
-            }
+            // The Edit form's staff select is disabled (read-only) once a
+            // profile exists - always trust the employee's existing link,
+            // not whatever "staff_id" the request carries, so a tampered
+            // POST can't silently re-point this profile (and by extension
+            // its Employee Code / Device User ID, both derived from it) at
+            // a different staff account.
+            $staff_id = (int) $employee->staff_id;
 
             $data = $this->_prepare_post_data();
             $data['staff_id'] = $staff_id;
