@@ -20,7 +20,7 @@ Leave, attendance, payroll, loans, overtime, performance, training, contracts, p
 <summary><strong>What's in this repo</strong></summary>
 <br>
 
-This module lives inside a full Perfex CRM codebase checkout, at `modules/hr_module/` (this file's own folder). The module itself **never modifies any core Perfex file** — it's built entirely as an independent, installable extension using Perfex's own module hooks, permission system, and admin UI components.
+This module lives inside a full Perfex CRM codebase checkout, at `modules/hr_module/` (this file's own folder). The module is built almost entirely as an independent, installable extension using Perfex's own module hooks, permission system, and admin UI components — with exactly **one** unavoidable exception: a small routing snippet in the site's root `index.php`, required for AiFace-brand biometric devices (see [`DEVELOPER.md` §10](DEVELOPER.md#10-biometric-device-integration)). No other core file is ever touched.
 
 </details>
 
@@ -38,7 +38,7 @@ This module lives inside a full Perfex CRM codebase checkout, at `modules/hr_mod
 <tr><td width="50%" valign="top">
 
 **Time & presence**
-- Attendance (ZKTeco biometric sync)
+- Attendance (biometric device live push — ZKTeco/ADMS and TIMY AiFace/AI-series)
 - Shifts
 - Overtime
 - Official Calendar
@@ -68,6 +68,7 @@ Every screen adapts to what the viewer is permitted to see: an employee manages 
 
 ## Recent additions
 
+- **Multi-brand biometric device support** — the device management screen (formerly "ZKTeco Devices") is now brand-neutral, supporting both ZKTeco (ADMS push) and TIMY AiFace/AI-series (BS protocol push) devices side by side, each with live push, multi-punch handling (first-of-day/latest-of-day), verify-method tracking, and same-day staleness filtering against backlog dumps.
 - **Department-scoped visibility** — a new "View (Own Department)" permission (Leave, Overtime, Shifts, Performance, Training) lets a department head see their own department's records without full company-wide access.
 - **Soft approval** — an informational pre-approval step on Leave, Overtime, and Shifts: a department head's decision is recorded and shown, but never blocks or replaces the real approval.
 - **Gender-restricted leave types** — Maternity/Paternity Leave (or any custom type) can be locked to one gender, enforced server-side and reflected instantly in the apply form.
@@ -89,7 +90,8 @@ See the **"Recent feature history"** section at the end of [`DEVELOPER.md`](DEVE
 2. Go to **Setup > Modules** in the CRM admin panel and activate **HR Management**.
 3. Grant the relevant "HR ..." permissions to staff roles under **Setup > Staff > Roles** — see [`ADMIN_GUIDE.md`](ADMIN_GUIDE.md#2-roles--permissions-setup) for role recipes.
 4. Visit **HR Management > Settings** to configure defaults (working hours, overtime rates, the default maximum loan amount, notification email, and — optionally — WhatsApp broadcast credentials).
-5. Follow the full **first-time setup checklist** in [`ADMIN_GUIDE.md`](ADMIN_GUIDE.md#1-first-time-setup-checklist) for everything else (leave types, holidays, first balance allocation, cron).
+5. **If you'll use an AiFace/AI-series biometric device**, add the one required snippet to the site's root `index.php` — see [`DEVELOPER.md` §10](DEVELOPER.md#10-biometric-device-integration) for the exact code and why it can't be avoided. Not needed for ZKTeco-only setups.
+6. Follow the full **first-time setup checklist** in [`ADMIN_GUIDE.md`](ADMIN_GUIDE.md#1-first-time-setup-checklist) for everything else (leave types, holidays, first balance allocation, cron).
 
 > The module's schema is self-migrating: reactivating after an update to an already-installed site automatically brings the database up to date on the next admin page load — no manual SQL or deactivate/reactivate cycle required.
 
