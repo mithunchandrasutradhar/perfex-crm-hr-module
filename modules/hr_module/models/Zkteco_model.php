@@ -129,20 +129,44 @@ class Zkteco_model extends App_Model
 
         // Group by employee+date and sort chronologically first - a
         // single push batch isn't guaranteed to list punches in order.
-        $groups = [];
+        //
+        // Uses the server's own clock, not the timestamp the device embeds
+        // in the line (cols[1]) - a device's internal clock can drift or be
+        // misconfigured, and the server receiving the push in real time is
+        // the more trustworthy source of "when this actually happened".
+        // Each line gets its own second, offset by its position in the
+        // batch, so a rare multi-punch backlog (several lines in one push)
+        // still sorts in arrival order instead of collapsing onto one
+        // identical instant.
+        $groups   = [];
+        $now      = time();
+        $today    = date('Y-m-d', $now);
+        $line_num = 0;
         foreach ($lines as $line) {
             $cols = preg_split('/\t+/', trim($line));
-            if (count($cols) < 2) continue;
+            if (count($cols) < 2) { $line_num++; continue; }
 
             $device_user_id = $cols[0];
-            $timestamp      = $cols[1];
+            $device_ts_raw  = $cols[1] ?? null;
             $verify_mode    = $cols[3] ?? null;
 
-            $employee_id = $this->resolve_employee($device_id, $device_user_id);
-            if (!$employee_id) continue;
+            // A newly-connected (or previously-used-elsewhere) device
+            // typically pushes its entire stored history on first contact -
+            // that backlog is not wanted here, so anything not dated today
+            // (per the device's own embedded timestamp) is dropped before
+            // it's ever recorded. Once accepted, the value actually stored
+            // still comes from the server's clock (below), not the
+            // device's, to guard against a merely-drifted/misconfigured
+            // clock on an otherwise-legitimate same-day punch.
+            $device_ts   = $device_ts_raw ? strtotime($device_ts_raw) : false;
+            $device_date = $device_ts !== false ? date('Y-m-d', $device_ts) : false;
+            if ($device_date !== $today) { $line_num++; continue; }
 
-            $ts = strtotime($timestamp);
-            if ($ts === false) continue;
+            $employee_id = $this->resolve_employee($device_id, $device_user_id);
+            if (!$employee_id) { $line_num++; continue; }
+
+            $ts = $now + $line_num;
+            $line_num++;
 
             $date = date('Y-m-d', $ts);
             $groups[$employee_id . '|' . $date][] = [
