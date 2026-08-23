@@ -329,7 +329,7 @@ class Zkteco_model extends App_Model
                         'attendance_date' => $date,
                         'in_time'         => $p['time'],
                         'status'          => $resolved['status'],
-                        'source'          => 'ai07f',
+                        'source'          => 'aiface',
                         'verify_mode'     => $verify_label,
                         'device_id'       => $device_id,
                         'created_at'      => date('Y-m-d H:i:s'),

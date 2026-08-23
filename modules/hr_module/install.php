@@ -338,6 +338,19 @@ if ($CI->db->table_exists(db_prefix() . 'hr_zkteco_devices')) {
         $CI->db->query("ALTER TABLE `" . db_prefix() . "hr_zkteco_devices` ADD `device_type` varchar(30) NOT NULL DEFAULT 'zkteco' AFTER `name`");
     }
 }
+// Upgrade: 'ai07f' was renamed to 'aiface' - it was only ever meant to mean
+// "TIMY AiFace-protocol device" in general (the AI07F was just the first
+// model registered), not one specific model. The AI-series has multiple
+// models (AI07F, AI03FC, etc.) all speaking the same protocol, and the
+// Device Type dropdown/label should reflect the protocol family, not a
+// single model name - the actual model goes in the free-text Device Name
+// field instead.
+if ($CI->db->table_exists(db_prefix() . 'hr_zkteco_devices')) {
+    $CI->db->where('device_type', 'ai07f')->update(db_prefix() . 'hr_zkteco_devices', ['device_type' => 'aiface']);
+}
+if ($CI->db->table_exists(db_prefix() . 'hr_attendance')) {
+    $CI->db->where('source', 'ai07f')->update(db_prefix() . 'hr_attendance', ['source' => 'aiface']);
+}
 // Upgrade: the F18's own Cloud Server Setting screen has no configurable poll
 // interval, and Delay= is now a fixed value in the ADMS handshake response
 // (see Iclock::_handshake()) - drop the now-unused setting from existing installs.

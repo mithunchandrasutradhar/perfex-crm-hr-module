@@ -63,11 +63,12 @@ class Devices extends AdminController
     public function sync_logs()
     {
         if (staff_cant('view', 'hr_zkteco')) access_denied('hr_zkteco');
-        $device_id = $this->input->get('device_id');
+        if ($this->input->is_ajax_request()) {
+            $this->app->get_table_data(module_views_path('hr_module', 'devices/sync_logs_table'));
+            return;
+        }
         $data['title']   = _l('hr_zkteco_sync_logs');
-        $data['logs']    = $this->Zkteco_model->get_logs($device_id, 200);
         $data['devices'] = $this->Zkteco_model->get_devices();
-        $data['current_device'] = $device_id;
         $this->load->view('hr_module/devices/sync_logs', $data);
     }
 

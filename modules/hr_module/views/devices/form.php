@@ -30,18 +30,18 @@ $editing = !empty($device);
                   </div>
                 </div>
                 <div class="col-md-4">
-                  <div class="form-group">
+                  <div class="form-group select-placeholder">
                     <label>Device Type</label>
-                    <select name="device_type" class="form-control">
+                    <select name="device_type" class="selectpicker" data-width="100%">
                       <option value="zkteco" <?php if($device_type=='zkteco') echo 'selected'; ?>>ZKTeco (live push)</option>
-                      <option value="ai07f" <?php if($device_type=='ai07f') echo 'selected'; ?>>AI07F Face Terminal (live push)</option>
+                      <option value="aiface" <?php if($device_type=='aiface') echo 'selected'; ?>>AiFace / AI-Series Terminal (TIMY protocol, live push)</option>
                     </select>
                   </div>
                 </div>
                 <div class="col-md-3">
-                  <div class="form-group">
+                  <div class="form-group select-placeholder">
                     <label><?php echo _l('hr_status'); ?></label>
-                    <select name="status" class="form-control">
+                    <select name="status" class="selectpicker" data-width="100%">
                       <option value="1" <?php if($editing && $device->status==1) echo 'selected'; ?>>Active</option>
                       <option value="0" <?php if($editing && $device->status==0) echo 'selected'; ?>>Inactive</option>
                     </select>
@@ -95,8 +95,8 @@ $editing = !empty($device);
                 Setting / ADMS</strong>, point <strong>Server Address</strong> / <strong>Server Port</strong>
                 at this server, and leave <strong>Request Path</strong> as <code>/iclock/cdata</code>.
               </div>
-              <div class="alert alert-info" id="device-type-hint-ai07f"
-                   style="font-size:0.85rem<?php echo $device_type!='ai07f' ? ';display:none' : ''; ?>">
+              <div class="alert alert-info" id="device-type-hint-aiface"
+                   style="font-size:0.85rem<?php echo $device_type!='aiface' ? ';display:none' : ''; ?>">
                 <i class="fa fa-info-circle tw-mr-1"></i>
                 This device pushes attendance data to this server too (TIMY AiFace BS protocol) - on the
                 device's own <strong>Comm. set &rarr; Server</strong> screen, set <strong>Server Req = Yes</strong>,
@@ -121,10 +121,10 @@ $editing = !empty($device);
 </div>
 <script>
 $(function(){
-    $('select[name="device_type"]').on('change', function(){
+    $('select[name="device_type"]').on('change changed.bs.select', function(){
         var type = $(this).val();
         $('#device-type-hint-zkteco').toggle(type === 'zkteco');
-        $('#device-type-hint-ai07f').toggle(type === 'ai07f');
+        $('#device-type-hint-aiface').toggle(type === 'aiface');
     });
 });
 </script>

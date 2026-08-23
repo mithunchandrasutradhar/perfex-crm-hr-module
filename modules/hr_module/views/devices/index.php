@@ -20,7 +20,7 @@
         </div>
 
         <?php
-        $device_type_label = ['zkteco' => 'ZKTeco', 'ai07f' => 'AI07F'];
+        $device_type_label = ['zkteco' => 'ZKTeco', 'aiface' => 'AiFace'];
         ?>
         <?php if (empty($devices)): ?>
         <div class="panel_s">
