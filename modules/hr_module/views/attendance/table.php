@@ -33,14 +33,18 @@ foreach ($rows as $r) {
     // Shows the verify method of whichever punch is currently latest for the
     // day (drives out_time, or in_time before a second punch exists) rather
     // than a generic device icon - lets you tell fingerprint/card/face/password
-    // apart at a glance instead of everything reading as "ZKTeco".
+    // apart at a glance instead of everything reading the same, regardless of
+    // which attendance device brand recorded it (checked via source !== 'manual'
+    // rather than any specific brand name, so a future device brand needs no
+    // change here).
     $verify_icon = ['Fingerprint' => 'fa-fingerprint text-info', 'Face' => 'fa-face-smile text-success',
-        'ID Card' => 'fa-id-card text-warning', 'Password' => 'fa-key text-muted'];
-    if ($r->source === 'zkteco' && !empty($r->verify_mode)) {
+        'ID Card' => 'fa-id-card text-warning', 'Password' => 'fa-key text-muted',
+        'Palm Vein' => 'fa-hand text-primary', 'QR Code' => 'fa-qrcode text-primary'];
+    if (!empty($r->verify_mode)) {
         $icon = $verify_icon[$r->verify_mode] ?? 'fa-fingerprint text-info';
         $source_icon = '<i class="fa ' . $icon . '" title="' . htmlspecialchars($r->verify_mode) . '"></i> ' . htmlspecialchars($r->verify_mode);
-    } elseif ($r->source === 'zkteco') {
-        $source_icon = '<i class="fa fa-fingerprint text-info" title="ZKTeco"></i>';
+    } elseif ($r->source !== 'manual') {
+        $source_icon = '<i class="fa fa-fingerprint text-info" title="Device"></i>';
     } else {
         $source_icon = '<i class="fa fa-keyboard text-muted" title="Manual"></i>';
     }

@@ -180,7 +180,7 @@ function ev($obj, $key, $default = '') {
             <div class="row">
               <div class="col-md-4 col-sm-6">
                 <div class="form-group select-placeholder">
-                  <label><i class="fa fa-fingerprint tw-mr-1"></i>ZKTeco Devices</label>
+                  <label><i class="fa fa-fingerprint tw-mr-1"></i>Attendance Devices</label>
                   <select name="zkteco_device_id[]" id="emp_zkteco_device" class="selectpicker" multiple
                           data-width="100%" data-live-search="true"
                           data-none-selected-text="— No devices —">
@@ -197,11 +197,11 @@ function ev($obj, $key, $default = '') {
               </div>
               <div class="col-md-4 col-sm-6">
                 <div class="form-group">
-                  <label>ZKTeco Number <span class="text-danger">*</span></label>
+                  <label>Device Number <span class="text-danger">*</span></label>
                   <input type="text" name="device_user_id" id="device_user_id_input" class="form-control" required
                     value="<?php echo ($is_edit && !empty($device_mappings)) ? htmlspecialchars($device_mappings[0]->device_user_id) : ''; ?>">
                   <p class="help-block tw-text-xs tw-mt-1">
-                    The numeric User ID set on the ZKTeco device for this employee.
+                    The numeric User ID set on the attendance device for this employee.
                   </p>
                 </div>
               </div>
@@ -211,7 +211,7 @@ function ev($obj, $key, $default = '') {
                   <input type="text" class="form-control" id="employee_code_preview" readonly
                     value="<?php echo $is_edit ? ev($e,'employee_code') : ''; ?>">
                   <p class="help-block tw-text-xs tw-mt-1">
-                    Auto-generated: "<?php echo htmlspecialchars($employee_id_prefix); ?>" + the ZKTeco Number.
+                    Auto-generated: "<?php echo htmlspecialchars($employee_id_prefix); ?>" + the Device Number.
                   </p>
                 </div>
               </div>
@@ -459,7 +459,7 @@ $(function(){
     $('#staff_id_select').trigger('change');
     <?php endif; ?>
 
-    // Employee ID is auto-generated server-side as "<prefix><ZKTeco Number>" -
+    // Employee ID is auto-generated server-side as "<prefix><Device Number>" -
     // this is just a live cosmetic preview so the admin sees it before saving.
     var empIdPrefix = <?php echo json_encode($employee_id_prefix); ?>;
     $('#device_user_id_input').on('input', function(){

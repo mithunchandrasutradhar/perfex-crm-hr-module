@@ -223,6 +223,7 @@ class Settings extends AdminController
             'notify_payroll',
             'hr_notification_email',
             'zkteco_enabled',
+            'aiface_enabled',
             'holiday_reminder_enabled',
             'holiday_reminder_time',
             'whatsapp_enabled',

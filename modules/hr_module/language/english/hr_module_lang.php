@@ -16,7 +16,7 @@ $lang['hr_menu_leave_types']               = 'Leave Types';
 $lang['hr_menu_leave_balances']            = 'Leave Balances';
 $lang['hr_menu_attendance']                = 'Attendance';
 $lang['hr_menu_attendance_logs']           = 'Attendance Logs';
-$lang['hr_menu_zkteco']                    = 'ZKTeco Devices';
+$lang['hr_menu_zkteco']                    = 'Attendance Devices';
 $lang['hr_menu_payroll']                   = 'Payroll';
 $lang['hr_menu_payroll_items']             = 'Payroll Items';
 $lang['hr_menu_loans']                     = 'Loans';
@@ -39,7 +39,7 @@ $lang['hr_perm_performance']               = 'HR Performance';
 $lang['hr_perm_training']                  = 'HR Training';
 $lang['hr_perm_helpdesk']                  = 'HR Helpdesk';
 $lang['hr_perm_contracts']                 = 'HR Contracts';
-$lang['hr_perm_zkteco']                    = 'HR ZKTeco Devices';
+$lang['hr_perm_zkteco']                    = 'HR Attendance Devices';
 $lang['hr_perm_reports']                   = 'HR Reports';
 $lang['hr_perm_settings']                  = 'HR Settings';
 $lang['hr_perm_holidays']                  = 'HR Holidays';
@@ -281,8 +281,9 @@ $lang['hr_attendance_punch_log']           = 'Punch Log';
 $lang['hr_attendance_punch_time']          = 'Time';
 $lang['hr_attendance_verify_method']       = 'Verify Method';
 
-// ZKTeco
-$lang['hr_zkteco_devices']                 = 'ZKTeco Devices';
+// Attendance Devices (lang key names kept as hr_zkteco_* for backward compat -
+// only the visible label values changed)
+$lang['hr_zkteco_devices']                 = 'Attendance Devices';
 $lang['hr_zkteco_add']                     = 'Add Device';
 $lang['hr_zkteco_add_device']              = 'Add Device';
 $lang['hr_zkteco_edit']                    = 'Edit Device';
@@ -607,6 +608,7 @@ $lang['hr_settings_attendance']            = 'Attendance Settings';
 $lang['hr_settings_payroll']               = 'Payroll Settings';
 $lang['hr_settings_notifications']         = 'Notification Settings';
 $lang['hr_settings_zkteco']                = 'ZKTeco Settings';
+$lang['hr_settings_aiface']                = 'AiFace Settings';
 $lang['hr_settings_saved']                 = 'Settings saved successfully';
 $lang['hr_settings_currency']              = 'Currency';
 $lang['hr_settings_fiscal_year_start']     = 'Fiscal Year Start Month';
@@ -640,6 +642,7 @@ $lang['hr_settings_notification_email_hint'] = 'Receives an email with a direct 
 $lang['hr_settings_policy_approver']      = 'Policy Approvers';
 $lang['hr_settings_policy_approver_hint'] = 'Only these selected admins can approve/reject policies and their updates, and only they receive the policy review email - not every admin. Leave unset to allow any admin (fallback).';
 $lang['hr_settings_zkteco_enabled']        = 'Enable ZKTeco Integration';
+$lang['hr_settings_aiface_enabled']        = 'Enable AiFace Integration';
 $lang['hr_settings_holiday_reminder']              = 'Holiday Reminder';
 $lang['hr_settings_holiday_reminder_enabled']      = 'Send Day-Before Holiday Reminder to All Employees';
 $lang['hr_settings_holiday_reminder_time']         = 'Send At Time (Bangladesh Standard Time)';

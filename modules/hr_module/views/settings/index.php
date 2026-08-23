@@ -499,7 +499,40 @@ $can_edit = staff_can('edit', 'hr_settings') || is_admin();
                                 <div class="col-md-3 col-sm-6">
                                     <div class="form-group">
                                         <label class="tw-block">&nbsp;</label>
-                                        <a href="<?php echo admin_url('hr_module/zkteco'); ?>" class="btn btn-default btn-sm">
+                                        <a href="<?php echo admin_url('hr_module/devices'); ?>" class="btn btn-default btn-sm">
+                                            <i class="fa fa-microchip"></i> <?php echo _l('hr_zkteco_devices'); ?>
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- AiFace Settings -->
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="panel_s">
+                        <div class="panel-body">
+                            <h5 class="tw-font-semibold tw-border-b tw-pb-2 tw-mb-4">
+                                <i class="fa fa-street-view tw-mr-2"></i><?php echo _l('hr_settings_aiface'); ?>
+                            </h5>
+                            <div class="row">
+                                <div class="col-md-3 col-sm-6">
+                                    <div class="form-group">
+                                        <div class="checkbox checkbox-primary">
+                                            <input type="checkbox" name="aiface_enabled" id="setting_aiface_enabled" value="1"
+                                                <?php echo isset($settings['aiface_enabled']) && $settings['aiface_enabled'] == '1' ? 'checked' : ''; ?>
+                                                <?php echo !$can_edit ? 'disabled' : ''; ?>>
+                                            <label for="setting_aiface_enabled"><?php echo _l('hr_settings_aiface_enabled'); ?></label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3 col-sm-6">
+                                    <div class="form-group">
+                                        <label class="tw-block">&nbsp;</label>
+                                        <a href="<?php echo admin_url('hr_module/devices'); ?>" class="btn btn-default btn-sm">
                                             <i class="fa fa-microchip"></i> <?php echo _l('hr_zkteco_devices'); ?>
                                         </a>
                                     </div>

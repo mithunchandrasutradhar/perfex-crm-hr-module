@@ -44,13 +44,13 @@ class Employees extends AdminController
 
             $device_user_id = $this->input->post('device_user_id', true);
             if (empty($device_user_id)) {
-                set_alert('danger', 'Please enter the ZKTeco Number.');
+                set_alert('danger', 'Please enter the Device Number.');
                 redirect(admin_url('hr_module/employees/add'));
             }
             $prefix = $this->Hr_module_model->get_setting('employee_id_prefix', 'EMP');
             $code   = $prefix . $device_user_id;
             if ($this->Employees_model->code_exists($code)) {
-                set_alert('danger', 'This ZKTeco Number is already in use by another employee.');
+                set_alert('danger', 'This Device Number is already in use by another employee.');
                 redirect(admin_url('hr_module/employees/add'));
             }
 
@@ -116,13 +116,13 @@ class Employees extends AdminController
 
             $device_user_id = $this->input->post('device_user_id', true);
             if (empty($device_user_id)) {
-                set_alert('danger', 'Please enter the ZKTeco Number.');
+                set_alert('danger', 'Please enter the Device Number.');
                 redirect(admin_url('hr_module/employees/edit/' . $id));
             }
             $prefix = $this->Hr_module_model->get_setting('employee_id_prefix', 'EMP');
             $code   = $prefix . $device_user_id;
             if ($this->Employees_model->code_exists($code, $id)) {
-                set_alert('danger', 'This ZKTeco Number is already in use by another employee.');
+                set_alert('danger', 'This Device Number is already in use by another employee.');
                 redirect(admin_url('hr_module/employees/edit/' . $id));
             }
             $data['employee_code'] = $code;

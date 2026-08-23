@@ -79,12 +79,12 @@ $route['hr_module/attendance/report']             = 'hr_module/Attendance/report
 $route['hr_module/attendance/monthly']            = 'hr_module/Attendance/monthly';
 $route['hr_module/attendance/import']             = 'hr_module/Attendance/import';
 
-// ZKTeco Devices
-$route['hr_module/zkteco']                        = 'hr_module/Zkteco/index';
-$route['hr_module/zkteco/add']                    = 'hr_module/Zkteco/add';
-$route['hr_module/zkteco/edit/(:num)']            = 'hr_module/Zkteco/edit/$1';
-$route['hr_module/zkteco/delete/(:num)']          = 'hr_module/Zkteco/delete/$1';
-$route['hr_module/zkteco/sync_logs']              = 'hr_module/Zkteco/sync_logs';
+// Attendance Devices (ZKTeco, AiFace/AI07F, etc.)
+$route['hr_module/devices']                       = 'hr_module/Devices/index';
+$route['hr_module/devices/add']                   = 'hr_module/Devices/add';
+$route['hr_module/devices/edit/(:num)']           = 'hr_module/Devices/edit/$1';
+$route['hr_module/devices/delete/(:num)']         = 'hr_module/Devices/delete/$1';
+$route['hr_module/devices/sync_logs']             = 'hr_module/Devices/sync_logs';
 
 // Payroll
 $route['hr_module/payroll']                       = 'hr_module/Payroll/index';

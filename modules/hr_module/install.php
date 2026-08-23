@@ -329,6 +329,15 @@ if ($CI->db->table_exists(db_prefix() . 'hr_zkteco_devices')) {
         $CI->db->query("ALTER TABLE `" . db_prefix() . "hr_zkteco_devices` ADD UNIQUE KEY `serial_number` (`serial_number`)");
     }
 }
+// Upgrade: a second device brand (non-ZKTeco face-recognition terminals) can
+// now be registered too - existing rows default to 'zkteco' so nothing already
+// installed changes behavior.
+if ($CI->db->table_exists(db_prefix() . 'hr_zkteco_devices')) {
+    $col = $CI->db->query("SHOW COLUMNS FROM `" . db_prefix() . "hr_zkteco_devices` LIKE 'device_type'")->num_rows();
+    if ($col === 0) {
+        $CI->db->query("ALTER TABLE `" . db_prefix() . "hr_zkteco_devices` ADD `device_type` varchar(30) NOT NULL DEFAULT 'zkteco' AFTER `name`");
+    }
+}
 // Upgrade: the F18's own Cloud Server Setting screen has no configurable poll
 // interval, and Delay= is now a fixed value in the ADMS handshake response
 // (see Iclock::_handshake()) - drop the now-unused setting from existing installs.
@@ -1162,7 +1171,20 @@ if (!$CI->db->table_exists(db_prefix() . 'hr_settings')) {
       ('notify_loan_apply', '1', '$now'),
       ('notify_payroll', '1', '$now'),
       ('zkteco_enabled', '0', '$now'),
+      ('aiface_enabled', '0', '$now'),
       ('allow_data_removal_on_uninstall', '0', '$now')");
+}
+// Upgrade: add the AiFace integration toggle for installs whose hr_settings
+// table already existed before this second device brand was added.
+if ($CI->db->table_exists(db_prefix() . 'hr_settings')) {
+    $exists = $CI->db->where('setting_key', 'aiface_enabled')->count_all_results(db_prefix() . 'hr_settings');
+    if ($exists === 0) {
+        $CI->db->insert(db_prefix() . 'hr_settings', [
+            'setting_key'   => 'aiface_enabled',
+            'setting_value' => '0',
+            'created_at'    => date('Y-m-d H:i:s'),
+        ]);
+    }
 }
 
 // 25. Holidays

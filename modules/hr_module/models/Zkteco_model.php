@@ -32,6 +32,7 @@ class Zkteco_model extends App_Model
     {
         $record = [
             'name'          => $data['name'],
+            'device_type'   => $data['device_type'] ?? 'zkteco',
             'ip_address'    => $data['ip_address'],
             'port'          => (int) ($data['port'] ?? 4370),
             'serial_number' => $data['serial_number'] ?? null,
@@ -53,6 +54,7 @@ class Zkteco_model extends App_Model
     {
         $this->db->where('id', $id)->update(db_prefix() . $this->devices_table, [
             'name'          => $data['name'],
+            'device_type'   => $data['device_type'] ?? 'zkteco',
             'ip_address'    => $data['ip_address'],
             'port'          => (int) ($data['port'] ?? 4370),
             'serial_number' => $data['serial_number'] ?? null,
@@ -229,6 +231,122 @@ class Zkteco_model extends App_Model
                         // This punch is now the latest for the day (it just
                         // became out_time), so its verify method is what the
                         // Attendance list's Source column should show.
+                        $this->db->where('id', $existing->id)->update(db_prefix() . 'hr_attendance', [
+                            'out_time'      => $new_out,
+                            'working_hours' => $resolved['working_hours'],
+                            'verify_mode'   => $verify_label,
+                        ]);
+                        $existing->out_time = $new_out;
+                        $saved++;
+                    }
+                }
+            }
+        }
+
+        return $saved;
+    }
+
+    // Maps the AiFace protocol's log "mode" bit value (Appendix C of TIMY's
+    // AiFace BS Communication Protocol doc) to the same human labels used
+    // for ZKTeco punches, so the Attendance list's Source column and Punch
+    // Log popup read identically regardless of which brand recorded them.
+    private function _aiface_verify_mode_label($mode)
+    {
+        $map = [
+            '1' => 'Face', '2' => 'Fingerprint', '4' => 'ID Card', '8' => 'Password',
+            '16' => 'Palm Vein', '32' => 'QR Code', '64' => 'Face', '128' => 'Face',
+        ];
+        return $map[(string) $mode] ?? ('Code ' . $mode);
+    }
+
+    // Same shape/policies as save_attlog_batch() (server time not device
+    // time, same-day-only staleness filter, first-punch-of-day=in_time,
+    // latest-punch=out_time across any number of batches) applied to the
+    // AiFace "sendlog" command's already-parsed JSON record array instead
+    // of ZKTeco's raw tab-separated lines. Kept separate from
+    // save_attlog_batch() rather than merged, so the live ZKTeco path is
+    // never touched by this addition.
+    public function save_aiface_log_batch($device_id, array $records)
+    {
+        $this->load->model('hr_module/Attendance_model');
+        $saved = 0;
+
+        $groups   = [];
+        $now      = time();
+        $today    = date('Y-m-d', $now);
+        $line_num = 0;
+        foreach ($records as $record) {
+            $device_user_id = $record['enrollid'] ?? null;
+            $device_ts_raw  = $record['time'] ?? null;
+            $verify_mode    = $record['mode'] ?? null;
+            if ($device_user_id === null || $device_user_id === '') { $line_num++; continue; }
+
+            $device_ts   = $device_ts_raw ? strtotime($device_ts_raw) : false;
+            $device_date = $device_ts !== false ? date('Y-m-d', $device_ts) : false;
+            if ($device_date !== $today) { $line_num++; continue; }
+
+            $employee_id = $this->resolve_employee($device_id, (string) $device_user_id);
+            if (!$employee_id) { $line_num++; continue; }
+
+            $ts = $now + $line_num;
+            $line_num++;
+
+            $date = date('Y-m-d', $ts);
+            $groups[$employee_id . '|' . $date][] = [
+                'employee_id'  => $employee_id,
+                'date'         => $date,
+                'time'         => date('H:i:s', $ts),
+                'verify_mode'  => $verify_mode,
+            ];
+        }
+
+        foreach ($groups as $punches) {
+            usort($punches, function ($a, $b) { return strcmp($a['time'], $b['time']); });
+
+            $employee_id = $punches[0]['employee_id'];
+            $date        = $punches[0]['date'];
+            $existing = $this->db
+                ->where('employee_id', $employee_id)
+                ->where('attendance_date', $date)
+                ->get(db_prefix() . 'hr_attendance')->row();
+
+            foreach ($punches as $p) {
+                $verify_label = $this->_aiface_verify_mode_label($p['verify_mode']);
+
+                $this->db->insert(db_prefix() . 'hr_zkteco_punches', [
+                    'employee_id'     => $employee_id,
+                    'attendance_date' => $date,
+                    'punch_time'      => $p['time'],
+                    'device_id'       => $device_id,
+                    'verify_mode'     => $verify_label,
+                    'created_at'      => date('Y-m-d H:i:s'),
+                ]);
+
+                if (!$existing) {
+                    $resolved = $this->Attendance_model->resolve_status_and_hours($employee_id, $date, $p['time'], null);
+                    $this->db->insert(db_prefix() . 'hr_attendance', [
+                        'employee_id'     => $employee_id,
+                        'attendance_date' => $date,
+                        'in_time'         => $p['time'],
+                        'status'          => $resolved['status'],
+                        'source'          => 'ai07f',
+                        'verify_mode'     => $verify_label,
+                        'device_id'       => $device_id,
+                        'created_at'      => date('Y-m-d H:i:s'),
+                    ]);
+                    $saved++;
+                    $existing = (object) [
+                        'id' => $this->db->insert_id(),
+                        'in_time' => $p['time'],
+                        'out_time' => null,
+                    ];
+                    continue;
+                }
+
+                if ($p['time'] > $existing->in_time) {
+                    $new_out = $existing->out_time ? max($existing->out_time, $p['time']) : $p['time'];
+                    if ($new_out !== $existing->out_time) {
+                        $resolved = $this->Attendance_model->resolve_status_and_hours($employee_id, $date, $existing->in_time, $new_out);
                         $this->db->where('id', $existing->id)->update(db_prefix() . 'hr_attendance', [
                             'out_time'      => $new_out,
                             'working_hours' => $resolved['working_hours'],

@@ -17,7 +17,7 @@ $status_badge = ['success' => 'success', 'failed' => 'danger', 'partial' => 'war
               </option>
               <?php endforeach; ?>
             </select>
-            <a href="<?php echo admin_url('hr_module/zkteco'); ?>" class="btn btn-default btn-sm">
+            <a href="<?php echo admin_url('hr_module/devices'); ?>" class="btn btn-default btn-sm">
               <i class="fa fa-arrow-left tw-mr-1"></i>Back to Devices
             </a>
           </div>
@@ -76,7 +76,7 @@ $status_badge = ['success' => 'success', 'failed' => 'danger', 'partial' => 'war
 <script>
 $('#f-device').on('change', function(){
     var id = $(this).val();
-    window.location.href = '<?php echo admin_url('hr_module/zkteco/sync_logs'); ?>'
+    window.location.href = '<?php echo admin_url('hr_module/devices/sync_logs'); ?>'
         + (id ? '?device_id=' + id : '');
 });
 </script>
