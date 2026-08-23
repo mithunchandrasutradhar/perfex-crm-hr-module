@@ -39,7 +39,7 @@ On your personal dashboard, the Net Salary figure is hidden behind `****` by def
 
 Your profile has three tabs:
 
-- **Work Info** — employee code, department, designation, joining/end date, basic salary, your maximum loan amount (if HR has set a custom one for you — see [Loans](#5-loans)), linked staff account, and notes.
+- **Work Info** — employee ID, department, designation, joining/end date, basic salary, your maximum loan amount (if HR has set a custom one for you — see [Loans](#5-loans)), linked staff account, which biometric attendance device(s) you're set up to punch on and your Device Number on them, and notes.
 - **Personal Info** — contact details, date of birth, blood group, marital status, national ID/passport, emergency contact, and address.
 - **Bank Info** — bank name, account number, branch, and TIN.
 
@@ -83,10 +83,13 @@ If your role has been given the **Soft Approve/Reject** permission for Leave (ty
 
 Your own attendance shows on your dashboard as "Present"/"Late"/"Absent"/"Half Day" for today, and you can view your full **monthly calendar** (a color-coded grid showing every day's status, with weekends and holidays marked) from this page.
 
+If your office uses a biometric device (fingerprint/face/card, either a ZKTeco or an AiFace/AI-series terminal), your punches record automatically the moment you scan — the first scan of the day is always your clock-in, and whichever scan is latest so far is always your clock-out, no matter how many times you punch in between (e.g. stepping out and back for lunch). Click **View Log** next to any day's record to see every individual punch behind it — the time, which device it came from, and how you verified (fingerprint, face, card, etc.).
+
 HR/managers can additionally:
 - Manually add or correct an attendance record for any employee.
 - Run a **filtered range report** by date, department, employee, or status.
-- **Import attendance in bulk** — the Attendance page accepts a plain CSV template (download it from the same page), a ZKTeco device's own exported report (CSV or XLSX), or a raw biometric device export file (`.dat`/`.txt`). Whichever format you use, employees are matched by their **Employee Code**, so make sure that matches what's set up on the device side.
+- **Import attendance in bulk** — for a ZKTeco device you can't point directly at this server, the Attendance page accepts a plain CSV template (download it from the same page), the device's own exported report (CSV or XLSX), or a raw export file (`.dat`/`.txt`). Whichever format you use, employees are matched by their **Employee Code**, so make sure that matches what's set up on the device side.
+- **Manage attendance devices** — HR Management > Attendance Devices lists every registered biometric device (any brand), whether it's currently online, and lets you register a new one or edit an existing one's serial number/location.
 
 ---
 
@@ -210,7 +213,7 @@ Eleven ready-made reports: Attendance, Leave, Payroll, Loan, Overtime, Performan
 
 **HR Management > Settings**
 
-Covers general configuration (employee ID prefix, currency, fiscal year start, payroll day, **default maximum loan amount**), attendance/working-hours defaults and overtime rates, shift types, notification toggles (which HR inbox receives request notifications, and which events trigger an email), WhatsApp broadcast setup (for company-wide announcements only — never individual messages), the day-before holiday reminder, and enabling/disabling the ZKTeco device integration. A "Danger Zone" section (admin-only) controls whether uninstalling the module deletes all its data or preserves it — it's off by default, so uninstalling never destroys your HR records unless you deliberately turn this on first.
+Covers general configuration (employee ID prefix, currency, fiscal year start, payroll day, **default maximum loan amount**), attendance/working-hours defaults and overtime rates, shift types, notification toggles (which HR inbox receives request notifications, and which events trigger an email), WhatsApp broadcast setup (for company-wide announcements only — never individual messages), the day-before holiday reminder, and separate enable/disable toggles for the ZKTeco and AiFace device integrations. A "Danger Zone" section (admin-only) controls whether uninstalling the module deletes all its data or preserves it — it's off by default, so uninstalling never destroys your HR records unless you deliberately turn this on first.
 
 **Email Templates** and **WhatsApp Templates** (reached via buttons on the Settings page) let you customize the wording of every automated notification, with a "send test" option to preview one before relying on it.
 

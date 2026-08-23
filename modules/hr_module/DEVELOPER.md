@@ -2,7 +2,7 @@
 
 **Module slug:** `hr_module` · **Display name:** HR Management · **Version:** 1.0.0
 **Requires:** Perfex CRM 3.3.x (CodeIgniter 3 MVC) · **Author:** Alpha Net BD
-**Schema version:** see `HR_MODULE_SCHEMA_VERSION` in `hr_module.php` (currently `9`)
+**Schema version:** see `HR_MODULE_SCHEMA_VERSION` in `hr_module.php` (currently `12`)
 
 This document describes the module **as it exists today** — architecture, database schema, permission model, settings, integrations, and the conventions to follow when extending it. It is kept in the repo next to the code so it stays versioned alongside it.
 
@@ -14,7 +14,7 @@ For how to *use* the module day to day, see [`USER_GUIDE.md`](USER_GUIDE.md). Fo
 
 These are non-negotiable and every file in this module already follows them:
 
-1. **Never modify Perfex core.** Everything is implemented as an independent, installable module under `modules/hr_module/`. Core behavior that needs adjusting (e.g. the sidebar's active-link highlighting) is patched from *this* module via hooks, not by editing core files — see [§9.3](#93-sidebar-active-link-fix).
+1. **Never modify Perfex core — with exactly one, unavoidable, documented exception.** Everything is implemented as an independent, installable module under `modules/hr_module/`. Core behavior that needs adjusting (e.g. the sidebar's active-link highlighting) is patched from *this* module via hooks, not by editing core files — see [§9.3](#93-sidebar-active-link-fix). The one exception is a 6-line snippet at the top of the root `index.php`, required only if AiFace/AI-series devices are used — see [§10.3](#103-aiface-ai-series-integration-timy-bs-protocol) for why nothing inside the module folder can achieve the same result.
 2. **Use Perfex's own systems** — module hooks, the staff capability/permission system, the default admin UI components (`selectpicker`, the `.datepicker`/`.datetimepicker` markup, DataTables via `render_datatable()`/`get_table_data()`), language files, and the cron hook — instead of inventing parallel infrastructure.
 3. **Idempotent schema.** `install.php` is written so it can run against a brand-new database *or* an already-populated one without erroring — every `CREATE TABLE` is guarded with `table_exists()` and every added column is guarded with a `SHOW COLUMNS ... LIKE` check. See [§4.2](#42-schema-versioning--auto-migration).
 4. **Attachments are never served as static files** — every uploaded file (contracts, loan documents, payslips, policy PDFs, ticket/reply attachments, training materials, employee photos) is streamed through a permission-checked controller action, and every `uploads/hr_module/*` directory gets a `Deny from all` `.htaccess` dropped into it the first time it's created (`hr_lock_upload_dir()`).
@@ -30,9 +30,12 @@ modules/hr_module/
 ├── uninstall.php              # Drops tables only if allow_data_removal_on_uninstall is on
 ├── config/routes.php          # Explicit route map
 ├── controllers/                # One controller per feature area (see §3)
-│   └── Iclock.php              # Public ADMS push receiver for ZKTeco devices (no admin auth) - see §10
+│   ├── Devices.php              # Admin CRUD for attendance devices, any brand (see §10)
+│   ├── Iclock.php               # Public ADMS push receiver for ZKTeco devices (no admin auth) - see §10.2
+│   └── Aiface.php               # Public TIMY AiFace/AI-series push receiver (no admin auth) - see §10.3
 ├── models/                     # One model per controller, plus Hr_module_model (shared helpers)
 ├── views/<feature>/            # index / form / view / table (DataTable AJAX endpoints)
+│   └── devices/                 # index / form / sync_logs / sync_logs_table for the Devices controller
 ├── libraries/
 │   └── Waha_lib.php            # WhatsApp (WAHA) HTTP client
 ├── config/csrf_exclude_uris.php # Exempts iclock/.+ from CSRF (device can't send a token)
@@ -46,7 +49,7 @@ Routing follows `admin/hr_module/<controller>/<method>` (see `config/routes.php`
 
 ## 3. Controllers (feature inventory)
 
-Every controller extends `AdminController`. All permission checks use the `hr_<feature>` capability namespace (e.g. `hr_leave`, `hr_payroll`).
+Every controller extends `AdminController` **except** `Iclock.php` and `Aiface.php`, which are public, unauthenticated device push receivers (`extends App_Controller` — see [§10](#10-biometric-device-integration)). All permission checks use the `hr_<feature>` capability namespace (e.g. `hr_leave`, `hr_payroll`).
 
 | Controller | Feature | Capability | Notes |
 |---|---|---|---|
@@ -69,7 +72,7 @@ Every controller extends `AdminController`. All permission checks use the `hr_<f
 | `Hr_contracts` | Employment contracts | `hr_contracts` | Auto-expires past `end_date`; 30-day expiry warnings via cron |
 | `Policies` | HR policies | `hr_policies` | Department-scoped managers, publish/revision workflow, approval restricted to a configured approver list (see [§3.1](#31-policies-access-model)) |
 | `Holidays` | Official calendar + weekly-off config | `hr_holidays` | `get_for_year()` is an unauthenticated-within-admin AJAX endpoint consumed by the leave-apply form |
-| `Zkteco` | Biometric device management | `hr_zkteco` | See [§10](#10-zkteco-device-integration) |
+| `Devices` | Biometric device management (any brand) | `hr_zkteco` | Renamed from `Zkteco` once a second device brand was added — the URL, menu label, and page titles are brand-neutral (`/admin/hr_module/devices`), but the permission capability key stays `hr_zkteco` on purpose, so existing role grants aren't silently dropped by the rename. See [§10](#10-biometric-device-integration) |
 | `Reports` | Reporting hub | `hr_reports` (`view` only) | 11 report types: attendance, leave, payroll, loan, overtime, performance, training, headcount, department, salary, turnover |
 | `Settings` | Module configuration | `hr_settings` | See [§6](#6-settings-reference) |
 | `Email_templates` | Editable notification bodies | `hr_settings` | ~26 seeded templates |
@@ -123,8 +126,11 @@ Leave, Shifts, and Overtime each support an **informational-only pre-approval st
 | `hr_leave_types` | Leave type configuration, incl. optional `gender` restriction (§3.2) |
 | `hr_leave_requests` / `hr_leave_request_days` | Leave request header (incl. `soft_status`/`soft_approved_by`/`soft_approved_at`, §3.3) / per-day breakdown |
 | `hr_leave_balances` | Per employee/type/year allocated-used-carried days |
-| `hr_attendance` | Daily punch record (in/out, hours, status, source, device) |
-| `hr_zkteco_devices` / `hr_zkteco_mapping` / `hr_zkteco_sync_logs` | Biometric device registry, user-id↔employee mapping, sync audit |
+| `hr_attendance` | Daily punch record (in/out, hours, status, `source` — `manual`/`zkteco`/`aiface`, `verify_mode`, `device_id`) |
+| `hr_zkteco_devices` | Device registry for **any** brand — `device_type` (`zkteco`/`aiface`) selects which push protocol a device speaks; `serial_number` is a device's identity for both brands |
+| `hr_zkteco_mapping` | Device user-id ↔ employee mapping (one row per employee per device, same `device_user_id` can apply across several devices) |
+| `hr_zkteco_punches` | Every individual punch (not just the day's in/out summary) — powers the Attendance list's "View Log" popup; `verify_mode` stores the human label (e.g. "Fingerprint", "Face"), already resolved per-brand at write time |
+| `hr_zkteco_sync_logs` | Push audit trail (records fetched/saved per hit) — also backs the per-device rate limit |
 | `hr_payroll_items` | Reusable earning/deduction components |
 | `hr_payroll` / `hr_payroll_details` | Payslip header / line items |
 | `hr_loans` / `hr_loan_repayments` / `hr_loan_deduction_requests` | Loan record, repayments, monthly skip/adjust requests |
@@ -143,7 +149,7 @@ Leave, Shifts, and Overtime each support an **informational-only pre-approval st
 ### 4.2 Schema versioning & auto-migration
 
 ```php
-define('HR_MODULE_SCHEMA_VERSION', 4);   // hr_module.php
+define('HR_MODULE_SCHEMA_VERSION', 12);   // hr_module.php — bump on every install.php change
 ```
 
 `hr_module_ensure_schema()` is hooked on `admin_init` and runs on **every** admin page load. It's cheap (one `table_exists()` + one row read) and short-circuits immediately once the site is current:
@@ -336,20 +342,58 @@ Implementation note if you ever touch this: don't use a fixed `window.addEventLi
 
 ---
 
-## 10. ZKTeco device integration
+## 10. Biometric device integration
 
-The device **pushes** to us over ZKTeco's ADMS protocol - the server never opens an outbound connection to a device. This replaced an earlier TCP-pull design (`fsockopen` to the device's IP:4370 speaking ZKTeco's binary protocol); that whole approach - and `libraries/Zkteco_lib.php` with it - is gone.
+Two device brands are supported side by side, each speaking a completely different push protocol, but both writing into the same brand-agnostic tables (`hr_zkteco_devices`, `hr_zkteco_mapping`, `hr_zkteco_punches`, `hr_attendance`) via the same policies. Devices **push** to us — the server never opens an outbound connection to a device, for either brand. An earlier TCP-pull design (`fsockopen` to a device's IP:4370) and its `libraries/Zkteco_lib.php` are gone entirely.
+
+### 10.1 Shared device layer
+
+- **`controllers/Devices.php`** (`AdminController`, `hr_zkteco` capability) — CRUD for both brands. The `device_type` column (`zkteco`/`aiface`) is purely a UI/labeling field, driving the Add/Edit form's info hints and the list's badge — it is **never** consulted by either push receiver for authorization; a device is identified solely by `serial_number`, brand-independent. Renamed from `Zkteco` once AiFace support was added, so the URL (`/admin/hr_module/devices`), menu label, and page titles wouldn't stay stuck referencing one specific brand — the underlying `Zkteco_model` and `hr_zkteco`-prefixed tables/capability were deliberately left named as-is (renaming those would be pure churn with no user-facing benefit, and renaming the capability specifically would silently drop already-granted staff role permissions).
+- **`models/Zkteco_model.php`** — one file backing both brands: device CRUD, `find_device_by_serial()` (brand-blind lookup), `record_contact()` (updates `last_sync_at` — what the Online/Offline badge is computed from, a fixed 300s threshold), `rate_limit_ok()` (counts `hr_zkteco_sync_logs` rows in the last 60s), `get_mappings_for_employee()` / `set_employee_device_mapping()` (one employee ↔ many devices, one shared `device_user_id` string across all of them), `get_punches()` (per-employee/date raw punch history for the "View Log" popup), plus one **separate, independent ingestion method per brand** — `save_attlog_batch()` for ZKTeco, `save_aiface_log_batch()` for AiFace (§10.3) — deliberately not merged into one shared method, so a change to one brand's wire-format parsing can never risk the other brand's already-working live push.
+- **Shared punch/attendance policy, implemented identically (but separately) in both ingestion methods:**
+  - **Server time, not device time.** Every accepted punch is stamped with the server's own clock, not whatever timestamp the device embeds in its payload — a device's internal clock can drift or be misconfigured, and the server receiving the push in real time is the more trustworthy source of "when this actually happened."
+  - **Same-calendar-day-only staleness filter.** A punch is dropped (not saved, but the batch is still acknowledged so the device doesn't retry forever) if its **device-embedded** timestamp isn't dated today — guards against a newly-connected or previously-used-elsewhere device dumping its entire stored history on first contact.
+  - **First punch of the day = permanent `in_time`; every later punch updates `out_time`.** An employee can step out and back any number of times across any number of separate push batches — the latest punch always wins for `out_time`, the first-ever punch for the day is never overwritten.
+  - Every individual punch is also kept in `hr_zkteco_punches` (device id + verify method), independent of the `hr_attendance` day-summary row, powering the Attendance list's "View Log" popup.
+- **Attendance list "Source" column** (`views/attendance/table.php`) shows the verify method (Fingerprint/Face/ID Card/Password/Palm Vein/QR Code icon + label) for **any** non-manual `source`, checked generically (`$r->source !== 'manual'`) rather than against a specific brand name — so a third brand added later needs no change here, only its own icon-map entries if it introduces a new verify method.
+- Punches also enter the system through a completely separate path — the Attendance screen's file import (CSV/XLSX/raw ZKTeco `.dat`/`.txt` ATTLOG export) — which resolves employees by digit-matching `employee_code`, not through `hr_zkteco_mapping` at all. See the `Attendance` row in [§3](#3-controllers-feature-inventory).
+
+### 10.2 ZKTeco integration (ADMS protocol)
 
 - **`controllers/Iclock.php`** — public, unauthenticated (`extends App_Controller`, not `AdminController` - same pattern as the `Ideal`/`Paypal` payment-webhook controllers). Reachable via three fixed paths declared in `application/config/my_routes.php` (a bare `iclock/...` URL can't be routed from inside `modules/hr_module/config/routes.php` itself - MX's module router only consults a module's own routes file once the URI's first segment already matches that module's folder name). `install.php` writes this global route file automatically if it's missing (or appends to it if it already exists for something else) whenever the module activates or its schema version bumps, so a fresh install of this module gets working ADMS routing with no manual server-config step:
   - `GET /iclock/cdata?SN=...&options=all` — handshake. Responds with the `Stamp=/Delay=30/Realtime=1` plain-text block from readme.md's own example - fixed, not configurable, since the F18's Cloud Server Setting screen has no field for it either.
   - `POST /iclock/cdata?SN=...&table=ATTLOG` — attendance push. Body is tab-separated, one punch per line (`device_user_id\ttimestamp\tstate\tverify_mode\t...`). Responds `OK: <count>`.
   - `GET /iclock/getrequest?SN=...` — heartbeat/command poll. Always responds `OK` (no command queue is implemented - devicecmd/getrequest are ack-only).
   - `POST|GET /iclock/devicecmd?SN=...` — command execution ack. Drains the body, responds `OK`.
-  - Every hit is gated by `_authorize_device()`: `zkteco_enabled` setting must be `1`, `SN` must match an **active** row in `hr_zkteco_devices.serial_number` (this, not IP/port, is now a device's identity - the unique index added in schema v5 tolerates existing `NULL` rows), `User-Agent` must contain `iClock`/`ZKTeco`, and the device must be under a hardcoded 100 req/min rate limit. Any failure → a plain-text 4xx, never a redirect or JSON (a device firmware can't handle either). No admin-configurable knobs beyond `zkteco_enabled` - schema v6 dropped the unused `zkteco_sync_interval` setting since the real F18 UI never exposed a matching field.
+  - Every hit is gated by `_authorize_device()`: `zkteco_enabled` setting must be `1`, `SN` must match an **active** row in `hr_zkteco_devices.serial_number`, `User-Agent` must contain `iClock`/`ZKTeco`, and the device must be under a hardcoded 100 req/min rate limit. Any failure → a plain-text 4xx, never a redirect or JSON (a device firmware can't handle either).
   - CSRF is exempted for `iclock/.+` via `config/csrf_exclude_uris.php` (same mechanism `modules/ideal` uses for its Stripe webhook) — no core file was touched for this.
-- **`models/Zkteco_model.php`** — device CRUD (now persists `serial_number`), `find_device_by_serial()`, `record_contact()` (updates `last_sync_at` on every authorized hit — this is what the admin UI's Online/Offline badge is computed from), `rate_limit_ok()`, `save_attlog_batch()` (parse → resolve device-user-id to an employee via the mapping table → create/update the day's `hr_attendance` row, recomputing working hours on a later punch — this is the exact same logic the old pull-based `sync()` used, just invoked from the push path instead of a cron/manual pull), `log_push()` (writes to `hr_zkteco_sync_logs`, reused as-is for push history).
-- There is no "Test Connection" or "Sync Now" action anymore — nothing to test/pull from a device that only ever calls out to us. The device list instead shows an Online/Offline badge derived from `last_sync_at` vs a fixed 300s threshold (10× the fixed 30s heartbeat).
-- Punches enter the system through **two independent paths** that both resolve employees through the same mapping table: the ADMS push receiver above, and the Attendance screen's file import (CSV/XLSX/raw `.dat`/`.txt` ATTLOG export) — unchanged.
+- `Zkteco_model::save_attlog_batch()` — parses the raw tab-separated lines, applies the shared policy from §10.1, and `_verify_mode_label()` maps ZKTeco's ADMS verify-mode codes (`0`/`3`/`4`→ID Card, `1`→Fingerprint, `2`→Password, `15`→Face — `4` was empirically observed on real F18 firmware for an ID Card scan despite not being in the vendor's own documented table).
+- No "Test Connection"/"Sync Now" action exists — nothing to test/pull from a device that only ever calls out to us.
+
+### 10.3 AiFace/AI-series integration (TIMY BS protocol)
+
+A completely different manufacturer/protocol family (TIMY TECO's "AiFace" line — AI07F, AI03FC, and others), added after ZKTeco was already live. TIMY's own documentation ("AiFace BS Communication Protocol", HTTP/HTTPS Polling transport) and a working PHP reference implementation confirmed the wire format before this was built.
+
+- **`controllers/Aiface.php`** — public, unauthenticated (`extends App_Controller`, same reasoning as `Iclock.php`). Unlike ZKTeco's ADMS, this protocol has **no per-command sub-path** — the device always POSTs a single JSON object (`{"cmd": "...", "sn": "...", ...}`) to the **bare root** (`/`) of whatever Server IP/DomainNm + Port it's configured with, and dispatches purely on the `cmd` field, not on URL/HTTP-method routing:
+  - `reg` — sent once after connecting, with device info. Replies `{"ret":"reg","tryseconds":300,"result":true,"cloudtime":"...","nosenduser":true,"nosendlog":false,"nosendimage":true}` (or `result:false` to reject). Device re-sends every `tryseconds`.
+  - `checklive` — idle heartbeat/poll. Replies `{"ret":"checklive","cloudtime":"..."}` (also used by the device to sync its own clock).
+  - `sendlog` — the actual attendance push, an array of punch records (`enrollid`, `time`, `mode`, `inout`, `event`, ...). Must be acked (`{"ret":"sendlog","result":true,"count":N,"logindex":N,"mark":true}`) or the device keeps resending.
+  - Any other `cmd` (`senduser`, `sendqrcode`, `sendpin`, `sendgps`, `otacheck`, ...) gets a generic `{"ret":"<cmd>","result":true}` ack so the device doesn't stall — same "drain and acknowledge" precedent as `Iclock::cdata()`'s handling of non-ATTLOG table pushes.
+  - `_authorize($sn)` mirrors `Iclock::_authorize_device()`'s building blocks (an `aiface_enabled` setting gate, `find_device_by_serial()`, `rate_limit_ok()`) but reads `sn` from the JSON body, not a GET query param — there's no shared method with `Iclock.php`, by design (§10.1).
+  - `Zkteco_model::save_aiface_log_batch()` applies the shared policy from §10.1 and `_aiface_verify_mode_label()` maps the protocol's log `mode` bit values (`1`=Face, `2`=Fingerprint, `4`=Card, `8`=Password, `16`=Palm Vein, `32`=QR Code, `64`=Face+Card, `128`=Server Verify — TIMY's own documented Appendix C table).
+- **The routing problem, and the one core-file exception (§1, rule 1).** Because the device always POSTs to bare `/`, and — critically — is configured with the **same domain** as the CRM site itself (no dedicated subdomain), it can't be told apart from ordinary site traffic by Host header or path. It's told apart by **request shape** instead: `$_SERVER['REQUEST_METHOD'] === 'POST'` + the path (after stripping any query string and slashes) is empty + `$_SERVER['CONTENT_TYPE']` contains `application/json` — a combination a real browser can never produce (every real form submission on this site POSTs form-encoded data to a specific controller path; the bare root is only ever hit by a `GET`). This check has to run **before** CodeIgniter's own router reads `$_SERVER['REQUEST_URI']`, because — confirmed empirically, several `.htaccess`-only rewrite attempts failed first — Apache's internal rewrite mechanism never changes that variable; it always reflects the client's literal original request regardless of any `.htaccess` rule, and that's what CodeIgniter's URI class re-parses for routing. The only place code can run early enough is the front controller itself, so a 6-line snippet sits at the very top of the root `index.php`:
+  ```php
+  if (
+      isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'POST'
+      && isset($_SERVER['REQUEST_URI']) && trim(strtok($_SERVER['REQUEST_URI'], '?'), '/') === ''
+      && isset($_SERVER['CONTENT_TYPE']) && stripos($_SERVER['CONTENT_TYPE'], 'application/json') !== false
+  ) {
+      $_SERVER['REQUEST_URI'] = '/hr_module/aiface/receive';
+  }
+  ```
+  This is a manual, one-time step on every install that uses an AiFace device (documented in the main [`README.md`](README.md) and [`ADMIN_GUIDE.md`](ADMIN_GUIDE.md) installation steps) — it cannot be automated by `install.php` the way `application/config/my_routes.php` is for ZKTeco, because a module's own files are never read early enough in the request lifecycle to intercept this. **Do not "simplify" this by moving it into `.htaccess`** — that was tried first and does not work, for the exact reason above.
+  - `config/csrf_exclude_uris.php` additionally exempts `hr_module/aiface/.+` (matched against the *routed* URI this snippet produces, not the original bare-root path).
+- **Setup on the device** requires no subdomain and no IP-hunting: `Comm. set → Server` → `Server Req = Yes`, `Use domainNm = Yes`, `DomainNm` = the same domain the CRM runs on, `Port = 443` (or `80`). This is a real advantage over ZKTeco units that lack any domain-entry option and have to be pointed at a raw IP.
 
 ---
 
@@ -422,3 +466,13 @@ For context on *why* certain things look the way they do:
 - **Department auto-select on Add Employee** (§3.4) — the Department dropdown now pre-fills from the linked staff's existing Perfex core department, instead of always starting blank.
 - **Leave balance auto-allocation on employee creation** (§3.4) — new employees get this year's leave balances immediately, instead of being invisible on the Leave Balances page/dashboard until the next manual "Allocate" run.
 - **Dashboard "Overtime" and "Loan Outstanding" widget fixes** (§8) — Overtime now counts approved days instead of summing an always-zero legacy `hours` column; Loan Outstanding now matches `approved` or `active` status instead of `active` only.
+- **ZKTeco integration rebuilt as a live ADMS push receiver** (§10.2) — replaced an earlier TCP-pull design; fixed a real header-confusion issue where Perfex's own browser-oriented session/cache headers were confusing the device's minimal HTTP client.
+- **Employee ID / device number auto-generation, then reverted to manual entry** — Employee Code and ZKTeco Device User ID were briefly auto-derived from the linked staff's `staff_id`; per explicit product decision this was reverted back to a manual, required, unique "Device Number" field (mirrored across all of an employee's mapped devices), positioned in the Employee form alongside the device selector, with the Employee ID auto-generated server-side as `<prefix><Device Number>`.
+- **Multi-punch handling, punch log, and per-employee attendance summary** (§10.1) — any number of punches per day now correctly resolve to first-punch=`in_time`/latest-punch=`out_time` (previously only the first two punches of a day were recorded); added the raw per-punch `hr_zkteco_punches` table and "View Log" popup; reworked the Attendance Report into a per-employee Present/Late/Absent count table (Absent includes expected-but-missing working days, weekly-off/holiday aware, not just explicit absent rows).
+- **Server-time stamping + same-day staleness filter** (§10.1) — punches are now stamped with the server's clock, not the device's (protects against device clock drift/misconfiguration); a device's embedded timestamp is still checked to reject same-connection backlog dumps from a newly-connected or previously-used-elsewhere device.
+- **Stored-XSS fix + read-only staff-link enforcement** — found during a security review: the Punch Log popup's client-side `.html()` insertion of JSON-served, attacker-influenceable fields (device name/location/verify mode) is now pre-escaped server-side; the Employee Edit form's staff link is now enforced read-only server-side too (previously only disabled client-side), so a tampered POST can't silently re-point an existing HR profile at a different staff account.
+- **Module portability fix** — `application/config/my_routes.php` (required for ADMS routing, but living outside the module folder) is now self-created/self-appended by `install.php`, so uploading this module to a fresh Perfex CRM install gets working device routing automatically instead of needing a manual server-config step.
+- **AiFace/AI-series device support added** (§10.3) — a second device brand (TIMY TECO's AiFace line: AI07F, AI03FC, etc.), live push over TIMY's own documented "BS Communication Protocol", sharing the same brand-agnostic punch/attendance tables and policies as ZKTeco. Required exactly one core-file exception — a small request-signature routing snippet in the root `index.php` — since the device always POSTs JSON to the bare site root on the *same* domain as the CRM itself (no subdomain, no sub-path), and CodeIgniter's router can't be redirected from anywhere inside the module for that specific request shape.
+- **Device management screen made brand-neutral** (§10.1) — renamed `Zkteco` controller/routes/views to `Devices` (`/admin/hr_module/devices`), menu label "Attendance Devices"; the `device_type` value `ai07f` was further renamed to `aiface` (a protocol-family label, not one specific model), since the AI-series has multiple physical models all speaking the identical protocol — the actual model name is entered free-text in the Device Name field.
+- **Attendance list "Source" column genericized** (§10.1) — the verify-method icon logic previously only recognized ZKTeco specifically (`source === 'zkteco'`), silently mis-labeling AiFace punches as "Manual"; now keys off any non-manual source generically, plus added icons for Palm Vein/QR Code.
+- **Sync Logs page → standard DataTable UI** (§10.1) — was a plain hand-rolled table with a full-page-reload device filter; now `render_datatable()`/AJAX like every other list page in the module.

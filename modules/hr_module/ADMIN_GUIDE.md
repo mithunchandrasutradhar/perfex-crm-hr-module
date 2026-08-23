@@ -17,14 +17,14 @@ If you're looking for "how do I apply for leave" or "how do I approve a request,
 7. **Allocate the first year's leave balances** — HR Management > Leave > Leave Balances > **Allocate**. (Every employee added *after* this point gets their balances automatically — see [§5](#5-leave-balances)).
 8. **Configure notifications** — which inbox receives request notifications, and which events trigger an email (Settings page).
 9. **Optional: WhatsApp broadcast** — see [§6](#6-whatsapp-waha-integration).
-10. **Optional: ZKTeco biometric devices** — see [§7](#7-zkteco-device-integration).
+10. **Optional: Biometric attendance devices (ZKTeco / AiFace)** — see [§7](#7-biometric-device-integration).
 11. **Set up the server cron job** — see [§8](#8-cron-job) — several automated features (day-before holiday reminders, contract auto-expiry) silently do nothing without this.
 
 ---
 
 ## 2. Roles & permissions setup
 
-Every HR permission lives under **Setup > Staff > Roles**, prefixed "HR " to keep it apart from unrelated CRM permissions. Permissions are granted **per feature** (Leave, Attendance, Payroll, Loans, Overtime, Performance, Training, Helpdesk, Contracts, Shifts, Policies, Reports, Settings, Employees, Departments, ZKTeco).
+Every HR permission lives under **Setup > Staff > Roles**, prefixed "HR " to keep it apart from unrelated CRM permissions. Permissions are granted **per feature** (Leave, Attendance, Payroll, Loans, Overtime, Performance, Training, Helpdesk, Contracts, Shifts, Policies, Reports, Settings, Employees, Departments, Attendance Devices — this last one controls the device management screen for **both** ZKTeco and AiFace devices).
 
 ### The five capability tiers (not every feature has all five)
 
@@ -114,27 +114,51 @@ If you don't see any working session at all, you need to start one on the WAHA s
 
 ---
 
-## 7. ZKTeco device integration
+## 7. Biometric device integration
 
-The device **pushes** attendance data to this server (ZKTeco's ADMS protocol) — the server never connects out to the device, so there's no IP/port to reach and nothing to "test" from this end.
+Both supported device brands **push** attendance data to this server — the server never connects out to a device, so there's no IP/port on the device to "test" from this end for either brand. Device management for both lives in one place: **HR Management > Attendance Devices**.
 
-**HR Management > ZKTeco Devices > Add Device.** Enter the device's **Serial Number** exactly as shown on the device itself — this is how an incoming push is matched to a device record and authorized (unregistered or inactive serial numbers are rejected). Then, on the device's own keypad, go to **Comm. > Cloud Server Setting** and set:
+### 7.1 Adding any device
+
+**Attendance Devices > Add Device.** Fill in:
+- **Device Name** — any label you want (e.g. "Main Gate", "Second Office Entrance"). The specific hardware model (AI07F, AI03FC, F18, etc.) goes here too, since there's no separate model field — just type it into the name or notes.
+- **Device Type** — `ZKTeco` or `AiFace / AI-Series` — this only controls which setup instructions the form shows you and which brand-specific label appears on the device list; it does **not** affect how the device authenticates (that's always by Serial Number).
+- **Serial Number** — exactly as shown on the physical device. This is how an incoming push is matched to a device record and authorized; unregistered or inactive serial numbers are rejected outright.
+- **Location** — free text, shown on the device card and in punch logs — use it to tell multiple devices apart (e.g. "Dhaka Office (Inside)" vs "Dhaka Office (Outside)").
+
+Once saved, map the device to employees from each employee's own Edit page (Attendance Devices multi-select + a required, unique Device Number) — not from a separate mapping screen. Attendance only resolves correctly for mapped employees; an unmapped device's punches are silently accepted but discarded.
+
+### 7.2 ZKTeco setup (on the device)
+
+On the device's own keypad, go to **Comm. > Cloud Server Setting** and set:
 - **Server Mode:** `ADMS`
 - **Server Address:** this server's address (IP or domain)
 - **Server Port:** this server's port
 - **Enable Proxy Server:** `OFF`
 
-That's the whole on-device side — this particular screen has no "Request Path" field to fill in; the path (`/iclock/cdata`) is fixed on the server side and isn't something you configure per device.
+This particular screen has no "Request Path" field to fill in — the path (`/iclock/cdata`) is fixed on the server side. **ZKTeco Enabled** in Settings gates the whole integration; while off, every ZKTeco device request is rejected outright.
 
-Within a few seconds of restarting, the device will start pushing, and the device list will show it **Online** with a "Last Contact" timestamp. Map each device's internal user IDs to HR employee profiles under **Mapping** — attendance only resolves correctly for mapped employees.
+### 7.3 AiFace/AI-series setup (on the device)
 
-Punches arrive two ways, both independent and both resolving through the same employee mapping table: the live ADMS push above, and the Attendance page's file import (CSV/XLSX/raw `.dat`/`.txt` export) for a device you can't point at this server directly. **ZKTeco Enabled** in Settings gates the whole integration — while off, every device request is rejected outright. There's no sync-interval setting to configure; the device is told to check in every 30 seconds as a fixed part of the handshake response.
+On the device's `Comm. set → Server` screen, set:
+- **Server Req:** `Yes`
+- **Use domainNm:** `Yes`
+- **DomainNm:** the **same domain your CRM already runs on** (e.g. `demo1.crm.com.bd`) — no separate subdomain is needed or used
+- **Port:** `443` (or `80`)
+
+**One required one-time setup step for this brand only:** a small snippet must be added to the site's root `index.php` file for AiFace push to work at all — this can't be done through the CRM's admin UI or the module installer, since it has to run before the CRM's own routing does. Ask whoever deployed this module for the exact snippet (documented in `DEVELOPER.md` §10.3) if AiFace devices aren't receiving any traffic despite everything above looking correct — this is the single most common reason a fresh AiFace setup doesn't work. **AiFace Enabled** in Settings gates the whole integration, same as ZKTeco's own toggle.
+
+### 7.4 Once it's running
+
+Within a few seconds/minutes of a successful connection, the device list shows it **Online** with a recent "Last Contact" timestamp (offline threshold is 5 minutes of silence). If a device never shows a recent contact time despite everything being configured correctly, the fault is almost always on the device's own network side (no real IP, DNS not resolving, or a firewall at that location blocking outbound traffic) rather than anything in this CRM — see the troubleshooting table in [§11](#11-troubleshooting-quick-reference).
+
+Punches also arrive through a second, independent path for ZKTeco specifically: the Attendance page's file import (CSV/XLSX/raw `.dat`/`.txt` export), for a device you can't point at this server directly. There's no sync-interval to configure for either brand's live push.
 
 ---
 
 ## 8. Cron job
 
-Several features are entirely cron-dependent and will **silently never fire** without a working cron job: the day-before holiday reminder (email + WhatsApp), and automatic contract expiry + 30-day expiry warnings. ZKTeco attendance is not cron-dependent — devices push on their own schedule.
+Several features are entirely cron-dependent and will **silently never fire** without a working cron job: the day-before holiday reminder (email + WhatsApp), and automatic contract expiry + 30-day expiry warnings. Biometric device attendance (either brand) is not cron-dependent — devices push on their own schedule.
 
 Setup > Settings > Cron Job tab shows the exact command Perfex expects:
 ```
@@ -172,3 +196,6 @@ Settings page, admin-only section: a single toggle, **off by default**, controll
 | A staff member sees fewer buttons/pages than expected | Missing the specific capability the destination action requires — "View" and "View (Own)"/"View (Own Department)" are independent checkboxes, not a hierarchy that auto-includes lower tiers | Setup > Staff > Roles — grant the specific capability that page/button needs |
 | Overtime/Payroll/Loans approve button doesn't work for a role that has "Approve/Reject" checked | Those three features actually gate on **Edit**, not the Approve/Reject checkbox (§2) | Grant **Edit** instead |
 | A department head can't soft-approve anything | Missing the **Soft Approve/Reject** capability, or the employee/request isn't actually in their department | Setup > Staff > Roles (§2); confirm the employee's Department field is set correctly (§3) |
+| An AiFace device never shows a recent "Last Contact" | Most commonly: the required `index.php` snippet (§7.3) was never added, or the device itself has no working network connection at that location | Confirm the snippet is in place; separately verify the device has a real local IP (not stuck on a documentation-only placeholder address) and can actually reach the internet from where it's installed |
+| An AiFace device's own screen shows a placeholder-looking IP like `192.0.2.x` | The device never successfully obtained a real network address — a basic local connectivity issue, unrelated to anything in this CRM | Check the device's Network/Ethernet screen: confirm DHCP is on, and the cable/WiFi connection is actually established, before troubleshooting anything server-side |
+| A device shows Online once, then goes Offline and never reconnects on its own | The one successful contact was likely a manual test from a developer/technician, not the physical device itself | Confirm by checking whether the "Last Contact" timestamp corresponds to an actual device event (a real punch, a scheduled re-registration) rather than a one-off manual check |
