@@ -57,7 +57,6 @@ function ev($obj, $key, $default = '') {
                         data-phone="<?php echo htmlspecialchars($s->phonenumber ?? ''); ?>"
                         data-photo="<?php echo htmlspecialchars($s_photo_url); ?>"
                         data-department="<?php echo htmlspecialchars($s->department_id ?? ''); ?>"
-                        data-empcode="<?php echo htmlspecialchars($employee_id_prefix . $s->staffid); ?>"
                         <?php echo ($is_edit && $e->staff_id == $s->staffid) ? 'selected' : ''; ?>>
                   <?php echo htmlspecialchars($s->firstname . ' ' . $s->lastname); ?>
                   (<?php echo htmlspecialchars($s->email); ?>)
@@ -79,7 +78,7 @@ function ev($obj, $key, $default = '') {
               <?php endif; ?>
             </div>
           </div>
-          <div class="col-md-5">
+          <div class="col-md-8">
             <div id="staff-preview" style="display:none" class="tw-flex tw-items-center tw-gap-4 tw-p-3 tw-rounded-lg" style="background:#f0f9ff">
               <div id="staff-photo-wrap">
                 <img id="staff-photo-img" src="" class="img-circle" width="56" height="56" style="object-fit:cover;display:none">
@@ -90,12 +89,6 @@ function ev($obj, $key, $default = '') {
                 <div class="text-muted tw-text-sm" id="preview-email"></div>
                 <div class="text-muted tw-text-sm" id="preview-phone"></div>
               </div>
-            </div>
-          </div>
-          <div class="col-md-3">
-            <div id="idnum-preview" style="display:none;background:#f0f9ff" class="tw-p-3 tw-rounded-lg tw-text-center">
-              <div class="text-muted tw-text-xs tw-mb-1">ID Number</div>
-              <div class="tw-font-bold tw-text-lg" id="preview-idnum" style="color:#1d4ed8"></div>
             </div>
           </div>
         </div>
@@ -117,10 +110,6 @@ function ev($obj, $key, $default = '') {
           <div class="panel-body">
             <?php $row1_col = 'col-md-4 col-sm-6'; ?>
             <div class="row">
-              <!-- Employee Code follows the selected staff member's staff_id
-                   automatically (see JS below) - no separate input on
-                   Add or Edit. -->
-              <input type="hidden" name="employee_code" value="<?php echo htmlspecialchars($is_edit ? ev($e,'employee_code') : $next_code); ?>">
               <div class="<?php echo $row1_col; ?>">
                 <div class="form-group">
                   <label><?php echo _l('hr_employee_joining_date'); ?></label>
@@ -189,7 +178,7 @@ function ev($obj, $key, $default = '') {
 
             <?php $mapped_device_ids = array_map(function($m) { return (int) $m->device_id; }, $device_mappings); ?>
             <div class="row">
-              <div class="col-md-12">
+              <div class="col-md-4 col-sm-6">
                 <div class="form-group select-placeholder">
                   <label><i class="fa fa-fingerprint tw-mr-1"></i>ZKTeco Devices</label>
                   <select name="zkteco_device_id[]" id="emp_zkteco_device" class="selectpicker" multiple
@@ -202,13 +191,30 @@ function ev($obj, $key, $default = '') {
                     <?php endforeach; ?>
                   </select>
                   <p class="help-block tw-text-xs tw-mt-1">
-                    Select every device this employee should be able to punch on - the same Device User ID (their staff_id) applies on all of them.
+                    Select every device this employee should be able to punch on.
                   </p>
                 </div>
               </div>
-              <!-- Device User ID follows the selected staff member's staff_id
-                   automatically (see JS below) - no separate input on Add or Edit. -->
-              <input type="hidden" name="device_user_id" value="<?php echo !empty($device_mappings) ? htmlspecialchars($device_mappings[0]->device_user_id) : ''; ?>">
+              <div class="col-md-4 col-sm-6">
+                <div class="form-group">
+                  <label>ZKTeco Number <span class="text-danger">*</span></label>
+                  <input type="text" name="device_user_id" id="device_user_id_input" class="form-control" required
+                    value="<?php echo ($is_edit && !empty($device_mappings)) ? htmlspecialchars($device_mappings[0]->device_user_id) : ''; ?>">
+                  <p class="help-block tw-text-xs tw-mt-1">
+                    The numeric User ID set on the ZKTeco device for this employee.
+                  </p>
+                </div>
+              </div>
+              <div class="col-md-4 col-sm-6">
+                <div class="form-group">
+                  <label>Employee ID</label>
+                  <input type="text" class="form-control" id="employee_code_preview" readonly
+                    value="<?php echo $is_edit ? ev($e,'employee_code') : ''; ?>">
+                  <p class="help-block tw-text-xs tw-mt-1">
+                    Auto-generated: "<?php echo htmlspecialchars($employee_id_prefix); ?>" + the ZKTeco Number.
+                  </p>
+                </div>
+              </div>
             </div>
 
             <div class="form-group">
@@ -446,24 +452,20 @@ $(function(){
             $('#emp_dept').val(String(dept)).selectpicker('refresh');
         }
         <?php endif; ?>
-
-        // Employee Code and Device User ID both always follow the selected
-        // staff member's staff_id, on Add and Edit alike - there's no
-        // independent value for either to preserve. The "ID Number" box is
-        // just the read-only on-screen display of that same Employee Code.
-        var empCode = $opt.data('empcode');
-        if (empCode) {
-            $('input[name="employee_code"]').val(empCode);
-            $('#preview-idnum').text(empCode);
-            $('#idnum-preview').show();
-        }
-        $('input[name="device_user_id"]').val(staffId);
     });
 
     // Trigger on load for edit mode
     <?php if ($is_edit && $e->staff_id): ?>
     $('#staff_id_select').trigger('change');
     <?php endif; ?>
+
+    // Employee ID is auto-generated server-side as "<prefix><ZKTeco Number>" -
+    // this is just a live cosmetic preview so the admin sees it before saving.
+    var empIdPrefix = <?php echo json_encode($employee_id_prefix); ?>;
+    $('#device_user_id_input').on('input', function(){
+        var num = $(this).val().trim();
+        $('#employee_code_preview').val(num ? (empIdPrefix + num) : '');
+    });
 
     // Photo preview
     $('#photo-input').on('change', function(){

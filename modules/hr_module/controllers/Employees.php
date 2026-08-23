@@ -42,11 +42,15 @@ class Employees extends AdminController
                 redirect(admin_url('hr_module/employees/add'));
             }
 
+            $device_user_id = $this->input->post('device_user_id', true);
+            if (empty($device_user_id)) {
+                set_alert('danger', 'Please enter the ZKTeco Number.');
+                redirect(admin_url('hr_module/employees/add'));
+            }
             $prefix = $this->Hr_module_model->get_setting('employee_id_prefix', 'EMP');
-            $code   = $this->input->post('employee_code', true);
-            if (empty($code)) $code = $this->Employees_model->get_next_code($prefix);
+            $code   = $prefix . $device_user_id;
             if ($this->Employees_model->code_exists($code)) {
-                set_alert('danger', 'Employee code already exists.');
+                set_alert('danger', 'This ZKTeco Number is already in use by another employee.');
                 redirect(admin_url('hr_module/employees/add'));
             }
 
@@ -69,7 +73,7 @@ class Employees extends AdminController
                 $this->load->model('hr_module/Leave_model');
                 $this->Leave_model->allocate_for_employee($id);
                 $this->Zkteco_model->set_employee_device_mapping(
-                    $id, $this->input->post('zkteco_device_id'), $this->input->post('device_user_id', true)
+                    $id, $this->input->post('zkteco_device_id'), $device_user_id
                 );
                 set_alert('success', _l('hr_employee_added'));
                 redirect(admin_url('hr_module/employees/view/' . $id));
@@ -102,20 +106,26 @@ class Employees extends AdminController
             // The Edit form's staff select is disabled (read-only) once a
             // profile exists - always trust the employee's existing link,
             // not whatever "staff_id" the request carries, so a tampered
-            // POST can't silently re-point this profile (and by extension
-            // its Employee Code / Device User ID, both derived from it) at
-            // a different staff account.
+            // POST can't silently re-point this profile at a different
+            // staff account.
             $staff_id = (int) $employee->staff_id;
 
             $data = $this->_prepare_post_data();
             $data['staff_id'] = $staff_id;
             $data['status']   = $this->_staff_active_status($staff_id);
-            $code = $this->input->post('employee_code', true);
-            if (!empty($code) && $this->Employees_model->code_exists($code, $id)) {
-                set_alert('danger', 'Employee code already exists.');
+
+            $device_user_id = $this->input->post('device_user_id', true);
+            if (empty($device_user_id)) {
+                set_alert('danger', 'Please enter the ZKTeco Number.');
                 redirect(admin_url('hr_module/employees/edit/' . $id));
             }
-            if (!empty($code)) $data['employee_code'] = $code;
+            $prefix = $this->Hr_module_model->get_setting('employee_id_prefix', 'EMP');
+            $code   = $prefix . $device_user_id;
+            if ($this->Employees_model->code_exists($code, $id)) {
+                set_alert('danger', 'This ZKTeco Number is already in use by another employee.');
+                redirect(admin_url('hr_module/employees/edit/' . $id));
+            }
+            $data['employee_code'] = $code;
 
             if (!empty($_FILES['photo']['name'])) {
                 $upload = $this->Employees_model->handle_photo_upload($employee->photo);
@@ -124,7 +134,7 @@ class Employees extends AdminController
 
             $this->Employees_model->update($data, $id);
             $this->Zkteco_model->set_employee_device_mapping(
-                $id, $this->input->post('zkteco_device_id'), $this->input->post('device_user_id', true)
+                $id, $this->input->post('zkteco_device_id'), $device_user_id
             );
             set_alert('success', _l('hr_employee_updated'));
             redirect(admin_url('hr_module/employees/view/' . $id));
