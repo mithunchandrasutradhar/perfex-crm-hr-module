@@ -7,18 +7,30 @@
     <li class="active"><?php echo $title; ?></li>
   </ol>
   <div class="panel_s tw-mb-3"><div class="panel-body">
-    <?php echo form_open(admin_url('hr_module/reports/turnover'), ['method'=>'get']); ?>
     <div class="row">
-      <div class="col-md-3"><select name="year" class="form-control input-sm">
-        <?php for($y=date('Y');$y>=date('Y')-4;$y--): ?>
-        <option value="<?php echo $y; ?>" <?php if(($filters['year']??date('Y'))==$y) echo 'selected'; ?>><?php echo $y; ?></option>
-        <?php endfor; ?>
-      </select></div>
-      <div class="col-md-3"><select name="department_id" class="form-control input-sm"><option value="">All Departments</option><?php foreach($departments as $d): ?><option value="<?php echo $d->id; ?>" <?php if(($filters['department_id']??'')==$d->id) echo 'selected'; ?>><?php echo htmlspecialchars($d->name); ?></option><?php endforeach; ?></select></div>
-      <div class="col-md-2"><button type="submit" class="btn btn-primary btn-sm btn-block">Filter</button></div>
-      <div class="col-md-2"><a href="<?php echo admin_url('hr_module/reports/turnover?'.http_build_query($filters).'&export=csv'); ?>" class="btn btn-default btn-sm btn-block"><i class="fa fa-download"></i> CSV</a></div>
+      <div class="col-md-3">
+        <div class="form-group select-placeholder tw-mb-0">
+          <select id="f-year" class="selectpicker" data-width="100%">
+            <?php for($y=date('Y');$y>=date('Y')-4;$y--): ?>
+            <option value="<?php echo $y; ?>" <?php if(($filters['year']??date('Y'))==$y) echo 'selected'; ?>><?php echo $y; ?></option>
+            <?php endfor; ?>
+          </select>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="form-group select-placeholder tw-mb-0">
+          <select id="f-department" class="selectpicker" data-width="100%" data-live-search="true">
+            <option value="">All Departments</option>
+            <?php foreach($departments as $d): ?>
+            <option value="<?php echo $d->id; ?>" <?php if(($filters['department_id']??'')==$d->id) echo 'selected'; ?>><?php echo htmlspecialchars($d->name); ?></option>
+            <?php endforeach; ?>
+          </select>
+        </div>
+      </div>
+      <div class="col-md-2">
+        <a id="btn-csv" href="<?php echo admin_url('hr_module/reports/turnover?'.http_build_query($filters).'&export=csv'); ?>" class="btn btn-default btn-sm btn-block"><i class="fa fa-download"></i> CSV</a>
+      </div>
     </div>
-    <?php echo form_close(); ?>
   </div></div>
 
   <?php
@@ -31,68 +43,31 @@
   ?>
   <div class="row tw-mb-3">
     <div class="col-md-4"><div style="background:#fff;border-radius:8px;padding:12px 16px;border-left:3px solid #059669;box-shadow:0 1px 3px rgba(0,0,0,.08)">
-      <div style="font-size:1.6rem;font-weight:700;color:#059669"><?php echo $total_joined; ?></div>
+      <div style="font-size:1.6rem;font-weight:700;color:#059669" id="sum-joined"><?php echo $total_joined; ?></div>
       <div style="font-size:0.78rem;color:#64748b">Total Hired</div>
     </div></div>
     <div class="col-md-4"><div style="background:#fff;border-radius:8px;padding:12px 16px;border-left:3px solid #dc2626;box-shadow:0 1px 3px rgba(0,0,0,.08)">
-      <div style="font-size:1.6rem;font-weight:700;color:#dc2626"><?php echo $total_left; ?></div>
+      <div style="font-size:1.6rem;font-weight:700;color:#dc2626" id="sum-left"><?php echo $total_left; ?></div>
       <div style="font-size:0.78rem;color:#64748b">Total Attrition</div>
     </div></div>
     <div class="col-md-4"><div style="background:#fff;border-radius:8px;padding:12px 16px;border-left:3px solid #d97706;box-shadow:0 1px 3px rgba(0,0,0,.08)">
-      <div style="font-size:1.6rem;font-weight:700;color:#d97706"><?php echo number_format($avg_rate,1); ?>%</div>
+      <div style="font-size:1.6rem;font-weight:700;color:#d97706" id="sum-rate"><?php echo number_format($avg_rate,1); ?>%</div>
       <div style="font-size:0.78rem;color:#64748b">Avg Monthly Turnover Rate</div>
     </div></div>
   </div>
 
-  <?php if(!empty($rows)): ?>
   <div class="panel_s tw-mb-3"><div class="panel-body">
     <canvas id="turnoverChart" height="80"></canvas>
   </div></div>
-  <?php endif; ?>
 
   <div class="panel_s"><div class="panel-body panel-table-full">
-    <table class="table table-hover">
-      <thead><tr>
-        <th>Month</th>
-        <th class="text-right text-success">Hired</th>
-        <th class="text-right text-danger">Left</th>
-        <th class="text-right">Net</th>
-        <th class="text-right">Headcount (End)</th>
-        <th class="text-right">Turnover Rate</th>
-      </tr></thead>
-      <tbody>
-      <?php if(empty($rows)): ?><tr><td colspan="6" class="text-center text-muted" style="padding:30px">No records.</td></tr>
-      <?php else: foreach($rows as $r):
-        $net = $r->joined - $r->left_count;
-      ?>
-      <tr>
-        <td><?php echo date('F Y', mktime(0,0,0,$r->month,1,$r->year)); ?></td>
-        <td class="text-right text-success"><strong><?php echo $r->joined; ?></strong></td>
-        <td class="text-right text-danger"><strong><?php echo $r->left_count; ?></strong></td>
-        <td class="text-right <?php echo $net >= 0 ? 'text-success' : 'text-danger'; ?>"><?php echo ($net >= 0 ? '+' : '').$net; ?></td>
-        <td class="text-right"><?php echo $r->headcount_end ?? '-'; ?></td>
-        <td class="text-right">
-          <?php $rate = $r->turnover_rate; ?>
-          <span class="<?php echo $rate > 5 ? 'text-danger' : ($rate > 2 ? 'text-warning' : 'text-success'); ?>"><?php echo number_format($rate,1); ?>%</span>
-        </td>
-      </tr>
-      <?php endforeach; ?>
-      <tr class="active">
-        <td><strong>Total / Avg</strong></td>
-        <td class="text-right text-success"><strong><?php echo $total_joined; ?></strong></td>
-        <td class="text-right text-danger"><strong><?php echo $total_left; ?></strong></td>
-        <td class="text-right"><strong><?php echo ($total_joined-$total_left >= 0 ? '+' : '').($total_joined-$total_left); ?></strong></td>
-        <td class="text-right">—</td>
-        <td class="text-right"><strong><?php echo number_format($avg_rate,1); ?>%</strong></td>
-      </tr>
-      <?php endif; ?>
-      </tbody>
-    </table>
+    <?php render_datatable([
+      'Month', 'Hired', 'Left', 'Net', 'Headcount (End)', 'Turnover Rate',
+    ], 'hr-report-turnover'); ?>
   </div></div>
 
 </div></div>
 </div></div>
-<?php if(!empty($rows)): ?>
 <script>
 document.addEventListener('DOMContentLoaded', function(){
   // Deferred to DOMContentLoaded: the vendor bundle (Chart.js, jQuery) is appended
@@ -103,7 +78,11 @@ document.addEventListener('DOMContentLoaded', function(){
   var left    = <?php echo json_encode($left_data); ?>;
   var ctx     = document.getElementById('turnoverChart');
   if(!ctx||typeof Chart==='undefined') return;
-  new Chart(ctx, {
+
+  // Stored on window so the draw.dt handler below (registered inside the
+  // jQuery-ready block further down) can update the same instance in place
+  // instead of destroying/recreating the chart on every filter change.
+  window.turnoverChart = new Chart(ctx, {
     type: 'bar',
     data: {
       labels: labels,
@@ -123,5 +102,52 @@ document.addEventListener('DOMContentLoaded', function(){
   });
 });
 </script>
-<?php endif; ?>
+<script>
+$(function(){
+    initDataTable('.table-hr-report-turnover', window.location.href, [], [0, 'asc']);
+
+    $('.table-hr-report-turnover').append(
+        '<tfoot><tr class="active">' +
+        '<td><strong>Total / Avg</strong></td>' +
+        '<td class="text-right text-success"><strong id="tfoot-joined"></strong></td>' +
+        '<td class="text-right text-danger"><strong id="tfoot-left"></strong></td>' +
+        '<td class="text-right"><strong id="tfoot-net"></strong></td>' +
+        '<td class="text-right">&mdash;</td>' +
+        '<td class="text-right"><strong id="tfoot-rate"></strong></td>' +
+        '</tr></tfoot>'
+    );
+
+    function reload() {
+        var url = window.location.href.split('?')[0]
+            + '?year=' + $('#f-year').val()
+            + '&department_id=' + $('#f-department').val();
+        $('#btn-csv').attr('href', window.location.pathname + '?year=' + $('#f-year').val()
+            + '&department_id=' + $('#f-department').val() + '&export=csv');
+        $('.table-hr-report-turnover').DataTable().ajax.url(url).load();
+    }
+    $('#f-year, #f-department').on('change changed.bs.select', reload);
+
+    $('.table-hr-report-turnover').on('draw.dt', function(){
+        var json = $(this).DataTable().ajax.json();
+        var sums = json.sums;
+        if (sums) {
+            $('#sum-joined').text(sums.total_joined);
+            $('#sum-left').text(sums.total_left);
+            $('#sum-rate').text(sums.avg_rate + '%');
+            $('#tfoot-joined').text(sums.total_joined);
+            $('#tfoot-left').text(sums.total_left);
+            $('#tfoot-net').text(sums.net);
+            $('#tfoot-rate').text(sums.avg_rate + '%');
+        }
+
+        var chart = json.chart;
+        if (chart && window.turnoverChart) {
+            window.turnoverChart.data.labels = chart.labels;
+            window.turnoverChart.data.datasets[0].data = chart.joined;
+            window.turnoverChart.data.datasets[1].data = chart.left;
+            window.turnoverChart.update();
+        }
+    });
+});
+</script>
 <?php init_tail(); ?>

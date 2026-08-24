@@ -46,6 +46,10 @@ class Reports extends AdminController
     public function leave()
     {
         if (staff_cant('view', 'hr_reports')) access_denied('hr_reports');
+        if ($this->input->is_ajax_request()) {
+            $this->app->get_table_data(module_views_path('hr_module', 'reports/leave_table'));
+            return;
+        }
         $f = $this->_get_filters(['employee_id','department_id','status','leave_type_id','from_date','to_date']);
         if (!empty($f['from_date'])) $f['from_date'] = to_sql_date($f['from_date']);
         if (!empty($f['to_date']))   $f['to_date']   = to_sql_date($f['to_date']);
@@ -70,6 +74,10 @@ class Reports extends AdminController
     public function payroll()
     {
         if (staff_cant('view', 'hr_reports')) access_denied('hr_reports');
+        if ($this->input->is_ajax_request()) {
+            $this->app->get_table_data(module_views_path('hr_module', 'reports/payroll_table'));
+            return;
+        }
         $f = $this->_get_filters(['department_id','status','month','year']);
         if (empty($f['year'])) $f['year'] = date('Y');
 
@@ -96,6 +104,10 @@ class Reports extends AdminController
     public function loan()
     {
         if (staff_cant('view', 'hr_reports')) access_denied('hr_reports');
+        if ($this->input->is_ajax_request()) {
+            $this->app->get_table_data(module_views_path('hr_module', 'reports/loan_table'));
+            return;
+        }
         $f    = $this->_get_filters(['department_id','status']);
         $rows = $this->Reports_model->loans($f);
 
@@ -117,6 +129,10 @@ class Reports extends AdminController
     public function overtime()
     {
         if (staff_cant('view', 'hr_reports')) access_denied('hr_reports');
+        if ($this->input->is_ajax_request()) {
+            $this->app->get_table_data(module_views_path('hr_module', 'reports/overtime_table'));
+            return;
+        }
         $f = $this->_get_filters(['department_id','status','from_date','to_date']);
         if (!empty($f['from_date'])) $f['from_date'] = to_sql_date($f['from_date']);
         if (!empty($f['to_date']))   $f['to_date']   = to_sql_date($f['to_date']);
@@ -173,6 +189,10 @@ class Reports extends AdminController
     public function training()
     {
         if (staff_cant('view', 'hr_reports')) access_denied('hr_reports');
+        if ($this->input->is_ajax_request()) {
+            $this->app->get_table_data(module_views_path('hr_module', 'reports/training_table'));
+            return;
+        }
         $f = $this->_get_filters(['status','year']);
 
         $rows = $this->Reports_model->training($f);
@@ -182,7 +202,6 @@ class Reports extends AdminController
             return;
         }
         $data['title']   = 'Training Report';
-        $data['rows']    = $rows;
         $data['filters'] = $f;
         $this->load->view('hr_module/reports/training', $data);
     }
@@ -190,15 +209,13 @@ class Reports extends AdminController
     public function headcount()
     {
         if (staff_cant('view', 'hr_reports')) access_denied('hr_reports');
-        $f    = $this->_get_filters(['department_id']);
-        $rows = $this->Reports_model->headcount($f);
-
-        $total = 0;
-        foreach ($rows as $r) $total += $r->total;
+        if ($this->input->is_ajax_request()) {
+            $this->app->get_table_data(module_views_path('hr_module', 'reports/headcount_table'));
+            return;
+        }
+        $f = $this->_get_filters(['department_id']);
 
         $data['title']   = 'Headcount Report';
-        $data['rows']    = $rows;
-        $data['total']   = $total;
         $data['filters'] = $f;
         $this->load->view('hr_module/reports/headcount', $data);
     }
@@ -206,6 +223,10 @@ class Reports extends AdminController
     public function department()
     {
         if (staff_cant('view', 'hr_reports')) access_denied('hr_reports');
+        if ($this->input->is_ajax_request()) {
+            $this->app->get_table_data(module_views_path('hr_module', 'reports/department_table'));
+            return;
+        }
         $f = $this->_get_filters(['department_id','year']);
         if (empty($f['year'])) $f['year'] = date('Y');
 
@@ -226,6 +247,11 @@ class Reports extends AdminController
     public function salary()
     {
         if (staff_cant('view', 'hr_reports')) access_denied('hr_reports');
+        if ($this->input->is_ajax_request()) {
+            $table = $this->input->get('table') === 'summary' ? 'salary_summary_table' : 'salary_table';
+            $this->app->get_table_data(module_views_path('hr_module', 'reports/' . $table));
+            return;
+        }
         $f    = $this->_get_filters(['department_id', 'status']);
         $rows = $this->Reports_model->salary($f);
         $dept_summary = $this->Reports_model->salary_summary_by_dept($f);
@@ -245,6 +271,10 @@ class Reports extends AdminController
     public function turnover()
     {
         if (staff_cant('view', 'hr_reports')) access_denied('hr_reports');
+        if ($this->input->is_ajax_request()) {
+            $this->app->get_table_data(module_views_path('hr_module', 'reports/turnover_table'));
+            return;
+        }
         $f = $this->_get_filters(['year', 'department_id']);
         if (empty($f['year'])) $f['year'] = date('Y');
 

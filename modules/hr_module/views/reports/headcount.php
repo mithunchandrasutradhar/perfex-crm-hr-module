@@ -9,54 +9,57 @@
 
   <div class="row tw-mb-3">
     <div class="col-md-3"><div style="background:#fff;border-radius:8px;padding:12px 16px;border-left:3px solid #4f46e5;box-shadow:0 1px 3px rgba(0,0,0,.08)">
-      <div style="font-size:1.6rem;font-weight:700;color:#4f46e5"><?php echo $total; ?></div>
+      <div id="stat-total" style="font-size:1.6rem;font-weight:700;color:#4f46e5">0</div>
       <div style="font-size:0.78rem;color:#64748b">Total Employees</div>
     </div></div>
     <div class="col-md-3"><div style="background:#fff;border-radius:8px;padding:12px 16px;border-left:3px solid #059669;box-shadow:0 1px 3px rgba(0,0,0,.08)">
-      <div style="font-size:1.6rem;font-weight:700;color:#059669"><?php echo array_sum(array_column((array)$rows,'active')); ?></div>
+      <div id="stat-active" style="font-size:1.6rem;font-weight:700;color:#059669">0</div>
       <div style="font-size:0.78rem;color:#64748b">Active</div>
     </div></div>
     <div class="col-md-3"><div style="background:#fff;border-radius:8px;padding:12px 16px;border-left:3px solid #0891b2;box-shadow:0 1px 3px rgba(0,0,0,.08)">
-      <div style="font-size:1.6rem;font-weight:700;color:#0891b2"><?php echo array_sum(array_column((array)$rows,'male')); ?></div>
+      <div id="stat-male" style="font-size:1.6rem;font-weight:700;color:#0891b2">0</div>
       <div style="font-size:0.78rem;color:#64748b">Male</div>
     </div></div>
     <div class="col-md-3"><div style="background:#fff;border-radius:8px;padding:12px 16px;border-left:3px solid #db2777;box-shadow:0 1px 3px rgba(0,0,0,.08)">
-      <div style="font-size:1.6rem;font-weight:700;color:#db2777"><?php echo array_sum(array_column((array)$rows,'female')); ?></div>
+      <div id="stat-female" style="font-size:1.6rem;font-weight:700;color:#db2777">0</div>
       <div style="font-size:0.78rem;color:#64748b">Female</div>
     </div></div>
   </div>
 
   <div class="panel_s"><div class="panel-body panel-table-full">
-    <table class="table table-hover">
-      <thead><tr>
-        <th>Department</th>
-        <th class="text-right">Total</th><th class="text-right">Active</th><th class="text-right">Inactive</th>
-        <th class="text-right">Male</th><th class="text-right">Female</th>
-      </tr></thead>
-      <tbody>
-      <?php if(empty($rows)): ?><tr><td colspan="6" class="text-center text-muted" style="padding:30px">No records.</td></tr>
-      <?php else: foreach($rows as $r): ?>
-      <tr>
-        <td><strong><?php echo htmlspecialchars($r->department_name ?? 'Unassigned'); ?></strong></td>
-        <td class="text-right"><strong><?php echo $r->total; ?></strong></td>
-        <td class="text-right text-success"><?php echo $r->active; ?></td>
-        <td class="text-right text-muted"><?php echo $r->inactive; ?></td>
-        <td class="text-right"><?php echo $r->male; ?></td>
-        <td class="text-right"><?php echo $r->female; ?></td>
-      </tr>
-      <?php endforeach; ?>
-      <tr class="active">
-        <td><strong>Total</strong></td>
-        <td class="text-right"><strong><?php echo $total; ?></strong></td>
-        <td class="text-right"><strong><?php echo array_sum(array_column((array)$rows,'active')); ?></strong></td>
-        <td class="text-right"><?php echo array_sum(array_column((array)$rows,'inactive')); ?></td>
-        <td class="text-right"><?php echo array_sum(array_column((array)$rows,'male')); ?></td>
-        <td class="text-right"><?php echo array_sum(array_column((array)$rows,'female')); ?></td>
-      </tr>
-      <?php endif; ?>
-      </tbody>
-    </table>
+    <?php render_datatable([
+      'Department', 'Total', 'Active', 'Inactive', 'Male', 'Female',
+    ], 'hr-report-headcount'); ?>
   </div></div>
 </div></div>
 </div></div>
 <?php init_tail(); ?>
+<script>
+$(function(){
+    initDataTable('.table-hr-report-headcount', window.location.href, [], [0,'asc']);
+
+    $('.table-hr-report-headcount').append(
+        '<tfoot><tr class="active">'
+        + '<td><strong>Total</strong></td>'
+        + '<td class="text-right"><strong id="tf-total">0</strong></td>'
+        + '<td class="text-right"><strong id="tf-active">0</strong></td>'
+        + '<td class="text-right" id="tf-inactive">0</td>'
+        + '<td class="text-right" id="tf-male">0</td>'
+        + '<td class="text-right" id="tf-female">0</td>'
+        + '</tr></tfoot>'
+    );
+
+    $('.table-hr-report-headcount').on('draw.dt', function(e, settings){
+        var sums = (settings.json && settings.json.sums) || {};
+        $('#stat-total').text(sums.total || 0);
+        $('#stat-active').text(sums.active || 0);
+        $('#stat-male').text(sums.male || 0);
+        $('#stat-female').text(sums.female || 0);
+        $('#tf-total').text(sums.total || 0);
+        $('#tf-active').text(sums.active || 0);
+        $('#tf-inactive').text(sums.inactive || 0);
+        $('#tf-male').text(sums.male || 0);
+        $('#tf-female').text(sums.female || 0);
+    });
+});
+</script>
