@@ -97,10 +97,10 @@ function ef($v, $d = '-') { return !empty($v) ? htmlspecialchars($v) : $d; }
                 <table class="table table-condensed">
                   <tr><th style="width:35%"><?php echo _l('hr_email'); ?></th><td><?php echo $e->email ? '<a href="mailto:' . $e->email . '">' . ef($e->email) . '</a>' : '-'; ?></td></tr>
                   <tr><th><?php echo _l('hr_phone'); ?></th><td><?php echo ef($e->phone); ?></td></tr>
-                  <tr><th><?php echo _l('hr_gender'); ?></th><td><?php echo ef($e->gender); ?></td></tr>
+                  <tr><th><?php echo _l('hr_gender'); ?></th><td><?php echo ef(ucfirst($e->gender ?? '')); ?></td></tr>
                   <tr><th><?php echo _l('hr_employee_dob'); ?></th><td><?php echo $e->date_of_birth ? _d($e->date_of_birth) : '-'; ?></td></tr>
                   <tr><th><?php echo _l('hr_employee_blood_group'); ?></th><td><?php echo ef($e->blood_group); ?></td></tr>
-                  <tr><th><?php echo _l('hr_employee_marital_status'); ?></th><td><?php echo ef($e->marital_status); ?></td></tr>
+                  <tr><th><?php echo _l('hr_employee_marital_status'); ?></th><td><?php echo ef(ucfirst($e->marital_status ?? '')); ?></td></tr>
                   <tr><th><?php echo _l('hr_employee_religion'); ?></th><td><?php echo ef($e->religion); ?></td></tr>
                   <tr><th><?php echo _l('hr_employee_nid'); ?></th><td><?php echo ef($e->nid_number); ?></td></tr>
                   <tr><th><?php echo _l('hr_employee_passport'); ?></th><td><?php echo ef($e->passport_number); ?></td></tr>
