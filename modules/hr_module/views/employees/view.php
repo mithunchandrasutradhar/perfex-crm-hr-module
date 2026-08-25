@@ -75,6 +75,19 @@ function ef($v, $d = '-') { return !empty($v) ? htmlspecialchars($v) : $d; }
                   <tr><th><?php echo _l('hr_employee_max_loan_amount'); ?></th><td><?php echo number_format($e->max_loan_amount, 2); ?></td></tr>
                   <?php endif; ?>
                   <tr><th><?php echo _l('hr_employee_staff_linked'); ?></th><td><?php echo ef($e->staff_name); ?></td></tr>
+                  <?php
+                  $device_names = [];
+                  foreach ($device_mappings as $m) {
+                      foreach ($devices as $dev) {
+                          if ((int) $dev->id === (int) $m->device_id) {
+                              $device_names[] = $dev->name;
+                              break;
+                          }
+                      }
+                  }
+                  ?>
+                  <tr><th>Attendance Devices</th><td><?php echo $device_names ? ef(implode(', ', $device_names)) : '-'; ?></td></tr>
+                  <tr><th>Device Number</th><td><?php echo $device_mappings ? ef($device_mappings[0]->device_user_id) : '-'; ?></td></tr>
                   <tr><th><?php echo _l('hr_notes'); ?></th><td><?php echo ef($e->notes); ?></td></tr>
                 </table>
               </div>

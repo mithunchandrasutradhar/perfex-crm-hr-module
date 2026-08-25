@@ -170,6 +170,8 @@ class Employees extends AdminController
         }
         $data['title']    = $employee->first_name . ' ' . $employee->last_name;
         $data['employee'] = $employee;
+        $data['device_mappings'] = $this->Zkteco_model->get_mappings_for_employee($id);
+        $data['devices']         = $this->Zkteco_model->get_devices(true);
         $this->load->view('hr_module/employees/view', $data);
     }
 
