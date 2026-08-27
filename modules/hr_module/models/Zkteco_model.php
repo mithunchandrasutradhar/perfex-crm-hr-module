@@ -7,6 +7,15 @@ class Zkteco_model extends App_Model
     private $mapping_table  = 'hr_zkteco_mapping';
     private $logs_table     = 'hr_zkteco_sync_logs';
 
+    // A device with a clock that's drifted/misconfigured by a few hours
+    // (e.g. a firmware timezone quirk) can push an otherwise-legitimate
+    // same-moment punch under yesterday's or tomorrow's date. Backlog dumps
+    // from a newly-connected/previously-offline device are days or weeks
+    // old, so a several-hour tolerance still rejects real backlog while no
+    // longer discarding a genuine punch just because the device's clock is
+    // off by a couple of hours.
+    private const BACKLOG_TOLERANCE_SECONDS = 6 * 3600;
+
     // ── Devices ──────────────────────────────────────────────────────────────
 
     public function get_device($id)
@@ -142,7 +151,6 @@ class Zkteco_model extends App_Model
         // identical instant.
         $groups   = [];
         $now      = time();
-        $today    = date('Y-m-d', $now);
         $line_num = 0;
         foreach ($lines as $line) {
             $cols = preg_split('/\t+/', trim($line));
@@ -154,15 +162,15 @@ class Zkteco_model extends App_Model
 
             // A newly-connected (or previously-used-elsewhere) device
             // typically pushes its entire stored history on first contact -
-            // that backlog is not wanted here, so anything not dated today
-            // (per the device's own embedded timestamp) is dropped before
-            // it's ever recorded. Once accepted, the value actually stored
-            // still comes from the server's clock (below), not the
-            // device's, to guard against a merely-drifted/misconfigured
-            // clock on an otherwise-legitimate same-day punch.
-            $device_ts   = $device_ts_raw ? strtotime($device_ts_raw) : false;
-            $device_date = $device_ts !== false ? date('Y-m-d', $device_ts) : false;
-            if ($device_date !== $today) { $line_num++; continue; }
+            // that backlog is not wanted here, so anything not within
+            // BACKLOG_TOLERANCE_SECONDS of right now (per the device's own
+            // embedded timestamp) is dropped before it's ever recorded.
+            // Once accepted, the value actually stored still comes from the
+            // server's clock (below), not the device's, to guard against a
+            // merely-drifted/misconfigured clock on an otherwise-legitimate
+            // punch.
+            $device_ts = $device_ts_raw ? strtotime($device_ts_raw) : false;
+            if ($device_ts === false || abs($device_ts - $now) > self::BACKLOG_TOLERANCE_SECONDS) { $line_num++; continue; }
 
             $employee_id = $this->resolve_employee($device_id, $device_user_id);
             if (!$employee_id) { $line_num++; continue; }
@@ -273,7 +281,6 @@ class Zkteco_model extends App_Model
 
         $groups   = [];
         $now      = time();
-        $today    = date('Y-m-d', $now);
         $line_num = 0;
         foreach ($records as $record) {
             $device_user_id = $record['enrollid'] ?? null;
@@ -281,9 +288,8 @@ class Zkteco_model extends App_Model
             $verify_mode    = $record['mode'] ?? null;
             if ($device_user_id === null || $device_user_id === '') { $line_num++; continue; }
 
-            $device_ts   = $device_ts_raw ? strtotime($device_ts_raw) : false;
-            $device_date = $device_ts !== false ? date('Y-m-d', $device_ts) : false;
-            if ($device_date !== $today) { $line_num++; continue; }
+            $device_ts = $device_ts_raw ? strtotime($device_ts_raw) : false;
+            if ($device_ts === false || abs($device_ts - $now) > self::BACKLOG_TOLERANCE_SECONDS) { $line_num++; continue; }
 
             $employee_id = $this->resolve_employee($device_id, (string) $device_user_id);
             if (!$employee_id) { $line_num++; continue; }

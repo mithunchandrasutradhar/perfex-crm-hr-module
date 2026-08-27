@@ -96,6 +96,7 @@ class Iclock extends App_Controller
             . "TransTimes=00:00;23:59\n"
             . "TransInterval=1\n"
             . "TransFlag=1111111111\n"
+            . "TimeZone=6\n"
             . "Realtime=1\n"
             . "Encrypt=0\n";
 
@@ -166,6 +167,20 @@ class Iclock extends App_Controller
         header_remove('Cache-Control');
         header_remove('Pragma');
         header_remove('Expires');
+
+        // This device ignores the pushed "TimeZone=6" handshake option and
+        // instead sets its clock straight from this Date header plus a
+        // hardcoded +8h (China default) baked into its firmware - confirmed
+        // both by comparing a known-correct GMT header against what the
+        // device then displayed (it was consistently +8h, not +6h, from
+        // that header) and by a direct on/off test (device holds correct
+        // time with the Cloud Server Setting pointed at 0.0.0.0, and drifts
+        // +2h within one heartbeat cycle once pointed at this server).
+        // There's no on-device or SDK-exposed setting to change that
+        // offset, so the header is pre-shifted back by the (8 - 6) = 2h
+        // difference here, making the device's wrong +8h land on the
+        // correct BD +6h.
+        header('Date: ' . gmdate('D, d M Y H:i:s', time() - 2 * 3600) . ' GMT');
 
         $this->output
             ->set_status_header($status)
