@@ -83,6 +83,13 @@ class Loans_model extends App_Model
         if (!empty($filters['employee_id']))   $this->db->where('l.employee_id', $filters['employee_id']);
         if (!empty($filters['department_id'])) $this->db->where('e.department_id', $filters['department_id']);
         if (!empty($filters['status']))        $this->db->where('l.status', $filters['status']);
+        if (!empty($filters['search'])) {
+            $this->db->group_start()
+                ->like('CONCAT(e.first_name," ",e.last_name)', $filters['search'])
+                ->or_like('e.employee_code', $filters['search'])
+                ->or_like('d.name', $filters['search'])
+                ->group_end();
+        }
 
         return $this->db->order_by('l.created_at DESC')->get()->result();
     }

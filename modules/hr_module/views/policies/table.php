@@ -37,6 +37,18 @@ if ($is_global) {
     }
 }
 
+// The DataTable's own search box - rows here are built manually (below)
+// instead of through the generic data_tables_init() helper, so its
+// search[value] POST field has to be picked up and applied by hand. Applied
+// after both branches above since they build $rows differently.
+$search_value = $CI->input->post('search');
+if (!empty($search_value['value'])) {
+    $needle = mb_strtolower(trim($search_value['value']));
+    $rows   = array_values(array_filter($rows, function ($r) use ($needle) {
+        return mb_strpos(mb_strtolower($r->title), $needle) !== false;
+    }));
+}
+
 // Same department-scoping rule as Policies::_can_manage_departments() - kept in
 // sync manually since this file is included standalone, not via the controller.
 $can_manage_any = $is_global || staff_can('create', 'hr_policies') || staff_can('edit', 'hr_policies');

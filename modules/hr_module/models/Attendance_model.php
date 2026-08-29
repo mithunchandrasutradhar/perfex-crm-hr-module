@@ -38,6 +38,13 @@ class Attendance_model extends App_Model
         if (!empty($filters['status']))        $this->db->where('a.status', $filters['status']);
         if (!empty($filters['from_date']))     $this->db->where('a.attendance_date >=', $filters['from_date']);
         if (!empty($filters['to_date']))       $this->db->where('a.attendance_date <=', $filters['to_date']);
+        if (!empty($filters['search'])) {
+            $this->db->group_start()
+                ->like('CONCAT(e.first_name," ",e.last_name)', $filters['search'])
+                ->or_like('e.employee_code', $filters['search'])
+                ->or_like('d.name', $filters['search'])
+                ->group_end();
+        }
         if (!empty($filters['month']) && !empty($filters['year'])) {
             $this->db->where('MONTH(a.attendance_date)', $filters['month']);
             $this->db->where('YEAR(a.attendance_date)', $filters['year']);

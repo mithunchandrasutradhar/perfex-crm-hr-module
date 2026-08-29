@@ -91,6 +91,13 @@ class Payroll_model extends App_Model
         if (!empty($filters['pay_month']))     $this->db->where('p.pay_month', $filters['pay_month']);
         if (!empty($filters['pay_year']))      $this->db->where('p.pay_year', $filters['pay_year']);
         if (!empty($filters['status']))        $this->db->where('p.status', $filters['status']);
+        if (!empty($filters['search'])) {
+            $this->db->group_start()
+                ->like('CONCAT(e.first_name," ",e.last_name)', $filters['search'])
+                ->or_like('e.employee_code', $filters['search'])
+                ->or_like('d.name', $filters['search'])
+                ->group_end();
+        }
 
         // Draft payroll (not yet paid) surfaces first, so unpaid employees are seen first
         return $this->db

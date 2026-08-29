@@ -12,6 +12,12 @@ foreach (['department_id', 'employee_id', 'status', 'from_date', 'to_date'] as $
 if (!empty($filters['from_date'])) $filters['from_date'] = to_sql_date($filters['from_date']);
 if (!empty($filters['to_date']))   $filters['to_date']   = to_sql_date($filters['to_date']);
 
+// The DataTable's own search box - table rows here are built manually
+// (below) instead of through the generic data_tables_init() helper, so its
+// search[value] POST field has to be picked up and applied by hand.
+$search_value = $CI->input->post('search');
+if (!empty($search_value['value'])) $filters['search'] = trim($search_value['value']);
+
 if (!is_admin() && !staff_can('view', 'hr_attendance')) {
     $filters['employee_id'] = hr_get_own_employee_id();
 }

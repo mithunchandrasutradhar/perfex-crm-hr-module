@@ -159,6 +159,14 @@ class Shifts_model extends App_Model
         if (!empty($filters['status']))       $this->db->where('a.status', $filters['status']);
         if (!empty($filters['shift_type_id'])) $this->db->where('a.shift_type_id', $filters['shift_type_id']);
         if (!empty($filters['department_id'])) $this->db->where('e.department_id', $filters['department_id']);
+        if (!empty($filters['search'])) {
+            $this->db->group_start()
+                ->like('CONCAT(e.first_name," ",e.last_name)', $filters['search'])
+                ->or_like('e.employee_code', $filters['search'])
+                ->or_like('st.name', $filters['search'])
+                ->or_like('d.name', $filters['search'])
+                ->group_end();
+        }
 
         $this->db->order_by('a.created_at', 'DESC');
         return $this->db->get()->result();

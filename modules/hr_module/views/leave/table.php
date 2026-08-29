@@ -18,6 +18,12 @@ if (!is_admin() && !staff_can('view', 'hr_leave')) {
     }
 }
 
+// The DataTable's own search box - rows here are built manually (below)
+// instead of through the generic data_tables_init() helper, so its
+// search[value] POST field has to be picked up and applied by hand.
+$search_value = $CI->input->post('search');
+if (!empty($search_value['value'])) $filters['search'] = trim($search_value['value']);
+
 $rows = $CI->Leave_model->get_request(null, $filters);
 
 // Fetch each request's day-type composition in one batched query (not per-row) so the

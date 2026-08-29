@@ -109,6 +109,13 @@ class Training_model extends App_Model
         if (!empty($filters['status']))               $this->db->where('t.status', $filters['status']);
         if (!empty($filters['from_date']))            $this->db->where('t.start_date >=', $filters['from_date']);
         if (!empty($filters['to_date']))              $this->db->where('t.end_date <=', $filters['to_date']);
+        if (!empty($filters['search'])) {
+            $this->db->group_start()
+                ->like('t.title', $filters['search'])
+                ->or_like('t.venue', $filters['search'])
+                ->or_like('CONCAT(s.firstname," ",s.lastname)', $filters['search'])
+                ->group_end();
+        }
 
         // Self-service (no module-wide "view"): trainings they're enrolled in, or
         // trainings they've been picked as the instructor for.

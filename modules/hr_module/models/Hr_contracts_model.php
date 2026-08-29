@@ -40,6 +40,14 @@ class Hr_contracts_model extends App_Model
             $this->db->where('c.end_date <=', date('Y-m-d', strtotime('+30 days')));
             $this->db->where('c.status', 'active');
         }
+        if (!empty($filters['search'])) {
+            $this->db->group_start()
+                ->like('c.title', $filters['search'])
+                ->or_like('CONCAT(e.first_name," ",e.last_name)', $filters['search'])
+                ->or_like('e.employee_code', $filters['search'])
+                ->or_like('d.name', $filters['search'])
+                ->group_end();
+        }
 
         return $this->db->order_by('c.created_at DESC')->get()->result();
     }

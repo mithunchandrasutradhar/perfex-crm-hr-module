@@ -6,6 +6,19 @@ $CI->load->model('hr_module/Leave_model');
 
 $rows = $CI->Leave_model->get_type();
 
+// The DataTable's own search box - rows here are built manually (below)
+// instead of through the generic data_tables_init() helper, so its
+// search[value] POST field has to be picked up and applied by hand.
+// get_type() has no filter param (it's also used to fetch a single row by
+// id elsewhere), so the search is applied here instead of in the model.
+$search_value = $CI->input->post('search');
+if (!empty($search_value['value'])) {
+    $needle = mb_strtolower(trim($search_value['value']));
+    $rows   = array_values(array_filter($rows, function ($row) use ($needle) {
+        return mb_strpos(mb_strtolower($row->name), $needle) !== false;
+    }));
+}
+
 $output = [
     'draw'                 => intval($CI->input->post('draw')),
     'iTotalRecords'        => count($rows),

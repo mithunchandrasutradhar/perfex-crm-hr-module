@@ -35,6 +35,16 @@ class Helpdesk_model extends App_Model
         if (!empty($filters['department_id'])) $this->db->where('e.department_id', $filters['department_id']);
         if (!empty($filters['status']))        $this->db->where('t.status', $filters['status']);
         if (!empty($filters['priority']))      $this->db->where('t.priority', $filters['priority']);
+        // Deliberately not searching by employee name here - some tickets are
+        // is_anonymous, and matching on the submitter's name would let a search
+        // reveal who filed an anonymous ticket even though the display column
+        // hides it.
+        if (!empty($filters['search'])) {
+            $this->db->group_start()
+                ->like('t.subject', $filters['search'])
+                ->or_like('t.category', $filters['search'])
+                ->group_end();
+        }
 
         return $this->db->order_by('t.created_at DESC')->get()->result();
     }

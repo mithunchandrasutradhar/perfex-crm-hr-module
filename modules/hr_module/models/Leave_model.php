@@ -149,6 +149,14 @@ class Leave_model extends App_Model
         if (!empty($filters['status']))       $this->db->where('r.status', $filters['status']);
         if (!empty($filters['leave_type_id'])) $this->db->where('r.leave_type_id', $filters['leave_type_id']);
         if (!empty($filters['year']))         $this->db->where('YEAR(r.from_date)', $filters['year']);
+        if (!empty($filters['search'])) {
+            $this->db->group_start()
+                ->like('CONCAT(e.first_name," ",e.last_name)', $filters['search'])
+                ->or_like('e.employee_code', $filters['search'])
+                ->or_like('lt.name', $filters['search'])
+                ->or_like('d.name', $filters['search'])
+                ->group_end();
+        }
 
         $this->db->order_by('r.created_at', 'DESC');
         return $this->db->get()->result();
@@ -488,7 +496,7 @@ class Leave_model extends App_Model
         return $this->db->get()->result();
     }
 
-    public function get_all_balances($year = null, $dept_id = null)
+    public function get_all_balances($year = null, $dept_id = null, $search = null)
     {
         if (!$year) $year = date('Y');
         $this->db->select('b.*, lt.name as leave_type_name,
@@ -500,6 +508,13 @@ class Leave_model extends App_Model
             ->join(db_prefix() . 'departments d', 'd.departmentid = e.department_id', 'left')
             ->where('b.year', $year);
         if ($dept_id) $this->db->where('e.department_id', $dept_id);
+        if (!empty($search)) {
+            $this->db->group_start()
+                ->like('CONCAT(e.first_name," ",e.last_name)', $search)
+                ->or_like('e.employee_code', $search)
+                ->or_like('lt.name', $search)
+                ->group_end();
+        }
         $this->db->order_by('employee_name, lt.name', 'ASC');
         return $this->db->get()->result();
     }

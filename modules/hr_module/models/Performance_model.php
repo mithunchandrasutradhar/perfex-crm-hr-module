@@ -64,6 +64,14 @@ class Performance_model extends App_Model
         if (!empty($filters['department_id'])) $this->db->where('e.department_id', $filters['department_id']);
         if (!empty($filters['status']))        $this->db->where('st.status', $filters['status']);
         if (!empty($filters['year']))          $this->db->where('YEAR(t.created_at)', $filters['year']);
+        if (!empty($filters['search'])) {
+            $this->db->group_start()
+                ->like('CONCAT(e.first_name," ",e.last_name)', $filters['search'])
+                ->or_like('e.employee_code', $filters['search'])
+                ->or_like('t.title', $filters['search'])
+                ->or_like('d.name', $filters['search'])
+                ->group_end();
+        }
 
         return $this->db->group_by('t.id')->order_by('t.created_at DESC')->get()->result();
     }
