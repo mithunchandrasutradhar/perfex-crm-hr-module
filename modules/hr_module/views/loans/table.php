@@ -22,10 +22,18 @@ if (!empty($search_value['value'])) $filters['search'] = trim($search_value['val
 
 $rows = $CI->Loans_model->get_for_table($filters);
 
+// The DataTable's own pagination - rows here are built manually (below)
+// instead of through the generic data_tables_init() helper, so start/length
+// have to be applied by hand after the filtered set is fetched.
+$total_filtered = count($rows);
+$dt_start  = (int) $CI->input->post('start');
+$dt_length = (int) $CI->input->post('length');
+if ($dt_length > 0) $rows = array_slice($rows, $dt_start, $dt_length);
+
 $output = [
     'draw'                 => intval($CI->input->post('draw')),
-    'iTotalRecords'        => count($rows),
-    'iTotalDisplayRecords' => count($rows),
+    'iTotalRecords'        => $total_filtered,
+    'iTotalDisplayRecords' => $total_filtered,
     'aaData'               => [],
 ];
 

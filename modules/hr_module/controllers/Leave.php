@@ -27,6 +27,25 @@ class Leave extends AdminController
         $data['can_manage_types_balances'] = is_admin() || staff_can('view', 'hr_leave');
         $data['title']        = _l('hr_leave_list');
         $data['leave_types']  = $this->Leave_model->get_active_types();
+
+        // A pure view_own user's list only ever contains their own requests, so
+        // the type filter should only offer types they could actually have -
+        // gender-restricted types (Maternity/Paternity) that don't match their
+        // own gender would just be a dead/confusing option. Anyone who can see
+        // more than one employee (view_department or full view) keeps the full
+        // list, since their list spans employees of possibly both genders.
+        if (!is_admin() && !staff_can('view', 'hr_leave') && !staff_can('view_department', 'hr_leave')) {
+            $own_emp_id = hr_get_own_employee_id();
+            $own_gender = null;
+            if ($own_emp_id) {
+                $own_emp    = $this->Employees_model->get($own_emp_id);
+                $own_gender = $own_emp->gender ?? null;
+            }
+            $data['leave_types'] = array_values(array_filter($data['leave_types'], function ($t) use ($own_gender) {
+                return empty($t->gender) || $t->gender === $own_gender;
+            }));
+        }
+
         $this->load->model('hr_module/Departments_model');
         $data['departments']  = $this->Departments_model->get_active();
         $this->load->view('hr_module/leave/index', $data);

@@ -28,6 +28,15 @@ $rows = $CI->Leave_model->get_request(null, $filters);
 
 // Fetch each request's day-type composition in one batched query (not per-row) so the
 // list can show "Half Day (Before Lunch)" etc. instead of a bare total.
+$total_filtered = count($rows);
+
+// The DataTable's own pagination - rows here are built manually (below)
+// instead of through the generic data_tables_init() helper, so start/length
+// have to be applied by hand after the filtered set is fetched.
+$dt_start  = (int) $CI->input->post('start');
+$dt_length = (int) $CI->input->post('length');
+if ($dt_length > 0) $rows = array_slice($rows, $dt_start, $dt_length);
+
 $day_types_by_request = [];
 $ids = array_column($rows, 'id');
 if ($ids) {
@@ -36,8 +45,8 @@ if ($ids) {
 
 $output = [
     'draw'                 => intval($CI->input->post('draw')),
-    'iTotalRecords'        => count($rows),
-    'iTotalDisplayRecords' => count($rows),
+    'iTotalRecords'        => $total_filtered,
+    'iTotalDisplayRecords' => $total_filtered,
     'aaData'               => [],
 ];
 

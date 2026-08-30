@@ -527,7 +527,7 @@ class Leave_model extends App_Model
         $count     = 0;
         foreach ($employees as $emp) {
             foreach ($types as $type) {
-                if ($this->_allocate_balance_row($emp->id, $type, $year)) {
+                if ($this->_allocate_balance_row($emp->id, $type, $year, $emp->gender)) {
                     $count++;
                 }
             }
@@ -547,9 +547,10 @@ class Leave_model extends App_Model
     {
         if (!$year) $year = date('Y');
         $types = $this->get_active_types();
+        $emp   = $this->db->select('gender')->where('id', $employee_id)->get(db_prefix() . 'hr_employees')->row();
         $count = 0;
         foreach ($types as $type) {
-            if ($this->_allocate_balance_row($employee_id, $type, $year)) {
+            if ($this->_allocate_balance_row($employee_id, $type, $year, $emp->gender ?? null)) {
                 $count++;
             }
         }
@@ -561,9 +562,14 @@ class Leave_model extends App_Model
 
     // Creates the balance row for one employee/type/year if it doesn't already
     // exist. Returns true if a row was created, false if one already existed.
-    private function _allocate_balance_row($employee_id, $type, $year)
+    private function _allocate_balance_row($employee_id, $type, $year, $employee_gender = null)
     {
         if ($this->get_balance($employee_id, $type->id, $year)) {
+            return false;
+        }
+        // Gender-restricted types (e.g. Maternity/Paternity) only get allocated
+        // to employees matching that gender - see hr_leave_types.gender.
+        if (!empty($type->gender) && $type->gender !== $employee_gender) {
             return false;
         }
         // Carry forward from previous year
