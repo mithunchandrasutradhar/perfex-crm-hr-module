@@ -20,17 +20,17 @@
           ['url'=>'turnover',    'icon'=>'fa-exchange',         'color'=>'#9f1239', 'title'=>'Turnover Report',      'desc'=>'Monthly joining / leaving, turnover rate'],
         ];
         ?>
-        <div class="row">
+        <div class="row" style="display:flex;flex-wrap:wrap;align-items:stretch">
           <?php foreach ($reports as $r): ?>
-          <div class="col-md-3 col-sm-6">
-            <a href="<?php echo admin_url('hr_module/reports/'.$r['url']); ?>" style="text-decoration:none">
-              <div class="panel_s" style="border-top:3px solid <?php echo $r['color']; ?>;transition:box-shadow .15s">
-                <div class="panel-body">
+          <div class="col-xs-12 col-sm-6 col-md-3" style="display:flex">
+            <a href="<?php echo admin_url('hr_module/reports/'.$r['url']); ?>" style="text-decoration:none;display:flex;width:100%">
+              <div class="panel_s" style="border-top:3px solid <?php echo $r['color']; ?>;transition:box-shadow .15s;width:100%;display:flex;flex-direction:column">
+                <div class="panel-body" style="flex:1">
                   <div class="tw-flex tw-items-center tw-gap-3">
-                    <div style="width:44px;height:44px;border-radius:10px;background:<?php echo $r['color'].'22'; ?>;display:flex;align-items:center;justify-content:center">
+                    <div style="width:44px;height:44px;flex-shrink:0;border-radius:10px;background:<?php echo $r['color'].'22'; ?>;display:flex;align-items:center;justify-content:center">
                       <i class="fa <?php echo $r['icon']; ?>" style="font-size:1.2rem;color:<?php echo $r['color']; ?>"></i>
                     </div>
-                    <div>
+                    <div style="min-width:0">
                       <div style="font-weight:600;color:#1e293b;font-size:0.9rem"><?php echo $r['title']; ?></div>
                       <div style="font-size:0.75rem;color:#94a3b8;margin-top:2px"><?php echo $r['desc']; ?></div>
                     </div>
