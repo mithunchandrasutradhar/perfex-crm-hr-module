@@ -245,16 +245,35 @@ function ev($obj, $key, $default = '') {
             <p class="text-info tw-text-sm tw-mb-3">
               <i class="fa fa-info-circle tw-mr-1"></i>
               Name, email, and phone are taken from the linked staff member above.
-              Fill in the additional HR-specific personal details below.
+              Fill in the additional HR-specific personal details below, including a
+              separate Personal Email if this employee has one.
             </p>
 
             <div class="row">
               <div class="col-md-3">
                 <div class="form-group tw-text-center">
                   <label class="tw-block tw-mb-2">HR Profile Photo <small class="text-muted">(optional, overrides staff photo)</small></label>
+                  <?php
+                  // No HR-specific photo uploaded yet - default the preview to the
+                  // linked staff's own photo (same thumbnail path/existence check the
+                  // staff dropdown below already uses), so the field starts out looking
+                  // correctly populated instead of a blank camera placeholder. Uploading
+                  // a file still overrides this, same as it already overrides a real
+                  // stored HR photo.
+                  $hr_default_photo_url = '';
+                  if ($is_edit && empty($e->photo) && !empty($e->staff_id) && !empty($e->staff_photo)) {
+                      $hr_default_photo_path = 'uploads/staff_profile_images/' . $e->staff_id . '/small_' . $e->staff_photo;
+                      if (file_exists($hr_default_photo_path)) {
+                          $hr_default_photo_url = base_url($hr_default_photo_path);
+                      }
+                  }
+                  ?>
                   <div id="photo-preview" class="tw-mb-2">
                     <?php if ($is_edit && $e->photo): ?>
                     <img src="<?php echo admin_url('hr_module/employees/photo/' . $e->id); ?>"
+                      class="img-circle" width="80" height="80" style="object-fit:cover" id="preview-img">
+                    <?php elseif ($hr_default_photo_url): ?>
+                    <img src="<?php echo $hr_default_photo_url; ?>"
                       class="img-circle" width="80" height="80" style="object-fit:cover" id="preview-img">
                     <?php else: ?>
                     <div id="preview-img" style="width:80px;height:80px;border-radius:50%;background:#e2e8f0;display:inline-flex;align-items:center;justify-content:center;">
@@ -270,6 +289,12 @@ function ev($obj, $key, $default = '') {
               </div>
               <div class="col-md-9">
                 <div class="row">
+                  <div class="col-md-4 col-sm-6">
+                    <div class="form-group">
+                      <label>Personal Email</label>
+                      <input type="email" name="personal_email" class="form-control" value="<?php echo $is_edit ? ev($e,'personal_email') : ''; ?>">
+                    </div>
+                  </div>
                   <div class="col-md-4 col-sm-6">
                     <div class="form-group select-placeholder">
                       <label><?php echo _l('hr_gender'); ?></label>
@@ -325,27 +350,24 @@ function ev($obj, $key, $default = '') {
                       <input type="text" name="nid_number" class="form-control" value="<?php echo $is_edit ? ev($e,'nid_number') : ''; ?>">
                     </div>
                   </div>
-                </div>
-              </div>
-            </div>
-
-            <div class="row">
-              <div class="col-md-4 col-sm-6">
-                <div class="form-group">
-                  <label><?php echo _l('hr_employee_passport'); ?></label>
-                  <input type="text" name="passport_number" class="form-control" value="<?php echo $is_edit ? ev($e,'passport_number') : ''; ?>">
-                </div>
-              </div>
-              <div class="col-md-4 col-sm-6">
-                <div class="form-group">
-                  <label><?php echo _l('hr_employee_emergency_contact'); ?> (Name)</label>
-                  <input type="text" name="emergency_contact_name" class="form-control" value="<?php echo $is_edit ? ev($e,'emergency_contact_name') : ''; ?>">
-                </div>
-              </div>
-              <div class="col-md-4 col-sm-6">
-                <div class="form-group">
-                  <label><?php echo _l('hr_employee_emergency_contact'); ?> (Phone)</label>
-                  <input type="text" name="emergency_contact_phone" class="form-control" value="<?php echo $is_edit ? ev($e,'emergency_contact_phone') : ''; ?>">
+                  <div class="col-md-4 col-sm-6">
+                    <div class="form-group">
+                      <label><?php echo _l('hr_employee_passport'); ?></label>
+                      <input type="text" name="passport_number" class="form-control" value="<?php echo $is_edit ? ev($e,'passport_number') : ''; ?>">
+                    </div>
+                  </div>
+                  <div class="col-md-4 col-sm-6">
+                    <div class="form-group">
+                      <label><?php echo _l('hr_employee_emergency_contact'); ?> (Name)</label>
+                      <input type="text" name="emergency_contact_name" class="form-control" value="<?php echo $is_edit ? ev($e,'emergency_contact_name') : ''; ?>">
+                    </div>
+                  </div>
+                  <div class="col-md-4 col-sm-6">
+                    <div class="form-group">
+                      <label><?php echo _l('hr_employee_emergency_contact'); ?> (Phone)</label>
+                      <input type="text" name="emergency_contact_phone" class="form-control" value="<?php echo $is_edit ? ev($e,'emergency_contact_phone') : ''; ?>">
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -442,6 +464,20 @@ $(function(){
         var phone = $opt.data('phone');
         var photo = $opt.data('photo');
         showStaffPreview(staffId, fn, ln, email, phone, photo);
+
+        // Default the HR Profile Photo widget to the selected staff's own photo,
+        // same as the server-rendered default on page load - but never if an HR
+        // photo already exists (edit page) or the admin already picked a file to
+        // upload (that always wins, in either direction of what triggers first).
+        var hasExistingHrPhoto = <?php echo ($is_edit && $e->photo) ? 'true' : 'false'; ?>;
+        var fileAlreadyChosen  = $('#photo-input')[0].files && $('#photo-input')[0].files.length > 0;
+        if (!hasExistingHrPhoto && !fileAlreadyChosen) {
+            if (photo) {
+                $('#photo-preview').html('<img src="' + photo + '" class="img-circle" width="80" height="80" style="object-fit:cover" id="preview-img">');
+            } else {
+                $('#photo-preview').html('<div id="preview-img" style="width:80px;height:80px;border-radius:50%;background:#e2e8f0;display:inline-flex;align-items:center;justify-content:center;"><i class="fa fa-camera fa-2x" style="color:#94a3b8"></i></div>');
+            }
+        }
 
         <?php if (!$is_edit): ?>
         // Pre-select the Department dropdown from the chosen staff's existing

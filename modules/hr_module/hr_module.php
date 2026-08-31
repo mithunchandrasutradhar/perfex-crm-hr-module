@@ -23,7 +23,7 @@ define('HR_MODULE_NAME', 'hr_module');
 // bump this number whenever install.php gains a new guarded table/column, and
 // every site running this module will pick it up automatically on its very
 // next admin page load - no manual reactivation step, ever, on any install.
-define('HR_MODULE_SCHEMA_VERSION', 12);
+define('HR_MODULE_SCHEMA_VERSION', 13);
 
 // ─── Hook registrations ────────────────────────────────────────────────────
 

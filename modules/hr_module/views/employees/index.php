@@ -28,12 +28,11 @@
         <div class="panel_s">
           <div class="panel-body panel-table-full">
             <?php render_datatable([
-              _l('hr_employee_code'),
               _l('hr_employee_full_name'),
               _l('hr_department'),
               _l('hr_designation'),
+              _l('hr_phone'),
               _l('hr_email'),
-              _l('hr_employee_joining_date'),
               _l('hr_status'),
             ], 'hr-employees'); ?>
           </div>

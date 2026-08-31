@@ -68,6 +68,7 @@ if (!$CI->db->table_exists(db_prefix() . 'hr_employees')) {
       `first_name` varchar(100) NOT NULL,
       `last_name` varchar(100) NOT NULL,
       `email` varchar(191) DEFAULT NULL,
+      `personal_email` varchar(191) DEFAULT NULL,
       `phone` varchar(50) DEFAULT NULL,
       `gender` varchar(20) DEFAULT NULL,
       `date_of_birth` date DEFAULT NULL,
@@ -111,6 +112,15 @@ if ($CI->db->table_exists(db_prefix() . 'hr_employees')) {
     $col = $CI->db->query("SHOW COLUMNS FROM `" . db_prefix() . "hr_employees` LIKE 'max_loan_amount'")->num_rows();
     if ($col === 0) {
         $CI->db->query("ALTER TABLE `" . db_prefix() . "hr_employees` ADD COLUMN `max_loan_amount` decimal(15,2) DEFAULT NULL AFTER `basic_salary`");
+    }
+}
+// Upgrade: add personal_email column (a second, employee-owned address kept
+// separate from `email`, which stays synced from the linked staff account) if
+// the table existed before it was added to the schema
+if ($CI->db->table_exists(db_prefix() . 'hr_employees')) {
+    $col = $CI->db->query("SHOW COLUMNS FROM `" . db_prefix() . "hr_employees` LIKE 'personal_email'")->num_rows();
+    if ($col === 0) {
+        $CI->db->query("ALTER TABLE `" . db_prefix() . "hr_employees` ADD COLUMN `personal_email` varchar(191) DEFAULT NULL AFTER `email`");
     }
 }
 

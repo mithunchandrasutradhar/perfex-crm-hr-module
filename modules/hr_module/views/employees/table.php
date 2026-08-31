@@ -4,13 +4,12 @@ defined('BASEPATH') or exit('No direct script access allowed');
 $CI = &get_instance();
 
 $aColumns = [
-    'e.employee_code',     // [0] employee code
-    "CONCAT(COALESCE(s.firstname, e.first_name), ' ', COALESCE(s.lastname, e.last_name)) as employee_name", // [1]
-    'd.name as department_name',    // [2]
-    'ds.name as designation_name',  // [3]
+    "CONCAT(COALESCE(s.firstname, e.first_name), ' ', COALESCE(s.lastname, e.last_name)) as employee_name", // [0]
+    'd.name as department_name',    // [1]
+    'ds.name as designation_name',  // [2]
+    "COALESCE(s.phonenumber, e.phone) as phone_col", // [3]
     "COALESCE(s.email, e.email) as email_col", // [4]
-    'e.joining_date',      // [5]
-    's.active as staff_active', // [6] employee status mirrors the linked staff account's status
+    's.active as staff_active', // [5] employee status mirrors the linked staff account's status
 ];
 
 $sIndexColumn = 'e.id';
@@ -44,10 +43,7 @@ $rResult = $result['rResult'];
 foreach ($rResult as $aRow) {
     $row = [];
 
-    // [0] Employee Code
-    $row[] = '<a href="' . admin_url('hr_module/employees/view/' . $aRow['id']) . '">' . htmlspecialchars($aRow['employee_code']) . '</a>';
-
-    // [1] Full Name, with the standard Perfex row-options action links underneath
+    // [0] Full Name, with the standard Perfex row-options action links underneath
     $name  = '<a href="' . admin_url('hr_module/employees/view/' . $aRow['id']) . '">' . htmlspecialchars($aRow['employee_name'] ?? '') . '</a>';
     $name .= '<div class="row-options">';
     $name .= '<a href="' . admin_url('hr_module/employees/view/' . $aRow['id']) . '">' . _l('hr_view') . '</a>';
@@ -60,20 +56,21 @@ foreach ($rResult as $aRow) {
     $name .= '</div>';
     $row[] = $name;
 
-    // [2] Department
+    // [1] Department
     $row[] = !empty($aRow['department_name']) ? htmlspecialchars($aRow['department_name']) : '-';
 
-    // [3] Designation
+    // [2] Designation
     $row[] = !empty($aRow['designation_name']) ? htmlspecialchars($aRow['designation_name']) : '-';
+
+    // [3] Phone
+    $phone = $aRow['phone_col'] ?? '';
+    $row[] = $phone ? htmlspecialchars($phone) : '-';
 
     // [4] Email
     $email = $aRow['email_col'] ?? '';
     $row[] = $email ? '<a href="mailto:' . htmlspecialchars($email) . '">' . htmlspecialchars($email) . '</a>' : '-';
 
-    // [5] Joining Date
-    $row[] = !empty($aRow['joining_date']) ? _d($aRow['joining_date']) : '-';
-
-    // [6] Status badge - mirrors the linked staff account's active status
+    // [5] Status badge - mirrors the linked staff account's active status
     $row[] = $aRow['staff_active'] == 1
         ? '<span class="label label-success">' . _l('hr_active') . '</span>'
         : '<span class="label label-danger">' . _l('hr_inactive') . '</span>';

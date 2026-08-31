@@ -238,8 +238,11 @@ class Employees extends AdminController
 
     private function _prepare_post_data()
     {
-        // Note: first_name, last_name, email, phone are synced from tblstaff in the model
+        // Note: first_name, last_name, email, phone are synced from tblstaff in the model.
+        // personal_email is NOT synced from staff - it's a separate, employee-owned
+        // address kept independent of the staff account's own email.
         return [
+            'personal_email'          => $this->input->post('personal_email', true),
             'gender'                  => $this->input->post('gender', true),
             'date_of_birth'           => to_sql_date($this->input->post('date_of_birth')) ?: null,
             'address'                 => $this->input->post('address', true),
