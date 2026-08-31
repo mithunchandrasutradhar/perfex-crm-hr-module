@@ -12,7 +12,7 @@
         </div>
         <div class="alert alert-info tw-mb-3">
           <i class="fa fa-info-circle tw-mr-1"></i>
-          Departments are shared with Perfex CRM's support ticket system.
+          Departments are shared with the support ticket system.
           To add, edit, or delete departments, go to
           <a href="<?php echo admin_url('settings?group=ticket_departments'); ?>" target="_blank"><strong>Setup &rarr; Ticket Departments</strong></a>.
         </div>
