@@ -50,7 +50,13 @@ class Settings extends AdminController
 
         $base_url = trim($this->input->post('base_url')) ?: 'https://waha.abutalha.com.bd';
         $session  = trim($this->input->post('session')) ?: 'default';
+        // The API key field is never re-rendered into the settings form (see
+        // views/settings/index.php), so a blank submission here means "use
+        // what's already saved", not "no key" - same convention as save().
         $api_key  = trim($this->input->post('api_key'));
+        if ($api_key === '') {
+            $api_key = $this->Hr_module_model->get_setting('whatsapp_api_key', '');
+        }
         $group_id = trim($this->input->post('group_id'));
         $phone    = trim($this->input->post('phone'));
         $targets  = array_filter([$group_id, $phone]);
