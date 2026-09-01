@@ -59,12 +59,17 @@ class Training extends AdminController
         if ($this->input->post()) {
             $data = $this->_post_data();
             $this->_handle_attachment($data);
-            $old_instructor_id = (int) $training->instructor_id;
+            $old_instructor_id    = (int) $training->instructor_id;
+            $old_external_email   = (string) $training->external_instructor_email;
             $result = $this->Training_model->update($data, $id);
-            $new_instructor_id = !empty($data['instructor_id']) ? (int) $data['instructor_id'] : 0;
-            // Only notify when the instructor is actually being newly set/changed -
-            // otherwise saving an unrelated field on every edit would re-notify them.
-            if ($result['success'] && $new_instructor_id && $new_instructor_id !== $old_instructor_id
+            $new_instructor_id  = !empty($data['instructor_id']) ? (int) $data['instructor_id'] : 0;
+            $new_external_email = $new_instructor_id ? '' : trim((string) $data['external_instructor_email']);
+            // Only notify when the instructor is actually being newly set/changed
+            // (staff or external) - otherwise saving an unrelated field on every
+            // edit would re-notify them.
+            $instructor_changed = ($new_instructor_id && $new_instructor_id !== $old_instructor_id)
+                || ($new_external_email !== '' && $new_external_email !== $old_external_email);
+            if ($result['success'] && $instructor_changed
                 && $this->Hr_module_model->notifications_enabled('notify_training')) {
                 $this->_notify_instructor_assigned($id);
             }
@@ -281,11 +286,43 @@ class Training extends AdminController
         redirect(admin_url('hr_module/training/view/' . $training_id));
     }
 
+    // Bulk version of mark_daily_attendance() - marks every currently enrolled
+    // participant present/absent for one day in a single action, instead of
+    // clicking each participant's cell individually. Reuses the exact same
+    // per-employee model method in a loop, so the upsert/overall-status
+    // recompute logic stays in exactly one place.
+    public function mark_daily_attendance_bulk($training_id)
+    {
+        $is_instructor = $this->Training_model->is_instructor($training_id, get_staff_user_id());
+        if (staff_cant('edit', 'hr_training') && !$is_instructor) {
+            access_denied('hr_training');
+        }
+        $date   = $this->input->post('date');
+        $status = $this->input->post('status');
+
+        $participants = $this->Training_model->get_participants($training_id);
+        $marked = 0;
+        foreach ($participants as $p) {
+            $result = $this->Training_model->mark_daily_attendance($training_id, $p->employee_id, $date, $status);
+            if ($result['success']) $marked++;
+        }
+
+        if ($marked > 0) {
+            set_alert('success', $marked . ' participant(s) marked ' . ($status === 'present' ? _l('hr_training_marked_present') : _l('hr_training_marked_absent')) . '.');
+        } else {
+            set_alert('danger', 'Invalid attendance status.');
+        }
+        redirect(admin_url('hr_module/training/view/' . $training_id));
+    }
+
     private function _post_data()
     {
         return [
             'title'         => $this->input->post('title', true),
             'instructor_id' => $this->input->post('instructor_id'),
+            'trainer'                   => $this->input->post('trainer', true),
+            'external_instructor_email' => $this->input->post('external_instructor_email', true),
+            'external_instructor_phone' => $this->input->post('external_instructor_phone', true),
             'venue'         => $this->input->post('venue', true),
             'cost'          => $this->input->post('cost'),
             'capacity'      => $this->input->post('capacity'),
@@ -369,9 +406,13 @@ class Training extends AdminController
         return implode('<br>', $lines);
     }
 
-    // Emails the assigned instructor (a staff account) the training's details -
-    // fired on create (if an instructor is picked) and on edit only when the
-    // instructor actually changes, so re-saving other fields doesn't re-notify them.
+    // Emails the assigned instructor the training's details - fired on create
+    // (if an instructor is picked) and on edit only when the instructor
+    // actually changes, so re-saving other fields doesn't re-notify them.
+    // Handles both an internal staff instructor (instructor_id, gets a CRM
+    // link so they can log in and view/mark attendance) and an external one
+    // hired from outside the company (trainer name + external_instructor_email,
+    // no CRM link since they have no account to log into).
     // Wrapped in try/catch - a notification hiccup must never break the
     // save-and-redirect flow that triggered it (same rule Hr_module_model's own
     // senders follow).
@@ -379,32 +420,48 @@ class Training extends AdminController
     {
         try {
             $training = $this->Training_model->get($training_id);
-            if (!$training || !$training->instructor_id) return;
+            if (!$training) return;
 
-            $staff = $this->db->select('email, CONCAT(firstname," ",lastname) as name')
-                ->where('staffid', $training->instructor_id)
-                ->get(db_prefix() . 'staff')->row();
-            if (!$staff || empty($staff->email)) return;
+            if ($training->instructor_id) {
+                $staff = $this->db->select('email, CONCAT(firstname," ",lastname) as name')
+                    ->where('staffid', $training->instructor_id)
+                    ->get(db_prefix() . 'staff')->row();
+                if (!$staff || empty($staff->email)) return;
+                $name  = $staff->name;
+                $email = $staff->email;
+                $link  = admin_url('hr_module/training/view/' . $training_id);
+            } elseif (!empty($training->trainer) && !empty($training->external_instructor_email)) {
+                $name  = $training->trainer;
+                $email = $training->external_instructor_email;
+                $link  = null;
+            } else {
+                return;
+            }
 
             $placeholders = [
-                '{instructor_name}' => $staff->name,
+                '{instructor_name}' => $name,
                 '{training_title}'  => $training->title,
                 '{venue}'           => $training->venue ?: '-',
                 '{schedule}'        => $this->_training_schedule_label($training_id, $training),
                 '{status}'          => ucfirst($training->status),
                 '{description}'     => $training->description ?: '-',
             ];
-            $tpl  = $this->Email_templates_model->render('training_instructor_assigned', $placeholders);
-            $link = admin_url('hr_module/training/view/' . $training_id);
+            $tpl = $this->Email_templates_model->render('training_instructor_assigned', $placeholders);
 
-            $this->Hr_module_model->send_employee_email($staff->email, $tpl->subject, $tpl->body, $link);
+            $this->Hr_module_model->send_employee_email($email, $tpl->subject, $tpl->body, $link);
         } catch (Exception $e) {
             log_activity('HR Training instructor-assigned email failed: ' . $e->getMessage());
         }
     }
 
-    // Emails each newly-enrolled employee the training's details. Wrapped in
-    // try/catch for the same reason as _notify_instructor_assigned() above.
+    // Queues each newly-enrolled employee's notification email for the
+    // background sender instead of sending it inline - enrolling a large
+    // batch of employees would otherwise block the "Enroll Selected" request
+    // on one SMTP round-trip per person. Queuing is just a fast DB insert per
+    // employee; actual sending happens a few at a time, one by one, from
+    // hr_module_cron_tasks() (see Hr_module_model::process_email_queue()).
+    // Wrapped in try/catch for the same reason as _notify_instructor_assigned()
+    // above - a notification hiccup must never break the save that triggered it.
     private function _notify_enrolled($training_id, $employee_ids)
     {
         try {
@@ -416,6 +473,7 @@ class Training extends AdminController
                 ->where('email !=', '')
                 ->get(db_prefix() . 'hr_employees')->result();
 
+            $link = admin_url('hr_module/training/view/' . $training_id);
             foreach ($employees as $emp) {
                 $placeholders = [
                     '{employee_name}'   => $emp->name,
@@ -425,10 +483,9 @@ class Training extends AdminController
                     '{schedule}'        => $this->_training_schedule_label($training_id, $training),
                     '{description}'     => $training->description ?: '-',
                 ];
-                $tpl  = $this->Email_templates_model->render('training_enrolled', $placeholders);
-                $link = admin_url('hr_module/training/view/' . $training_id);
+                $tpl = $this->Email_templates_model->render('training_enrolled', $placeholders);
 
-                $this->Hr_module_model->send_employee_email($emp->email, $tpl->subject, $tpl->body, $link);
+                $this->Hr_module_model->queue_employee_email($emp->email, $tpl->subject, $tpl->body, $link);
             }
         } catch (Exception $e) {
             log_activity('HR Training enrollment email failed: ' . $e->getMessage());

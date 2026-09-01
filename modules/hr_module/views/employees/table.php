@@ -8,7 +8,7 @@ $aColumns = [
     'd.name as department_name',    // [1]
     'ds.name as designation_name',  // [2]
     "COALESCE(s.phonenumber, e.phone) as phone_col", // [3]
-    "COALESCE(s.email, e.email) as email_col", // [4]
+    'e.personal_email as personal_email_col', // [4]
     's.active as staff_active', // [5] employee status mirrors the linked staff account's status
 ];
 
@@ -66,9 +66,9 @@ foreach ($rResult as $aRow) {
     $phone = $aRow['phone_col'] ?? '';
     $row[] = $phone ? htmlspecialchars($phone) : '-';
 
-    // [4] Email
-    $email = $aRow['email_col'] ?? '';
-    $row[] = $email ? '<a href="mailto:' . htmlspecialchars($email) . '">' . htmlspecialchars($email) . '</a>' : '-';
+    // [4] Personal Email
+    $personal_email = $aRow['personal_email_col'] ?? '';
+    $row[] = $personal_email ? '<a href="mailto:' . htmlspecialchars($personal_email) . '">' . htmlspecialchars($personal_email) . '</a>' : '-';
 
     // [5] Status badge - mirrors the linked staff account's active status
     $row[] = $aRow['staff_active'] == 1

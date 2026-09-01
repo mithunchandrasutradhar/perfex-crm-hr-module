@@ -102,6 +102,23 @@ class Employees extends AdminController
         $employee = $this->Employees_model->get($id);
         if (!$employee) show_404();
 
+        // A view_own-tier staff member (no company-wide 'view') only has edit
+        // rights over their OWN record - without this, changing the URL's id
+        // would let them edit any employee's profile. An HR manager/admin
+        // (who has 'view') can still edit anyone, unaffected.
+        if (staff_cant('view', 'hr_employees') && (int) $employee->staff_id !== (int) get_staff_user_id()) {
+            access_denied('hr_employees');
+        }
+
+        // A view_own-tier staff member (no company-wide 'view') editing their
+        // OWN record can update their personal details, but salary, loan
+        // ceiling, and device-mapping stay HR/admin-controlled even though
+        // they otherwise have edit rights on their own profile. An HR
+        // manager/admin (who has 'view') editing anyone, including
+        // themselves, is unaffected.
+        $restrict_sensitive_fields = staff_cant('view', 'hr_employees')
+            && (int) $employee->staff_id === (int) get_staff_user_id();
+
         if ($this->input->post()) {
             // The Edit form's staff select is disabled (read-only) once a
             // profile exists - always trust the employee's existing link,
@@ -114,18 +131,26 @@ class Employees extends AdminController
             $data['staff_id'] = $staff_id;
             $data['status']   = $this->_staff_active_status($staff_id);
 
-            $device_user_id = $this->input->post('device_user_id', true);
-            if (empty($device_user_id)) {
-                set_alert('danger', 'Please enter the Device Number.');
-                redirect(admin_url('hr_module/employees/edit/' . $id));
+            if ($restrict_sensitive_fields) {
+                // Leaving these keys out of $data means update() never
+                // includes them in the SQL UPDATE at all, so whatever is
+                // already stored is left untouched - not just re-saved with
+                // the same value, genuinely never written by this request.
+                unset($data['basic_salary'], $data['max_loan_amount']);
+            } else {
+                $device_user_id = $this->input->post('device_user_id', true);
+                if (empty($device_user_id)) {
+                    set_alert('danger', 'Please enter the Device Number.');
+                    redirect(admin_url('hr_module/employees/edit/' . $id));
+                }
+                $prefix = $this->Hr_module_model->get_setting('employee_id_prefix', 'EMP');
+                $code   = $prefix . $device_user_id;
+                if ($this->Employees_model->code_exists($code, $id)) {
+                    set_alert('danger', 'This Device Number is already in use by another employee.');
+                    redirect(admin_url('hr_module/employees/edit/' . $id));
+                }
+                $data['employee_code'] = $code;
             }
-            $prefix = $this->Hr_module_model->get_setting('employee_id_prefix', 'EMP');
-            $code   = $prefix . $device_user_id;
-            if ($this->Employees_model->code_exists($code, $id)) {
-                set_alert('danger', 'This Device Number is already in use by another employee.');
-                redirect(admin_url('hr_module/employees/edit/' . $id));
-            }
-            $data['employee_code'] = $code;
 
             if (!empty($_FILES['photo']['name'])) {
                 $upload = $this->Employees_model->handle_photo_upload($employee->photo);
@@ -133,9 +158,11 @@ class Employees extends AdminController
             }
 
             $this->Employees_model->update($data, $id);
-            $this->Zkteco_model->set_employee_device_mapping(
-                $id, $this->input->post('zkteco_device_id'), $device_user_id
-            );
+            if (!$restrict_sensitive_fields) {
+                $this->Zkteco_model->set_employee_device_mapping(
+                    $id, $this->input->post('zkteco_device_id'), $this->input->post('device_user_id', true)
+                );
+            }
             set_alert('success', _l('hr_employee_updated'));
             redirect(admin_url('hr_module/employees/view/' . $id));
         }
@@ -153,6 +180,7 @@ class Employees extends AdminController
             ->order_by('firstname', 'ASC')
             ->get(db_prefix() . 'staff')->result();
         $data['next_code'] = '';
+        $data['restrict_sensitive_fields'] = $restrict_sensitive_fields;
         $this->load->view('hr_module/employees/form', $data);
     }
 

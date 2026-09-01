@@ -23,7 +23,7 @@ define('HR_MODULE_NAME', 'hr_module');
 // bump this number whenever install.php gains a new guarded table/column, and
 // every site running this module will pick it up automatically on its very
 // next admin page load - no manual reactivation step, ever, on any install.
-define('HR_MODULE_SCHEMA_VERSION', 13);
+define('HR_MODULE_SCHEMA_VERSION', 15);
 
 // ─── Hook registrations ────────────────────────────────────────────────────
 
@@ -530,4 +530,10 @@ function hr_module_cron_tasks()
 
     // Day-before holiday reminder to all employees (see send_holiday_reminder())
     $CI->Hr_module_model->send_holiday_reminder();
+
+    // Drain a batch of the background email queue (see queue_employee_email()/
+    // process_email_queue() in Hr_module_model) - e.g. training-enrollment
+    // notifications queued instantly instead of sent inline during "Enroll
+    // Selected", so that request isn't blocked on N SMTP sends.
+    $CI->Hr_module_model->process_email_queue();
 }

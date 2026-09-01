@@ -27,7 +27,11 @@ $sessions_by_date = array_column($sessions, null, 'session_date');
               <div>
                 <h4 class="tw-font-bold tw-mb-1"><?php echo htmlspecialchars($training->title); ?></h4>
                 <?php if ($instructor_label): ?>
-                <p class="text-muted tw-mb-0"><i class="fa fa-user-tie tw-mr-1"></i><?php echo _l('hr_training_trainer'); ?>: <?php echo htmlspecialchars($instructor_label); ?></p>
+                <p class="text-muted tw-mb-0"><i class="fa fa-user-tie tw-mr-1"></i><?php echo _l('hr_training_trainer'); ?>: <?php echo htmlspecialchars($instructor_label); ?>
+                  <?php if (!$training->instructor_id && ($training->external_instructor_email || $training->external_instructor_phone)): ?>
+                  <span class="tw-text-neutral-400">(external<?php echo $training->external_instructor_email ? ' &mdash; ' . htmlspecialchars($training->external_instructor_email) : ''; ?><?php echo $training->external_instructor_phone ? ' &mdash; ' . htmlspecialchars($training->external_instructor_phone) : ''; ?>)</span>
+                  <?php endif; ?>
+                </p>
                 <?php endif; ?>
                 <?php if ($training->venue): ?>
                 <p class="text-muted tw-mb-0"><i class="fa fa-map-marker-alt tw-mr-1"></i><?php echo htmlspecialchars($training->venue); ?></p>
@@ -110,7 +114,7 @@ $sessions_by_date = array_column($sessions, null, 'session_date');
             <p class="text-muted">No participants enrolled yet.</p>
             <?php else: ?>
             <div class="table-responsive">
-              <table class="table table-hover table-condensed">
+              <table class="table table-hover table-condensed table-hr-training-participants">
                 <thead><tr>
                   <th><?php echo _l('hr_employee'); ?></th>
                   <th><?php echo _l('hr_department'); ?></th>
@@ -173,7 +177,7 @@ $sessions_by_date = array_column($sessions, null, 'session_date');
           </div>
           <div class="panel-body">
             <div class="table-responsive">
-              <table class="table table-hover table-condensed">
+              <table class="table table-hover table-condensed table-hr-training-daily-attendance">
                 <thead><tr>
                   <th><?php echo _l('hr_employee'); ?></th>
                   <?php foreach ($days as $day): ?>
@@ -184,6 +188,25 @@ $sessions_by_date = array_column($sessions, null, 'session_date');
                     <br><small class="text-muted tw-font-normal">
                       <?php echo $sess->start_time ? date('g:i A', strtotime($sess->start_time)) : '?'; ?>&ndash;<?php echo $sess->end_time ? date('g:i A', strtotime($sess->end_time)) : '?'; ?>
                     </small>
+                    <?php endif; ?>
+                    <?php if ($can_mark_attendance): ?>
+                    <div class="tw-mt-1">
+                      <?php echo form_open(admin_url('hr_module/training/mark_daily_attendance_bulk/'.$training->id), ['style'=>'display:inline']); ?>
+                        <input type="hidden" name="date" value="<?php echo $day; ?>">
+                        <button type="submit" name="status" value="present"
+                                class="text-success tw-bg-transparent tw-border-0 tw-px-1 tw-font-normal"
+                                data-toggle="tooltip" title="Mark everyone Present for this day"
+                                onclick="return confirm('Mark all participants Present for <?php echo date('d M Y', strtotime($day)); ?>?');">
+                          <i class="fa fa-check-double"></i>
+                        </button>
+                        <button type="submit" name="status" value="absent"
+                                class="text-danger tw-bg-transparent tw-border-0 tw-px-1 tw-font-normal"
+                                data-toggle="tooltip" title="Mark everyone Absent for this day"
+                                onclick="return confirm('Mark all participants Absent for <?php echo date('d M Y', strtotime($day)); ?>?');">
+                          <i class="fa fa-ban"></i>
+                        </button>
+                      <?php echo form_close(); ?>
+                    </div>
                     <?php endif; ?>
                   </th>
                   <?php endforeach; ?>
@@ -416,6 +439,66 @@ $sessions_by_date = array_column($sessions, null, 'session_date');
 <?php init_tail(); ?>
 <script>
 $(function(){
+    // Plain client-side pagination - deliberately NOT the DataTables library:
+    // this page's tables already have all their real rows server-rendered
+    // (no AJAX), and initializing DataTables on top of them triggers Perfex's
+    // own "dt-table-loading" skeleton CSS (meant for tables that start empty
+    // and get filled via AJAX), which then never clears since no AJAX call
+    // ever fires to complete it. This just shows/hides the existing <tr>
+    // elements in pages - no data, columns, or row actions/forms/modals
+    // change at all.
+    function hrPaginateTable(selector, pageSize) {
+        var $table = $(selector);
+        if ($table.length === 0) return;
+        var $rows = $table.find('tbody tr');
+        var total = $rows.length;
+        if (total <= pageSize) return;
+
+        var totalPages = Math.ceil(total / pageSize);
+        var current = 1;
+        // Same dataTables_info + Bootstrap ul.pagination markup DataTables
+        // itself renders everywhere else in the app - same look, without
+        // needing the DataTables engine (which is what caused the loading-
+        // skeleton bug on an already-server-rendered table).
+        var $nav  = $('<div class="dataTables_wrapper tw-mt-2 tw-flex tw-items-center tw-justify-between tw-flex-wrap tw-gap-2"></div>');
+        var $info = $('<div class="dataTables_info"></div>');
+        var $pager = $('<div class="dataTables_paginate paging_simple_numbers"><ul class="pagination"></ul></div>');
+        var $ul = $pager.find('ul.pagination');
+        $nav.append($info).append($pager);
+        $table.closest('.table-responsive').after($nav);
+
+        function render() {
+            var start = (current - 1) * pageSize;
+            var end = Math.min(start + pageSize, total);
+            $rows.hide().slice(start, end).show();
+            $info.text('Showing ' + (start + 1) + ' to ' + end + ' of ' + total + ' entries');
+
+            $ul.empty();
+
+            var $prevLi = $('<li' + (current === 1 ? ' class="disabled"' : '') + '></li>');
+            var $prevA  = $('<a href="javascript:void(0)">Previous</a>');
+            if (current !== 1) $prevA.on('click', function(){ current--; render(); });
+            $ul.append($prevLi.append($prevA));
+
+            for (var p = 1; p <= totalPages; p++) {
+                (function(p){
+                    var $li = $('<li' + (p === current ? ' class="active"' : '') + '></li>');
+                    var $a  = $('<a href="javascript:void(0)">' + p + '</a>');
+                    $a.on('click', function(){ current = p; render(); });
+                    $ul.append($li.append($a));
+                })(p);
+            }
+
+            var $nextLi = $('<li' + (current === totalPages ? ' class="disabled"' : '') + '></li>');
+            var $nextA  = $('<a href="javascript:void(0)">Next</a>');
+            if (current !== totalPages) $nextA.on('click', function(){ current++; render(); });
+            $ul.append($nextLi.append($nextA));
+        }
+        render();
+    }
+    hrPaginateTable('.table-hr-training-participants', 10);
+    hrPaginateTable('.table-hr-training-daily-attendance', 10);
+
     $('#enroll-btn').on('click', function(){
         var ids = $('#enroll-select').val() || [];
         if (!ids.length) { alert_float('danger', 'Select at least one employee.'); return; }

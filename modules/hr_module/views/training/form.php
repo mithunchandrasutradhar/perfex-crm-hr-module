@@ -29,7 +29,7 @@ $form_url = $is_edit
               <div class="row">
                 <div class="col-md-6">
                   <div class="form-group select-placeholder">
-                    <label for="instructor_id"><?php echo _l('hr_training_trainer'); ?></label>
+                    <label for="instructor_id"><?php echo _l('hr_training_trainer'); ?> <small class="text-muted">(your own staff)</small></label>
                     <select name="instructor_id" id="instructor_id" class="selectpicker" data-width="100%"
                             data-live-search="true" data-none-selected-text="<?php echo _l('hr_select'); ?>">
                       <option value=""><?php echo _l('hr_select'); ?></option>
@@ -39,9 +39,6 @@ $form_url = $is_edit
                       </option>
                       <?php endforeach; ?>
                     </select>
-                    <?php if ($is_edit && !$training->instructor_id && $training->trainer): ?>
-                    <small class="text-muted"><?php echo _l('hr_training_legacy_trainer'); ?>: <?php echo htmlspecialchars($training->trainer); ?></small>
-                    <?php endif; ?>
                   </div>
                 </div>
                 <div class="col-md-6">
@@ -50,6 +47,36 @@ $form_url = $is_edit
                     <input type="text" name="venue" class="form-control"
                            value="<?php echo $is_edit ? htmlspecialchars($training->venue) : ''; ?>"
                            placeholder="Location or Online">
+                  </div>
+                </div>
+              </div>
+
+              <div class="row">
+                <div class="col-md-12">
+                  <p class="help-block tw-text-xs tw-mb-2">
+                    Hiring an instructor from outside the company? Leave "<?php echo _l('hr_training_trainer'); ?>" above unselected and fill in their details below instead. If you give an email, they'll get an assignment notification email too - without a CRM link, since they don't have an account to log into.
+                  </p>
+                </div>
+                <div class="col-md-4">
+                  <div class="form-group">
+                    <label>External Instructor Name</label>
+                    <input type="text" name="trainer" class="form-control"
+                           value="<?php echo ($is_edit && !$training->instructor_id) ? htmlspecialchars($training->trainer ?? '') : ''; ?>"
+                           placeholder="e.g. Jane Doe">
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="form-group">
+                    <label>External Instructor Email <small class="text-muted">(optional)</small></label>
+                    <input type="email" name="external_instructor_email" class="form-control"
+                           value="<?php echo ($is_edit && !$training->instructor_id) ? htmlspecialchars($training->external_instructor_email ?? '') : ''; ?>">
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="form-group">
+                    <label>External Instructor Phone <small class="text-muted">(optional)</small></label>
+                    <input type="text" name="external_instructor_phone" class="form-control"
+                           value="<?php echo ($is_edit && !$training->instructor_id) ? htmlspecialchars($training->external_instructor_phone ?? '') : ''; ?>">
                   </div>
                 </div>
               </div>

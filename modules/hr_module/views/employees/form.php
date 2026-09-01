@@ -1,6 +1,7 @@
 <?php defined('BASEPATH') or exit('No direct script access allowed');
 $is_edit = isset($employee) && $employee;
 $e       = $is_edit ? $employee : (object)[];
+$restrict_sensitive_fields = !empty($restrict_sensitive_fields);
 function ev($obj, $key, $default = '') {
     return isset($obj->$key) ? htmlspecialchars($obj->$key) : $default;
 }
@@ -134,7 +135,11 @@ function ev($obj, $key, $default = '') {
                 <div class="form-group">
                   <label><?php echo _l('hr_employee_basic_salary'); ?></label>
                   <input type="number" name="basic_salary" class="form-control" step="0.01" min="0"
-                    value="<?php echo $is_edit ? ev($e,'basic_salary','0') : '0'; ?>">
+                    value="<?php echo $is_edit ? ev($e,'basic_salary','0') : '0'; ?>"
+                    <?php echo $restrict_sensitive_fields ? 'disabled' : ''; ?>>
+                  <?php if ($restrict_sensitive_fields): ?>
+                  <p class="help-block tw-text-xs tw-mt-1">Set by HR - contact HR to change.</p>
+                  <?php endif; ?>
                 </div>
               </div>
             </div>
@@ -145,7 +150,11 @@ function ev($obj, $key, $default = '') {
                   <label><?php echo _l('hr_employee_max_loan_amount'); ?></label>
                   <input type="number" name="max_loan_amount" class="form-control" step="0.01" min="0" max="99999999.99"
                     value="<?php echo $is_edit ? ev($e,'max_loan_amount','') : ''; ?>"
-                    placeholder="<?php echo _l('hr_employee_max_loan_amount_hint'); ?>">
+                    placeholder="<?php echo _l('hr_employee_max_loan_amount_hint'); ?>"
+                    <?php echo $restrict_sensitive_fields ? 'disabled' : ''; ?>>
+                  <?php if ($restrict_sensitive_fields): ?>
+                  <p class="help-block tw-text-xs tw-mt-1">Set by HR - contact HR to change.</p>
+                  <?php endif; ?>
                 </div>
               </div>
               <div class="col-md-4 col-sm-6">
@@ -183,7 +192,8 @@ function ev($obj, $key, $default = '') {
                   <label><i class="fa fa-fingerprint tw-mr-1"></i>Attendance Devices</label>
                   <select name="zkteco_device_id[]" id="emp_zkteco_device" class="selectpicker" multiple
                           data-width="100%" data-live-search="true"
-                          data-none-selected-text="— No devices —">
+                          data-none-selected-text="— No devices —"
+                          <?php echo $restrict_sensitive_fields ? 'disabled' : ''; ?>>
                     <?php foreach ($devices as $dev): ?>
                     <option value="<?php echo $dev->id; ?>" <?php if(in_array((int) $dev->id, $mapped_device_ids, true)) echo 'selected'; ?>>
                       <?php echo htmlspecialchars($dev->name); ?><?php echo $dev->location ? ' (' . htmlspecialchars($dev->location) . ')' : ''; ?>
@@ -191,17 +201,18 @@ function ev($obj, $key, $default = '') {
                     <?php endforeach; ?>
                   </select>
                   <p class="help-block tw-text-xs tw-mt-1">
-                    Select every device this employee should be able to punch on.
+                    <?php echo $restrict_sensitive_fields ? 'Set by HR - contact HR to change.' : 'Select every device this employee should be able to punch on.'; ?>
                   </p>
                 </div>
               </div>
               <div class="col-md-4 col-sm-6">
                 <div class="form-group">
-                  <label>Device Number <span class="text-danger">*</span></label>
-                  <input type="text" name="device_user_id" id="device_user_id_input" class="form-control" required
-                    value="<?php echo ($is_edit && !empty($device_mappings)) ? htmlspecialchars($device_mappings[0]->device_user_id) : ''; ?>">
+                  <label>Device Number <?php if (!$restrict_sensitive_fields): ?><span class="text-danger">*</span><?php endif; ?></label>
+                  <input type="text" name="device_user_id" id="device_user_id_input" class="form-control"
+                    value="<?php echo ($is_edit && !empty($device_mappings)) ? htmlspecialchars($device_mappings[0]->device_user_id) : ''; ?>"
+                    <?php echo $restrict_sensitive_fields ? 'disabled' : 'required'; ?>>
                   <p class="help-block tw-text-xs tw-mt-1">
-                    The numeric User ID set on the attendance device for this employee.
+                    <?php echo $restrict_sensitive_fields ? 'Set by HR - contact HR to change.' : 'The numeric User ID set on the attendance device for this employee.'; ?>
                   </p>
                 </div>
               </div>

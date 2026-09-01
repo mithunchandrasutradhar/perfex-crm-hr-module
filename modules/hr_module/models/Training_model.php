@@ -143,9 +143,16 @@ class Training_model extends App_Model
     public function add($data)
     {
         $today = date('Y-m-d');
+        $has_staff_instructor = !empty($data['instructor_id']);
         $record = [
             'title'         => $data['title'],
-            'instructor_id' => !empty($data['instructor_id']) ? (int) $data['instructor_id'] : null,
+            'instructor_id' => $has_staff_instructor ? (int) $data['instructor_id'] : null,
+            // An external instructor's name/email/phone only apply when no staff
+            // instructor is linked - a staff pick always takes precedence, so
+            // these don't end up stale/contradictory alongside a real instructor_id.
+            'trainer'                    => $has_staff_instructor ? null : ($data['trainer'] ?: null),
+            'external_instructor_email'  => $has_staff_instructor ? null : ($data['external_instructor_email'] ?: null),
+            'external_instructor_phone'  => $has_staff_instructor ? null : ($data['external_instructor_phone'] ?: null),
             'venue'         => $data['venue']        ?? null,
             // Placeholder - save_sessions() below recomputes this from the actual
             // day-by-day entries (start_date/end_date can't be NULL).
@@ -171,9 +178,13 @@ class Training_model extends App_Model
 
     public function update($data, $id)
     {
+        $has_staff_instructor = !empty($data['instructor_id']);
         $update = [
             'title'         => $data['title'],
-            'instructor_id' => !empty($data['instructor_id']) ? (int) $data['instructor_id'] : null,
+            'instructor_id' => $has_staff_instructor ? (int) $data['instructor_id'] : null,
+            'trainer'                    => $has_staff_instructor ? null : ($data['trainer'] ?: null),
+            'external_instructor_email'  => $has_staff_instructor ? null : ($data['external_instructor_email'] ?: null),
+            'external_instructor_phone'  => $has_staff_instructor ? null : ($data['external_instructor_phone'] ?: null),
             'venue'         => $data['venue']        ?? null,
             'cost'          => (float) ($data['cost'] ?? 0),
             'capacity'      => !empty($data['capacity']) ? (int) $data['capacity'] : null,

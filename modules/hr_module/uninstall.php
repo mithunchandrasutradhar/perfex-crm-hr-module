@@ -22,6 +22,7 @@ if (!$data_removal_allowed) {
 log_activity('HR Module uninstalled - data removal was explicitly enabled, dropping all HR tables');
 
 $tables = [
+    'hr_email_queue',
     'hr_loan_deduction_requests',
     'hr_holidays',
     'hr_settings',

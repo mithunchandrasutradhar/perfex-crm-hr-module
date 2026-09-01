@@ -911,6 +911,21 @@ if ($CI->db->table_exists(db_prefix() . 'hr_training')) {
         $CI->db->query("ALTER TABLE `" . db_prefix() . "hr_training` ADD COLUMN `instructor_id` int(11) DEFAULT NULL AFTER `trainer`");
     }
 }
+// Upgrade: an instructor hired from outside the company has no staff account
+// to link via instructor_id - `trainer` (already a free-text name column) is
+// reused as their name, alongside these two new optional contact fields. When
+// an email is given they get an assignment notification too, same as an
+// internal staff instructor, just without a CRM link since they can't log in.
+if ($CI->db->table_exists(db_prefix() . 'hr_training')) {
+    $col = $CI->db->query("SHOW COLUMNS FROM `" . db_prefix() . "hr_training` LIKE 'external_instructor_email'")->num_rows();
+    if ($col === 0) {
+        $CI->db->query("ALTER TABLE `" . db_prefix() . "hr_training` ADD COLUMN `external_instructor_email` varchar(191) DEFAULT NULL AFTER `instructor_id`");
+    }
+    $col = $CI->db->query("SHOW COLUMNS FROM `" . db_prefix() . "hr_training` LIKE 'external_instructor_phone'")->num_rows();
+    if ($col === 0) {
+        $CI->db->query("ALTER TABLE `" . db_prefix() . "hr_training` ADD COLUMN `external_instructor_phone` varchar(50) DEFAULT NULL AFTER `external_instructor_email`");
+    }
+}
 
 // Upgrade: the instructor can leave a closing note (summary/feedback) when they
 // mark the training session complete.
@@ -1360,5 +1375,32 @@ if (!$CI->db->table_exists(db_prefix() . 'hr_shift_assignments')) {
       ADD KEY `shift_type_id` (`shift_type_id`),
       ADD KEY `status` (`status`);');
     $CI->db->query('ALTER TABLE `' . db_prefix() . 'hr_shift_assignments`
+      MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1;');
+}
+
+// 31. HR Email Queue - a small, hr_module-scoped background queue (separate
+// from Perfex's own core mail_queue/email_queue_enabled setting, which is a
+// site-wide toggle affecting every email in the whole CRM and not something
+// this module should flip as a side effect). Used specifically for bulk
+// sends like training-enrollment notifications, so saving a big enrollment
+// list doesn't block on sending one SMTP email per employee - rows are
+// queued instantly instead, then drained a few at a time, one by one, from
+// hr_module_cron_tasks() on the existing admin_init/cron cycle.
+if (!$CI->db->table_exists(db_prefix() . 'hr_email_queue')) {
+    $CI->db->query('CREATE TABLE `' . db_prefix() . 'hr_email_queue` (
+      `id` int(11) NOT NULL,
+      `to_email` varchar(191) NOT NULL,
+      `subject` varchar(255) NOT NULL,
+      `body` longtext NOT NULL,
+      `link_url` varchar(255) DEFAULT NULL,
+      `status` varchar(20) NOT NULL DEFAULT \'pending\',
+      `attempts` int(11) NOT NULL DEFAULT 0,
+      `created_at` datetime NOT NULL,
+      `sent_at` datetime DEFAULT NULL
+    ) ENGINE=InnoDB DEFAULT CHARSET=' . $CI->db->char_set . ';');
+    $CI->db->query('ALTER TABLE `' . db_prefix() . 'hr_email_queue`
+      ADD PRIMARY KEY (`id`),
+      ADD KEY `status` (`status`);');
+    $CI->db->query('ALTER TABLE `' . db_prefix() . 'hr_email_queue`
       MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1;');
 }

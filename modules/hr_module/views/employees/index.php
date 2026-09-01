@@ -32,7 +32,7 @@
               _l('hr_department'),
               _l('hr_designation'),
               _l('hr_phone'),
-              _l('hr_email'),
+              'Personal Email',
               _l('hr_status'),
             ], 'hr-employees'); ?>
           </div>
