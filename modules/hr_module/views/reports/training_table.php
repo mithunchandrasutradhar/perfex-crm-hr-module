@@ -18,6 +18,13 @@ $total_enrolled  = array_sum(array_column((array) $rows, 'enrolled'));
 $total_completed = array_sum(array_column((array) $rows, 'present'));
 $completion_rate = $total_enrolled > 0 ? round($total_completed / $total_enrolled * 100) : 0;
 
+// DataTables (serverSide:true) expects only the requested page's rows back -
+// sums/totals above are still computed over the FULL $rows set, only aaData
+// is limited to the current page.
+$start      = (int) $CI->input->post('start');
+$length     = (int) $CI->input->post('length');
+$paged_rows = $length > 0 ? array_slice($rows, $start, $length) : $rows;
+
 $output = [
     'draw'                 => intval($CI->input->post('draw')),
     'iTotalRecords'        => count($rows),
@@ -31,7 +38,7 @@ $output = [
     ],
 ];
 
-foreach ($rows as $r) {
+foreach ($paged_rows as $r) {
     $rate = $r->enrolled > 0 ? round($r->present / $r->enrolled * 100) : 0;
 
     $rate_cell = '<div style="background:#e2e8f0;border-radius:4px;height:8px;width:80px">'

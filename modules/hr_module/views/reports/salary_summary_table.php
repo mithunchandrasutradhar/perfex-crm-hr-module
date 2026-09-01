@@ -12,6 +12,11 @@ foreach (['department_id', 'status'] as $k) {
 
 $rows = $CI->Reports_model->salary_summary_by_dept($f);
 
+// DataTables (serverSide:true) expects only the requested page's rows back.
+$start      = (int) $CI->input->post('start');
+$length     = (int) $CI->input->post('length');
+$paged_rows = $length > 0 ? array_slice($rows, $start, $length) : $rows;
+
 $output = [
     'draw'                 => intval($CI->input->post('draw')),
     'iTotalRecords'        => count($rows),
@@ -19,7 +24,7 @@ $output = [
     'aaData'               => [],
 ];
 
-foreach ($rows as $d) {
+foreach ($paged_rows as $d) {
     $output['aaData'][] = [
         '<strong>' . htmlspecialchars($d->department_name ?? 'Unassigned') . '</strong>',
         '<span class="text-right" style="display:block">' . $d->emp_count . '</span>',

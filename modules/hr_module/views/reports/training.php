@@ -50,7 +50,7 @@
 <?php init_tail(); ?>
 <script>
 $(function(){
-    initDataTable('.table-hr-report-training', window.location.href, [], [2,'desc']);
+    initDataTable('.table-hr-report-training', window.location.href, [], [], undefined, [2,'desc']);
 
     function reload(){
         var url = window.location.href.split('?')[0]

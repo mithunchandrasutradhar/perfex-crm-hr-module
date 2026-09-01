@@ -21,6 +21,10 @@ class Reports extends AdminController
     public function attendance()
     {
         if (staff_cant('view', 'hr_reports')) access_denied('hr_reports');
+        if ($this->input->is_ajax_request()) {
+            $this->app->get_table_data(module_views_path('hr_module', 'reports/attendance_table'));
+            return;
+        }
         $f = $this->_get_filters(['employee_id','department_id','from_date','to_date']);
         if (empty($f['from_date'])) $f['from_date'] = date('Y-m-01');
         else $f['from_date'] = to_sql_date($f['from_date']);
@@ -36,7 +40,6 @@ class Reports extends AdminController
             return;
         }
         $data['title']       = 'Attendance Report';
-        $data['rows']        = $rows;
         $data['filters']     = $f;
         $data['departments'] = $this->Departments_model->get_active();
         $data['employees']   = $this->Hr_module_model->get_active_employees_dropdown();

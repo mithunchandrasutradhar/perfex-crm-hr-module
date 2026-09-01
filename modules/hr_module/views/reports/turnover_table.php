@@ -17,6 +17,14 @@ $total_joined = array_sum(array_column((array) $rows, 'joined'));
 $total_left   = array_sum(array_column((array) $rows, 'left_count'));
 $avg_rate     = count($rows) ? array_sum(array_column((array) $rows, 'turnover_rate')) / count($rows) : 0;
 
+// DataTables (serverSide:true) expects only the requested page's rows back -
+// sums/chart above are still computed over the FULL $rows set (the chart in
+// particular needs every month, not just the current page), only aaData is
+// limited to the current page.
+$start      = (int) $CI->input->post('start');
+$length     = (int) $CI->input->post('length');
+$paged_rows = $length > 0 ? array_slice($rows, $start, $length) : $rows;
+
 $output = [
     'draw'                 => intval($CI->input->post('draw')),
     'iTotalRecords'        => count($rows),
@@ -39,7 +47,7 @@ $output = [
     ],
 ];
 
-foreach ($rows as $r) {
+foreach ($paged_rows as $r) {
     $net = $r->joined - $r->left_count;
     $rate = $r->turnover_rate;
     $rate_class = $rate > 5 ? 'text-danger' : ($rate > 2 ? 'text-warning' : 'text-success');

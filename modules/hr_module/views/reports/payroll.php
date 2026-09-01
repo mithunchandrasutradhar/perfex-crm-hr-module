@@ -82,7 +82,7 @@ $months = ['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov',
 <?php init_tail(); ?>
 <script>
 $(function(){
-    initDataTable('.table-hr-report-payroll', window.location.href, [], [2, 'desc']);
+    initDataTable('.table-hr-report-payroll', window.location.href, [], [], undefined, [2, 'desc']);
 
     $('.table-hr-report-payroll').append(
         '<tfoot><tr class="active">' +

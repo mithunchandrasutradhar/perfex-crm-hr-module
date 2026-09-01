@@ -36,7 +36,7 @@
 <?php init_tail(); ?>
 <script>
 $(function(){
-    initDataTable('.table-hr-report-headcount', window.location.href, [], [0,'asc']);
+    initDataTable('.table-hr-report-headcount', window.location.href, [], [], undefined, [0,'asc']);
 
     $('.table-hr-report-headcount').append(
         '<tfoot><tr class="active">'

@@ -23,6 +23,13 @@ $day_type_labels = [
 
 $total_amount = array_sum(array_column((array) $rows, 'total_amount'));
 
+// DataTables (serverSide:true) expects only the requested page's rows back -
+// sums/totals above are still computed over the FULL $rows set, only aaData
+// is limited to the current page.
+$start      = (int) $CI->input->post('start');
+$length     = (int) $CI->input->post('length');
+$paged_rows = $length > 0 ? array_slice($rows, $start, $length) : $rows;
+
 $output = [
     'draw'                 => intval($CI->input->post('draw')),
     'iTotalRecords'        => count($rows),
@@ -34,7 +41,7 @@ $output = [
     ],
 ];
 
-foreach ($rows as $r) {
+foreach ($paged_rows as $r) {
     $output['aaData'][] = [
         htmlspecialchars($r->first_name . ' ' . $r->last_name) . '<br><small class="text-muted">' . htmlspecialchars($r->employee_code) . '</small>',
         htmlspecialchars($r->department_name ?? '-'),

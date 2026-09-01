@@ -104,7 +104,7 @@ document.addEventListener('DOMContentLoaded', function(){
 </script>
 <script>
 $(function(){
-    initDataTable('.table-hr-report-turnover', window.location.href, [], [0, 'asc']);
+    initDataTable('.table-hr-report-turnover', window.location.href, [], [], undefined, [0, 'asc']);
 
     $('.table-hr-report-turnover').append(
         '<tfoot><tr class="active">' +

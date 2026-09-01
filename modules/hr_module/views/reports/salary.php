@@ -81,8 +81,8 @@ $(function(){
     // url carries &table=summary so the controller knows which of the two table
     // partials (salary_table / salary_summary_table) to render for that request;
     // the detail table's url is left without that marker.
-    initDataTable('.table-hr-report-salary', window.location.href, [], [3, 'desc']);
-    initDataTable('.table-hr-report-salary-summary', window.location.href.split('?')[0] + '?' + currentFilters() + '&table=summary', [], [0, 'asc']);
+    initDataTable('.table-hr-report-salary', window.location.href, [], [], undefined, [3, 'desc']);
+    initDataTable('.table-hr-report-salary-summary', window.location.href.split('?')[0] + '?' + currentFilters() + '&table=summary', [], [], undefined, [0, 'asc']);
 
     $('.table-hr-report-salary').append(
         '<tfoot><tr class="active">' +

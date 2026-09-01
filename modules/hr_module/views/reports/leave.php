@@ -99,7 +99,7 @@ $sbadge = ['approved'=>'success','pending'=>'warning','rejected'=>'danger','canc
 <?php init_tail(); ?>
 <script>
 $(function(){
-    initDataTable('.table-hr-report-leave', window.location.href, [], [3, 'desc']);
+    initDataTable('.table-hr-report-leave', window.location.href, [], [], undefined, [3, 'desc']);
 
     function currentFilters() {
         return 'department_id=' + $('#f-department').val()

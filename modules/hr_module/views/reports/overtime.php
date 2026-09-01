@@ -74,7 +74,7 @@ $day_type_labels = [
 <?php init_tail(); ?>
 <script>
 $(function(){
-    initDataTable('.table-hr-report-overtime', window.location.href, [], [2, 'desc']);
+    initDataTable('.table-hr-report-overtime', window.location.href, [], [], undefined, [2, 'desc']);
 
     function currentFilters() {
         return 'department_id=' + $('#f-department').val()
