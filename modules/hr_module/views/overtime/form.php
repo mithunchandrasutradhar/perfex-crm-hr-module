@@ -112,7 +112,7 @@ $current_month_end   = $restrict_to_current_month ? date('Y/m/t') : '';
               <div class="form-group">
                 <label><?php echo _l('hr_overtime_reason'); ?></label>
                 <textarea name="reason" class="form-control" rows="3"
-                          placeholder="Work description for this overtime..."><?php echo $is_edit ? htmlspecialchars($overtime->reason) : ''; ?></textarea>
+                          placeholder="Work description for this overduty..."><?php echo $is_edit ? htmlspecialchars($overtime->reason) : ''; ?></textarea>
               </div>
               <div class="tw-flex tw-gap-2">
                 <button type="submit" class="btn btn-primary" id="ot_submit_btn">

@@ -64,7 +64,7 @@
               <div class="alert alert-info tw-text-sm">
                 <i class="fa fa-info-circle tw-mr-1"></i>
                 Payroll is calculated from employee basic salary + active payroll items (allowances/deductions).
-                Attendance data, approved overtime, and pending loan installments are included automatically.
+                Attendance data, approved overduty, and pending loan installments are included automatically.
                 Employees with payroll already generated for the selected period will be skipped.
               </div>
 

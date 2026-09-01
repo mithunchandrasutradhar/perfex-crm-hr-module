@@ -9,7 +9,7 @@ $cur_year  = (int) date('Y');
     <div class="row">
       <div class="col-md-12">
         <ol class="breadcrumb tw-mb-4">
-          <li><a href="<?php echo admin_url('hr_module/loans'); ?>">Loans</a></li>
+          <li><a href="<?php echo admin_url('hr_module/loans'); ?>">Loan</a></li>
           <li class="active">Deduction Requests</li>
         </ol>
         <div class="panel_s">

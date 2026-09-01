@@ -235,10 +235,10 @@ class Email_templates_model extends App_Model
                 'body' => "Hi {employee_name},\n\nYour loan deduction request has been rejected.\n\nDepartment: {department}\nDesignation: {designation}\nPay Period: {pay_period}\nAmount: {amount}\nType: {type}\nNotes: {notes}",
             ],
             'overtime_apply' => [
-                'name' => 'Overtime Request Submitted (to HR)',
-                'subject' => 'New Overtime Request Submitted',
+                'name' => 'Overduty Request Submitted (to HR)',
+                'subject' => 'New Overduty Request Submitted',
                 'placeholders' => '{employee_name}, {dates}, {reason}',
-                'body' => "A new overtime request has been submitted and is awaiting review.\n\nEmployee: {employee_name}\nDates: {dates}\nReason: {reason}",
+                'body' => "A new overduty request has been submitted and is awaiting review.\n\nEmployee: {employee_name}\nDates: {dates}\nReason: {reason}",
             ],
             'helpdesk_ticket_submitted' => [
                 'name' => 'Helpdesk Ticket Submitted (to HR)',

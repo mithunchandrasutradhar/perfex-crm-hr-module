@@ -62,7 +62,7 @@ $can_self_edit = (int) $overtime->employee_id === hr_get_own_employee_id() && st
               </div></div></div>
             </div>
 
-            <h5 class="tw-font-semibold tw-mt-3">Overtime Dates</h5>
+            <h5 class="tw-font-semibold tw-mt-3">Overduty Dates</h5>
             <table class="table table-condensed tw-mb-0">
               <thead><tr><th>Date</th><th>Day Type</th><th>Rate</th><th class="text-right">Amount</th></tr></thead>
               <tbody>
@@ -123,12 +123,12 @@ $can_self_edit = (int) $overtime->employee_id === hr_get_own_employee_id() && st
               <?php endif; ?>
               <a href="<?php echo admin_url('hr_module/overtime/soft_approve/'.$overtime->id); ?>"
                  class="btn btn-success btn-outline btn-block tw-mb-2"
-                 onclick="return confirm('Soft approve this overtime request?')">
+                 onclick="return confirm('Soft approve this overduty request?')">
                 <i class="fa fa-check tw-mr-1"></i><?php echo _l('hr_overtime_soft_approve'); ?>
               </a>
               <a href="<?php echo admin_url('hr_module/overtime/soft_reject/'.$overtime->id); ?>"
                  class="btn btn-danger btn-outline btn-block tw-mb-2"
-                 onclick="return confirm('Soft reject this overtime request?')">
+                 onclick="return confirm('Soft reject this overduty request?')">
                 <i class="fa fa-times tw-mr-1"></i><?php echo _l('hr_overtime_soft_reject'); ?>
               </a>
               <hr>
@@ -136,7 +136,7 @@ $can_self_edit = (int) $overtime->employee_id === hr_get_own_employee_id() && st
               <?php if (staff_can('edit','hr_overtime')): ?>
               <a href="<?php echo admin_url('hr_module/overtime/approve/'.$overtime->id); ?>"
                  class="btn btn-success btn-block tw-mb-2"
-                 onclick="return confirm('Approve this overtime request?')">
+                 onclick="return confirm('Approve this overduty request?')">
                 <i class="fa fa-check tw-mr-1"></i><?php echo _l('hr_overtime_approve'); ?>
               </a>
               <button class="btn btn-danger btn-block tw-mb-2" data-toggle="modal" data-target="#rejectModal">
@@ -183,7 +183,7 @@ $can_self_edit = (int) $overtime->employee_id === hr_get_own_employee_id() && st
       <div class="form-group">
         <label>Reason <span class="text-danger">*</span></label>
         <textarea name="rejection_reason" class="form-control" rows="3" required
-                  placeholder="Reason for rejecting this overtime request..."></textarea>
+                  placeholder="Reason for rejecting this overduty request..."></textarea>
       </div>
     </div>
     <div class="modal-footer">

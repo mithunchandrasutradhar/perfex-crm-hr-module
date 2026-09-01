@@ -19,7 +19,7 @@ $revision_attachments = $pending_revision ? $this->Policies_model->decode_attach
     <div class="row">
       <div class="col-md-12">
         <ol class="breadcrumb tw-mb-4">
-          <li><a href="<?php echo admin_url('hr_module/policies'); ?>">Policies</a></li>
+          <li><a href="<?php echo admin_url('hr_module/policies'); ?>">Policy</a></li>
           <li class="active"><?php echo htmlspecialchars($p->title); ?></li>
         </ol>
       </div>

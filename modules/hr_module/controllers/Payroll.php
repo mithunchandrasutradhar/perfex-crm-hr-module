@@ -31,7 +31,16 @@ class Payroll extends AdminController
         $data['show_dept_filter']  = $can_view_all;
         $data['title']       = _l('hr_payroll_list');
         $data['departments'] = $can_view_all ? $this->Departments_model->get_active() : [];
-        $data['employees']   = $this->Hr_module_model->get_active_employees_dropdown();
+
+        // Employee filter dropdown - full list for anyone with global view,
+        // otherwise just the caller's own name (mirrors Attendance::index()).
+        if ($can_view_all) {
+            $data['employees'] = $this->Hr_module_model->get_active_employees_dropdown();
+        } else {
+            $own_emp_id = hr_get_own_employee_id();
+            $own_emp    = $own_emp_id ? $this->Employees_model->get($own_emp_id) : null;
+            $data['employees'] = $own_emp ? [$own_emp->id => $own_emp->employee_code . ' - ' . $own_emp->first_name . ' ' . $own_emp->last_name] : [];
+        }
         $this->load->view('hr_module/payroll/index', $data);
     }
 

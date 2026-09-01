@@ -45,12 +45,12 @@ if (!isset($log))     $log     = [];
             <div class="tw-mt-4">
               <h5 class="tw-font-semibold">Quick links to test:</h5>
               <div class="tw-flex tw-flex-wrap tw-gap-2 tw-mt-2">
-                <a href="<?php echo admin_url('hr_module/employees'); ?>"   class="btn btn-default btn-sm"><i class="fa fa-users tw-mr-1"></i>Employees</a>
+                <a href="<?php echo admin_url('hr_module/employees'); ?>"   class="btn btn-default btn-sm"><i class="fa fa-users tw-mr-1"></i>Employee</a>
                 <a href="<?php echo admin_url('hr_module/leave'); ?>"       class="btn btn-default btn-sm"><i class="fa fa-calendar tw-mr-1"></i>Leave</a>
                 <a href="<?php echo admin_url('hr_module/attendance'); ?>"  class="btn btn-default btn-sm"><i class="fa fa-clock tw-mr-1"></i>Attendance</a>
                 <a href="<?php echo admin_url('hr_module/payroll'); ?>"     class="btn btn-default btn-sm"><i class="fa fa-money-bill tw-mr-1"></i>Payroll</a>
-                <a href="<?php echo admin_url('hr_module/loans'); ?>"       class="btn btn-default btn-sm"><i class="fa fa-hand-holding-usd tw-mr-1"></i>Loans</a>
-                <a href="<?php echo admin_url('hr_module/overtime'); ?>"    class="btn btn-default btn-sm"><i class="fa fa-stopwatch tw-mr-1"></i>Overtime</a>
+                <a href="<?php echo admin_url('hr_module/loans'); ?>"       class="btn btn-default btn-sm"><i class="fa fa-hand-holding-usd tw-mr-1"></i>Loan</a>
+                <a href="<?php echo admin_url('hr_module/overtime'); ?>"    class="btn btn-default btn-sm"><i class="fa fa-stopwatch tw-mr-1"></i>Overduty</a>
                 <a href="<?php echo admin_url('hr_module/performance'); ?>" class="btn btn-default btn-sm"><i class="fa fa-star tw-mr-1"></i>Performance</a>
                 <a href="<?php echo admin_url('hr_module/training'); ?>"    class="btn btn-default btn-sm"><i class="fa fa-graduation-cap tw-mr-1"></i>Training</a>
                 <a href="<?php echo admin_url('hr_module/helpdesk'); ?>"    class="btn btn-default btn-sm"><i class="fa fa-ticket-alt tw-mr-1"></i>Helpdesk</a>

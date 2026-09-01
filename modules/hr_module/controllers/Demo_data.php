@@ -614,13 +614,13 @@ class Demo_data extends AdminController
                     'status'          => $ot['status'],
                     'approved_by'     => ($ot['status'] === 'approved') ? get_staff_user_id() : null,
                     'approved_at'     => ($ot['status'] === 'approved') ? date('Y-m-d H:i:s', strtotime($ot_date)) : null,
-                    'rejection_reason'=> ($ot['status'] === 'rejected') ? 'Overtime not pre-approved by department head.' : null,
+                    'rejection_reason'=> ($ot['status'] === 'rejected') ? 'Overduty not pre-approved by department head.' : null,
                     'created_at'      => $now,
                 ]);
                 $ot_count++;
             }
         }
-        $log[] = '[OK] Created ' . $ot_count . ' overtime records (' . count($all_emp) . ' employees x 6 entries)';
+        $log[] = '[OK] Created ' . $ot_count . ' overduty records (' . count($all_emp) . ' employees x 6 entries)';
 
         // ====================================================================
         // PERFORMANCE REVIEWS  (previous year: completed; current year: in_progress)

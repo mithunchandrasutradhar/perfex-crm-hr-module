@@ -16,6 +16,15 @@
               <?php endforeach; ?>
             </select>
             <?php endif; ?>
+            <?php if (!empty($show_dept_filter)): ?>
+            <select id="f-emp" class="selectpicker" data-width="200px" data-live-search="true"
+                    data-none-selected-text="<?php echo _l('hr_employee'); ?>">
+              <option value=""><?php echo _l('hr_all') . ' Employees'; ?></option>
+              <?php foreach ($employees as $id => $name): ?>
+              <option value="<?php echo $id; ?>"><?php echo htmlspecialchars($name); ?></option>
+              <?php endforeach; ?>
+            </select>
+            <?php endif; ?>
             <select id="f-month" class="selectpicker" data-width="110px">
               <option value="">Month</option>
               <?php for($m=1;$m<=12;$m++): ?>
@@ -117,12 +126,25 @@ $(function(){
         var deptVal = $('#f-dept').length ? $('#f-dept').val() : '';
         var url = window.location.href.split('?')[0]
             + '?department_id=' + deptVal
+            + '&employee_id='   + $('#f-emp').val()
             + '&pay_month='     + $('#f-month').val()
             + '&pay_year='      + $('#f-year').val()
             + '&status='        + $('#f-status').val();
         $('.table-hr-payroll').DataTable().ajax.url(url).load();
     }
-    $('#f-dept,#f-month,#f-year,#f-status').on('change changed.bs.select', reload);
+    $('#f-dept,#f-emp,#f-month,#f-year,#f-status').on('change changed.bs.select', reload);
+
+    // Pre-select the Employee filter when landing here with ?employee_id=
+    // in the URL (e.g. the dashboard's "My Payslips" quick action) - the
+    // table itself is already filtered server-side by the initial
+    // window.location.href load above, this just reflects it in the UI.
+    (function(){
+        var params = new URLSearchParams(window.location.search);
+        var empId = params.get('employee_id');
+        if (empId) {
+            $('#f-emp').val(empId).selectpicker('refresh');
+        }
+    })();
 
     $(document).on('click', '.hr-mark-paid', function(e){
         e.preventDefault();

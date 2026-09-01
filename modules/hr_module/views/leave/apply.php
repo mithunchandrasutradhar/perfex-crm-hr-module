@@ -130,7 +130,7 @@ if (!isset($employee_genders_json)) $employee_genders_json = '{}';
               <textarea name="reason" class="form-control" rows="3"></textarea>
             </div>
             <div class="form-group">
-              <label><?php echo _l('hr_attachments'); ?></label>
+              <label>Supporting Documents</label>
               <input type="file" name="attachment" class="form-control" accept=".jpg,.jpeg,.png,.pdf,.doc,.docx">
               <small class="text-muted">Max 4MB — JPG, PNG, PDF, DOC</small>
             </div>

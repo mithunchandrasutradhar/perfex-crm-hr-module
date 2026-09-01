@@ -75,7 +75,7 @@ $company_name = get_option('companyname') ?: 'Company Name';
         <tr><td><?php echo htmlspecialchars($d->item_name); ?></td><td style="text-align:right"><?php echo number_format($d->amount,2); ?></td></tr>
         <?php endforeach; ?>
         <?php if($payroll->overtime_amount > 0): ?>
-        <tr><td>Overtime Pay</td><td style="text-align:right"><?php echo number_format($payroll->overtime_amount,2); ?></td></tr>
+        <tr><td>Overduty Pay</td><td style="text-align:right"><?php echo number_format($payroll->overtime_amount,2); ?></td></tr>
         <?php endif; ?>
         <?php if($payroll->bonus > 0): ?>
         <tr><td>Bonus</td><td style="text-align:right"><?php echo number_format($payroll->bonus,2); ?></td></tr>

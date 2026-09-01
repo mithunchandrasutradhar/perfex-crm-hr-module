@@ -242,7 +242,7 @@ $task_status_colors = [
                         <i class="fa fa-business-time fa-lg tw-text-white"></i>
                     </div>
                     <div>
-                        <div class="tw-text-xs tw-text-neutral-500 tw-uppercase tw-tracking-wide">Overtime (<?php echo date('M'); ?>)</div>
+                        <div class="tw-text-xs tw-text-neutral-500 tw-uppercase tw-tracking-wide">Overduty (<?php echo date('M'); ?>)</div>
                         <div class="tw-text-xl tw-font-bold tw-text-neutral-800">
                             <?php $aod = (int) ($stats['approved_overtime_days'] ?? 0); ?>
                             <?php echo $aod; ?> <span class="tw-text-sm tw-font-normal text-muted"><?php echo $aod == 1 ? 'day' : 'days'; ?></span>
@@ -252,7 +252,7 @@ $task_status_colors = [
                 <div class="tw-text-xs text-muted">
                     <?php
                     $po = (int)($stats['pending_overtime'] ?? 0);
-                    echo $po > 0 ? $po . ' request(s) pending approval' : 'No pending overtime';
+                    echo $po > 0 ? $po . ' request(s) pending approval' : 'No pending overduty';
                     ?>
                 </div>
             </div>
@@ -349,17 +349,17 @@ $task_status_colors = [
                     </a>
                     <?php endif; ?>
                     <?php if (staff_can('view', 'hr_leave') || staff_can('view_own', 'hr_leave')): ?>
-                    <a href="<?php echo admin_url('hr_module/leave'); ?>" class="btn btn-default btn-sm">
+                    <a href="<?php echo admin_url('hr_module/leave?employee_id=' . hr_get_own_employee_id()); ?>" class="btn btn-default btn-sm">
                         <i class="fa fa-calendar tw-mr-1"></i>My Leaves
                     </a>
                     <?php endif; ?>
                     <?php if (staff_can('view', 'hr_attendance') || staff_can('view_own', 'hr_attendance')): ?>
-                    <a href="<?php echo admin_url('hr_module/attendance'); ?>" class="btn btn-default btn-sm">
+                    <a href="<?php echo admin_url('hr_module/attendance?employee_id=' . hr_get_own_employee_id()); ?>" class="btn btn-default btn-sm">
                         <i class="fa fa-clock tw-mr-1"></i>My Attendance
                     </a>
                     <?php endif; ?>
                     <?php if (staff_can('view', 'hr_payroll') || staff_can('view_own', 'hr_payroll')): ?>
-                    <a href="<?php echo admin_url('hr_module/payroll'); ?>" class="btn btn-default btn-sm">
+                    <a href="<?php echo admin_url('hr_module/payroll?employee_id=' . hr_get_own_employee_id()); ?>" class="btn btn-default btn-sm">
                         <i class="fa fa-file-invoice-dollar tw-mr-1"></i>My Payslips
                     </a>
                     <?php endif; ?>

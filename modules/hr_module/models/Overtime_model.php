@@ -191,7 +191,7 @@ class Overtime_model extends App_Model
         $this->db->insert_batch(db_prefix() . $this->table, $rows);
         $id = $this->db->insert_id();
         if ($id) {
-            log_activity('HR Overtime Requested [ID: ' . $id . ', Employee ID: ' . $employee_id . ', Days: ' . count($rows) . ']');
+            log_activity('HR Overduty Requested [ID: ' . $id . ', Employee ID: ' . $employee_id . ', Days: ' . count($rows) . ']');
         }
         return $id ? ['success' => true, 'id' => $id, 'message' => count($rows) === 1 ? _l('hr_overtime_applied_msg') : _l('hr_overtime_batch_submitted', count($rows))]
                    : ['success' => false, 'message' => _l('hr_error_saving')];
@@ -250,7 +250,7 @@ class Overtime_model extends App_Model
         $this->db->insert_batch(db_prefix() . $this->table, $rows);
         $new_id = $this->db->insert_id();
         if ($new_id) {
-            log_activity('HR Overtime Request Edited [ID: ' . $new_id . ', Employee ID: ' . $employee_id . ']');
+            log_activity('HR Overduty Request Edited [ID: ' . $new_id . ', Employee ID: ' . $employee_id . ']');
         }
         return $new_id ? ['success' => true, 'id' => $new_id, 'message' => _l('hr_updated_successfully')]
                        : ['success' => false, 'message' => _l('hr_error_saving')];
@@ -285,7 +285,7 @@ class Overtime_model extends App_Model
             $this->Payroll_model->sync_overtime_for_period($row->employee_id, $period[0], $period[1]);
         }
 
-        log_activity('HR Overtime Approved [ID: ' . $id . ']');
+        log_activity('HR Overduty Approved [ID: ' . $id . ']');
         return ['success' => true, 'message' => _l('hr_overtime_approved_msg')];
     }
 
@@ -300,7 +300,7 @@ class Overtime_model extends App_Model
             'rejection_reason' => $reason,
             'updated_at'       => date('Y-m-d H:i:s'),
         ]);
-        log_activity('HR Overtime Rejected [ID: ' . $id . ']');
+        log_activity('HR Overduty Rejected [ID: ' . $id . ']');
         return ['success' => true, 'message' => _l('hr_overtime_rejected_msg')];
     }
 
@@ -329,7 +329,7 @@ class Overtime_model extends App_Model
             'soft_approved_by' => get_staff_user_id(),
             'soft_approved_at' => date('Y-m-d H:i:s'),
         ]);
-        log_activity('HR Overtime Soft ' . ucfirst($decision) . ' [ID: ' . $id . ']');
+        log_activity('HR Overduty Soft ' . ucfirst($decision) . ' [ID: ' . $id . ']');
         return ['success' => true];
     }
 
@@ -338,10 +338,10 @@ class Overtime_model extends App_Model
         $row = $this->db->where('id', $id)->get(db_prefix() . $this->table)->row();
         if (!$row) return ['success' => true];
         if ($row->status === 'approved') {
-            return ['success' => false, 'message' => 'Approved overtime cannot be deleted.'];
+            return ['success' => false, 'message' => 'Approved overduty cannot be deleted.'];
         }
         $this->db->where('batch_id', $row->batch_id)->delete(db_prefix() . $this->table);
-        log_activity('HR Overtime Request Deleted [ID: ' . $id . ']');
+        log_activity('HR Overduty Request Deleted [ID: ' . $id . ']');
         return ['success' => true];
     }
 

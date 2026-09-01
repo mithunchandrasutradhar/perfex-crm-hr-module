@@ -207,7 +207,7 @@ function ev($obj, $key, $default = '') {
               </div>
               <div class="col-md-4 col-sm-6">
                 <div class="form-group">
-                  <label>Device Number <?php if (!$restrict_sensitive_fields): ?><span class="text-danger">*</span><?php endif; ?></label>
+                  <label>ID Number (Device) <?php if (!$restrict_sensitive_fields): ?><span class="text-danger">*</span><?php endif; ?></label>
                   <input type="text" name="device_user_id" id="device_user_id_input" class="form-control"
                     value="<?php echo ($is_edit && !empty($device_mappings)) ? htmlspecialchars($device_mappings[0]->device_user_id) : ''; ?>"
                     <?php echo $restrict_sensitive_fields ? 'disabled' : 'required'; ?>>
@@ -222,7 +222,7 @@ function ev($obj, $key, $default = '') {
                   <input type="text" class="form-control" id="employee_code_preview" readonly
                     value="<?php echo $is_edit ? ev($e,'employee_code') : ''; ?>">
                   <p class="help-block tw-text-xs tw-mt-1">
-                    Auto-generated: "<?php echo htmlspecialchars($employee_id_prefix); ?>" + the Device Number.
+                    Auto-generated: "<?php echo htmlspecialchars($employee_id_prefix); ?>" + the ID Number (Device).
                   </p>
                 </div>
               </div>
@@ -367,13 +367,15 @@ function ev($obj, $key, $default = '') {
                       <input type="text" name="passport_number" class="form-control" value="<?php echo $is_edit ? ev($e,'passport_number') : ''; ?>">
                     </div>
                   </div>
-                  <div class="col-md-4 col-sm-6">
+                </div>
+                <div class="row">
+                  <div class="col-md-6 col-sm-6">
                     <div class="form-group">
                       <label><?php echo _l('hr_employee_emergency_contact'); ?> (Name)</label>
                       <input type="text" name="emergency_contact_name" class="form-control" value="<?php echo $is_edit ? ev($e,'emergency_contact_name') : ''; ?>">
                     </div>
                   </div>
-                  <div class="col-md-4 col-sm-6">
+                  <div class="col-md-6 col-sm-6">
                     <div class="form-group">
                       <label><?php echo _l('hr_employee_emergency_contact'); ?> (Phone)</label>
                       <input type="text" name="emergency_contact_phone" class="form-control" value="<?php echo $is_edit ? ev($e,'emergency_contact_phone') : ''; ?>">

@@ -23,6 +23,8 @@ if (!isset($is_global))   $is_global   = is_admin() || staff_can('view', 'hr_att
               <option value="<?php echo $d->id; ?>"><?php echo htmlspecialchars($d->name); ?></option>
               <?php endforeach; ?>
             </select>
+            <?php endif; ?>
+            <?php if ($is_global): ?>
             <select id="f-emp" class="selectpicker" data-width="220px" data-live-search="true"
                     data-none-selected-text="<?php echo _l('hr_employee'); ?>">
               <option value=""><?php echo _l('hr_all') . ' Employees'; ?></option>
@@ -195,6 +197,18 @@ $(function(){
         $('.table-hr-attendance').DataTable().ajax.url(url).load();
     }
     $('#f-dept, #f-emp, #f-status, #f-from, #f-to').on('change changed.bs.select', reload);
+
+    // Pre-select the Employee filter when landing here with ?employee_id=
+    // in the URL (e.g. the dashboard's "My Attendance" quick action) - the
+    // table itself is already filtered server-side by the initial
+    // window.location.href load above, this just reflects it in the UI.
+    (function(){
+        var params = new URLSearchParams(window.location.search);
+        var empId = params.get('employee_id');
+        if (empId) {
+            $('#f-emp').val(empId).selectpicker('refresh');
+        }
+    })();
 
     // View Log
     var verifyIcon = {

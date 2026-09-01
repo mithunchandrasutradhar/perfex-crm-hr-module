@@ -20,6 +20,15 @@
               <option value="<?php echo $t->id; ?>"><?php echo htmlspecialchars($t->name); ?></option>
               <?php endforeach; ?>
             </select>
+            <?php if (!empty($show_all_employees)): ?>
+            <select id="f-emp" class="selectpicker" data-width="200px" data-live-search="true"
+                    data-none-selected-text="<?php echo _l('hr_employee'); ?>">
+              <option value=""><?php echo _l('hr_all') . ' Employees'; ?></option>
+              <?php foreach ($employees as $id => $name): ?>
+              <option value="<?php echo $id; ?>"><?php echo htmlspecialchars($name); ?></option>
+              <?php endforeach; ?>
+            </select>
+            <?php endif; ?>
             <?php if (staff_can('create', 'hr_leave')): ?>
             <a href="<?php echo admin_url('hr_module/leave/apply'); ?>" class="btn btn-primary">
               <i class="fa-regular fa-plus tw-mr-1"></i><?php echo _l('hr_leave_add'); ?>
@@ -80,10 +89,23 @@ $(function(){
     function reload() {
         var url = window.location.href.split('?')[0]
             + '?status=' + $('#f-status').val()
-            + '&leave_type_id=' + $('#f-type').val();
+            + '&leave_type_id=' + $('#f-type').val()
+            + '&employee_id=' + $('#f-emp').val();
         $('.table-hr-leave').DataTable().ajax.url(url).load();
     }
-    $('#f-status, #f-type').on('change changed.bs.select', reload);
+    $('#f-status, #f-type, #f-emp').on('change changed.bs.select', reload);
+
+    // Pre-select the Employee filter when landing here with ?employee_id=
+    // in the URL (e.g. the dashboard's "My Leaves" quick action) - the
+    // table itself is already filtered server-side by the initial
+    // window.location.href load above, this just reflects it in the UI.
+    (function(){
+        var params = new URLSearchParams(window.location.search);
+        var empId = params.get('employee_id');
+        if (empId) {
+            $('#f-emp').val(empId).selectpicker('refresh');
+        }
+    })();
 
     function csrf_pair() {
         return '<?php echo $this->security->get_csrf_token_name(); ?>=<?php echo $this->security->get_csrf_hash(); ?>';

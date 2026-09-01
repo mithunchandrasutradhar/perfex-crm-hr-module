@@ -147,7 +147,7 @@ class Reports extends AdminController
             return;
         }
         $total_amount = array_sum(array_column((array) $rows, 'total_amount'));
-        $data['title']        = 'Overtime Report';
+        $data['title']        = 'Overduty Report';
         $data['rows']         = $rows;
         $data['filters']      = $f;
         $data['total_amount'] = $total_amount;

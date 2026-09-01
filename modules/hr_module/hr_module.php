@@ -32,6 +32,13 @@ hooks()->add_action('admin_init', 'hr_module_init_menu_items');
 hooks()->add_action('admin_init', 'hr_module_register_permissions');
 hooks()->add_action('after_cron_run', 'hr_module_cron_tasks');
 hooks()->add_action('after_render_aside_menu', 'hr_module_sidebar_active_fix');
+// get_dashboard_widgets() (application/helpers/widgets_helper.php) is the
+// same registry every core dashboard widget (contracts_expiring, todos, etc.)
+// goes through - appending to it here (rather than any custom hook-injected
+// HTML block) means this widget automatically gets the standard "Dashboard
+// Options" toggle/reposition UI on the main CRM dashboard, exactly like any
+// built-in widget, for free.
+hooks()->add_filter('get_dashboard_widgets', 'hr_module_register_dashboard_widget');
 
 // ─── Activation / Deactivation / Uninstall ────────────────────────────────
 
@@ -190,6 +197,27 @@ function hr_get_own_employee_id()
     }
     $emp = $CI->Employees_model->get_by_staff_id(get_staff_user_id());
     return $emp ? (int) $emp->id : 0;
+}
+
+// Memoized per-request - the 5 separate "HR ..." dashboard widgets (Today's
+// Attendance / Leave Balance / Open Tickets / Loan / Upcoming Training) each
+// need one field out of the same Hr_module_model::get_employee_dashboard_stats()
+// call, and since core's Dashboard renders every registered widget in one
+// request, this avoids running that (several-query) method 5 times over for
+// the exact same employee_id.
+function hr_get_own_employee_dashboard_stats()
+{
+    static $cache = [];
+    $employee_id = hr_get_own_employee_id();
+    if (!$employee_id) {
+        return [$employee_id, null];
+    }
+    if (!isset($cache[$employee_id])) {
+        $CI = &get_instance();
+        $CI->load->model('hr_module/Hr_module_model');
+        $cache[$employee_id] = $CI->Hr_module_model->get_employee_dashboard_stats($employee_id);
+    }
+    return [$employee_id, $cache[$employee_id]];
 }
 
 /**
@@ -374,7 +402,7 @@ function hr_module_init_menu_items()
     if (is_admin() || staff_can('view', 'hr_policies') || staff_can('view_own', 'hr_policies')) {
         $CI->app_menu->add_sidebar_children_item('human-resource', [
             'slug'     => 'hr-policies',
-            'name'     => 'Policies',
+            'name'     => 'Policy',
             'href'     => admin_url('hr_module/policies'),
             'position' => 12,
         ]);
@@ -384,7 +412,7 @@ function hr_module_init_menu_items()
     if (is_admin() || staff_can('view', 'hr_shifts') || staff_can('view_own', 'hr_shifts')) {
         $CI->app_menu->add_sidebar_children_item('human-resource', [
             'slug'     => 'hr-shifts',
-            'name'     => 'Shifts',
+            'name'     => 'Shift',
             'href'     => admin_url('hr_module/shifts'),
             'position' => 8.5, // right after Overtime (8), before Performance (9)
         ]);
@@ -445,6 +473,25 @@ function hr_module_init_menu_items()
 //
 // This has to wait for metisMenu (core's sidebar plugin) to finish binding
 // its click handlers before it can simulate a click to expand the menu.
+// Appends this module's dashboard widgets to the same array every core widget
+// (contracts_expiring, todos, leads_chart, etc.) is listed in - five small,
+// separate widgets (Today's Attendance / Leave Balance / Open Tickets / Loan /
+// Upcoming Training) rather than one combined one, each named with an "HR"
+// prefix so they're identifiable among core widgets in Dashboard Options.
+// Each view is fully self-contained (loads its own model data and does its
+// own permission/profile check), since a widget contributed by a module can't
+// rely on core's Dashboard controller passing it bespoke $data the way
+// built-in widgets do.
+function hr_module_register_dashboard_widget($widgets)
+{
+    $widgets[] = ['path' => 'hr_module/dashboard/widgets/hr_attendance',       'container' => 'bottom-left-4'];
+    $widgets[] = ['path' => 'hr_module/dashboard/widgets/hr_leave_balance',    'container' => 'bottom-middle-4'];
+    $widgets[] = ['path' => 'hr_module/dashboard/widgets/hr_open_tickets',     'container' => 'bottom-right-4'];
+    $widgets[] = ['path' => 'hr_module/dashboard/widgets/hr_loan',             'container' => 'right-4'];
+    $widgets[] = ['path' => 'hr_module/dashboard/widgets/hr_upcoming_training', 'container' => 'right-4'];
+    return $widgets;
+}
+
 // metisMenu is initialized from core's own main.js, whose exact timing
 // (document ready vs window load, and its position among other "load"
 // listeners) isn't something this module should depend on - a fixed "load"

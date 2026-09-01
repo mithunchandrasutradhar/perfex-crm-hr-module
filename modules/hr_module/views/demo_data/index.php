@@ -37,7 +37,7 @@
                 <div class="col-md-6">
                   <ul class="tw-mb-0">
                     <li>Loans with repayment history</li>
-                    <li>Overtime entries (6 per employee)</li>
+                    <li>Overduty entries (6 per employee)</li>
                     <li>Performance reviews (2 per employee)</li>
                     <li>4 training sessions, all enrolled</li>
                     <li>Helpdesk tickets (3 per employee, with replies)</li>
