@@ -91,6 +91,15 @@ class Payroll extends AdminController
         $data['payroll'] = $payroll;
         $data['details'] = $this->Payroll_model->get_details($id);
         $data['shift_summary'] = $this->Shifts_model->get_employee_shift_summary($payroll->employee_id, $period_from, $period_to);
+
+        // Late days aren't persisted on hr_payroll (unlike present/absent), so
+        // pull it live from the same monthly attendance summary Payroll_model::
+        // generate() already uses for present/absent - keeps this in sync even
+        // for older payroll rows generated before this was added to the view.
+        $this->load->model('hr_module/Attendance_model');
+        $att_summary = $this->Attendance_model->get_summary($payroll->employee_id, $payroll->pay_month, $payroll->pay_year);
+        $data['late_days'] = $att_summary['late'] ?? 0;
+
         $this->load->view('hr_module/payroll/view', $data);
     }
 

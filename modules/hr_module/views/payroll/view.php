@@ -101,6 +101,8 @@ $status_badge = ['draft'=>'default','paid'=>'success'];
               <tr><td>Working Days</td><td class="tw-text-right"><?php echo $payroll->working_days ?? '-'; ?></td></tr>
               <tr><td>Present Days</td><td class="tw-text-right text-success"><?php echo $payroll->present_days ?? '-'; ?></td></tr>
               <tr><td>Absent Days</td><td class="tw-text-right text-danger"><?php echo $payroll->absent_days ?? '-'; ?></td></tr>
+              <tr><td>Late Days</td><td class="tw-text-right text-warning"><?php echo $late_days ?? 0; ?></td></tr>
+              <tr><td>Overduty Days</td><td class="tw-text-right"><?php echo $payroll->overtime_days ?? 0; ?></td></tr>
               <?php if (!empty($shift_summary)): ?>
               <tr><td><?php echo _l('hr_shift_type'); ?></td><td class="tw-text-right"><?php echo htmlspecialchars($shift_summary); ?></td></tr>
               <?php endif; ?>
@@ -109,18 +111,26 @@ $status_badge = ['draft'=>'default','paid'=>'success'];
         </div>
 
         <!-- Actions -->
+        <?php
+          $can_print_slip = staff_can('view', 'hr_payroll');
+          $can_mark_paid  = $payroll->status === 'draft' && staff_can('edit', 'hr_payroll');
+          $can_delete     = $payroll->status !== 'paid' && staff_can('delete', 'hr_payroll');
+        ?>
+        <?php if ($can_print_slip || $can_mark_paid || $can_delete): ?>
         <div class="panel_s">
           <div class="panel-body">
             <h5 class="tw-font-semibold tw-mb-3">Actions</h5>
+            <?php if ($can_print_slip): ?>
             <a href="<?php echo admin_url('hr_module/payroll/slip/'.$payroll->id); ?>" target="_blank" class="btn btn-default btn-block tw-mb-2">
               <i class="fa fa-print tw-mr-1"></i>Print Pay Slip
             </a>
-            <?php if ($payroll->status === 'draft' && staff_can('edit','hr_payroll')): ?>
+            <?php endif; ?>
+            <?php if ($can_mark_paid): ?>
             <button class="btn btn-success btn-block tw-mb-2" data-toggle="modal" data-target="#markPaidModal">
               <i class="fa fa-money-bill-wave tw-mr-1"></i><?php echo _l('hr_payroll_mark_paid'); ?>
             </button>
             <?php endif; ?>
-            <?php if ($payroll->status !== 'paid' && staff_can('delete','hr_payroll')): ?>
+            <?php if ($can_delete): ?>
             <a href="<?php echo admin_url('hr_module/payroll/delete/'.$payroll->id); ?>"
                class="btn btn-danger btn-block _delete">
               <i class="fa fa-trash tw-mr-1"></i>Delete
@@ -128,6 +138,7 @@ $status_badge = ['draft'=>'default','paid'=>'success'];
             <?php endif; ?>
           </div>
         </div>
+        <?php endif; ?>
 
         <!-- Meta -->
         <div class="panel_s">

@@ -53,7 +53,9 @@ foreach ($rows as $r) {
     $employee_cell = '<a href="' . $view_url . '">' . htmlspecialchars($r->first_name . ' ' . $r->last_name) . '</a><br><small class="text-muted">' . $r->employee_code . '</small>';
     $options = [];
     $options[] = '<a href="' . $view_url . '">' . _l('hr_view') . '</a>';
-    $options[] = '<a href="' . admin_url('hr_module/payroll/slip/' . $r->id) . '" target="_blank">' . _l('hr_payroll_slip') . '</a>';
+    if (staff_can('view', 'hr_payroll')) {
+        $options[] = '<a href="' . admin_url('hr_module/payroll/slip/' . $r->id) . '" target="_blank">' . _l('hr_payroll_slip') . '</a>';
+    }
     if ($r->status === 'draft' && staff_can('edit', 'hr_payroll')) {
         $options[] = '<a href="#" class="hr-mark-paid" data-id="' . $r->id . '">' . _l('hr_payroll_mark_paid') . '</a>';
     }
