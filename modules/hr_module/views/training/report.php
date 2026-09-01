@@ -92,7 +92,9 @@ $company_name = get_option('companyname') ?: 'Company Name';
 
   <?php if ($training->description): ?>
   <h5 class="section">Description / Objectives</h5>
-  <p><?php echo nl2br(htmlspecialchars($training->description)); ?></p>
+  <!-- Authored via the tinymce editor on Add/Edit (real HTML), so rendered
+       as-is here rather than escaped/nl2br'd plain text. -->
+  <div><?php echo $training->description; ?></div>
   <?php endif; ?>
 
   <div class="stats">

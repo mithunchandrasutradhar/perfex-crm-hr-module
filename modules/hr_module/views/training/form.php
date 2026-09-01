@@ -157,7 +157,7 @@ $form_url = $is_edit
               </div>
               <div class="form-group">
                 <label>Description / Objectives</label>
-                <textarea name="description" class="form-control" rows="4"
+                <textarea name="description" class="form-control tinymce" rows="4"
                           placeholder="Training objectives, agenda, prerequisites..."><?php echo $is_edit ? htmlspecialchars($training->description) : ''; ?></textarea>
               </div>
               <div class="form-group">

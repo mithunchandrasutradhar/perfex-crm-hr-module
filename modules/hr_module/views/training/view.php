@@ -5,6 +5,17 @@ $enrolled_ids = array_column((array)$participants, 'employee_id');
 $instructor_label = $training->instructor_name ?: $training->trainer;
 $can_generate_report = staff_can('create','hr_training') || staff_can('edit','hr_training') || $is_instructor;
 $sessions_by_date = array_column($sessions, null, 'session_date');
+// Departments actually represented among this training's participants - used
+// to populate the Department filter on both the Participants and Daily
+// Attendance tables below, rather than every department in the company.
+$participant_departments = [];
+foreach ($participants as $p) {
+    if (!empty($p->department_name)) {
+        $participant_departments[$p->department_name] = true;
+    }
+}
+$participant_departments = array_keys($participant_departments);
+sort($participant_departments);
 ?>
 <?php init_head(); ?>
 <div id="wrapper">
@@ -81,7 +92,9 @@ $sessions_by_date = array_column($sessions, null, 'session_date');
 
             <?php if ($training->description): ?>
             <h5 class="tw-font-semibold">Description / Objectives</h5>
-            <p><?php echo nl2br(htmlspecialchars($training->description)); ?></p>
+            <!-- Authored via the tinymce editor on Add/Edit (real HTML), so
+                 rendered as-is here rather than escaped/nl2br'd plain text. -->
+            <div><?php echo $training->description; ?></div>
             <?php endif; ?>
 
             <?php if ($training->completion_note): ?>
@@ -99,15 +112,35 @@ $sessions_by_date = array_column($sessions, null, 'session_date');
 
         <!-- Participants -->
         <div class="panel_s">
-          <div class="panel-heading tw-flex tw-justify-between tw-items-center">
+          <div class="panel-heading tw-flex tw-justify-between tw-items-center tw-flex-wrap tw-gap-2">
             <h5 class="tw-font-semibold tw-mb-0"><?php echo _l('hr_training_participants'); ?>
               <span class="label label-default tw-ml-1"><?php echo count($participants); ?></span>
             </h5>
-            <?php if (staff_can('edit','hr_training') && $training->status !== 'cancelled'): ?>
-            <button class="btn btn-primary btn-xs" data-toggle="modal" data-target="#enrollModal">
-              <i class="fa fa-user-plus tw-mr-1"></i><?php echo _l('hr_training_enroll'); ?>
-            </button>
-            <?php endif; ?>
+            <div class="tw-flex tw-items-center tw-gap-2 tw-flex-wrap">
+              <div class="dataTables_filter">
+                <input type="search" id="participants-filter-search" class="form-control input-sm" placeholder="Search...">
+              </div>
+              <?php if (!empty($participant_departments)): ?>
+              <select id="participants-filter-dept" class="selectpicker" data-width="150px" data-live-search="true">
+                <option value="">All Departments</option>
+                <?php foreach ($participant_departments as $dname): ?>
+                <option value="<?php echo htmlspecialchars($dname); ?>"><?php echo htmlspecialchars($dname); ?></option>
+                <?php endforeach; ?>
+              </select>
+              <?php endif; ?>
+              <select id="participants-filter-status" class="selectpicker" data-width="130px">
+                <option value="">All Status</option>
+                <option value="pending">Pending</option>
+                <option value="present">Present</option>
+                <option value="absent">Absent</option>
+                <option value="partial">Partial</option>
+              </select>
+              <?php if (staff_can('edit','hr_training') && $training->status !== 'cancelled'): ?>
+              <button class="btn btn-primary" data-toggle="modal" data-target="#enrollModal">
+                <i class="fa fa-user-plus tw-mr-1"></i><?php echo _l('hr_training_enroll'); ?>
+              </button>
+              <?php endif; ?>
+            </div>
           </div>
           <div class="panel-body">
             <?php if (empty($participants)): ?>
@@ -126,7 +159,7 @@ $sessions_by_date = array_column($sessions, null, 'session_date');
                 <tbody>
                   <?php foreach ($participants as $p): ?>
                   <?php $note_preview = $p->notes ? mb_strimwidth($p->notes, 0, 60, '...') : ''; ?>
-                  <tr>
+                  <tr data-department="<?php echo htmlspecialchars($p->department_name ?? ''); ?>" data-status="<?php echo htmlspecialchars($p->attendance_status); ?>">
                     <td><?php echo htmlspecialchars($p->first_name.' '.$p->last_name); ?>
                       <br><small class="text-muted"><?php echo $p->employee_code; ?></small></td>
                     <td><?php echo htmlspecialchars($p->department_name ?? '-'); ?></td>
@@ -172,8 +205,28 @@ $sessions_by_date = array_column($sessions, null, 'session_date');
         <!-- Daily Attendance -->
         <?php if (!empty($participants) && !empty($days)): ?>
         <div class="panel_s">
-          <div class="panel-heading">
+          <div class="panel-heading tw-flex tw-justify-between tw-items-center tw-flex-wrap tw-gap-2">
             <h5 class="tw-font-semibold tw-mb-0"><?php echo _l('hr_training_daily_attendance'); ?></h5>
+            <div class="tw-flex tw-items-center tw-gap-2 tw-flex-wrap">
+              <div class="dataTables_filter">
+                <input type="search" id="daily-filter-search" class="form-control input-sm" placeholder="Search...">
+              </div>
+              <?php if (!empty($participant_departments)): ?>
+              <select id="daily-filter-dept" class="selectpicker" data-width="150px" data-live-search="true">
+                <option value="">All Departments</option>
+                <?php foreach ($participant_departments as $dname): ?>
+                <option value="<?php echo htmlspecialchars($dname); ?>"><?php echo htmlspecialchars($dname); ?></option>
+                <?php endforeach; ?>
+              </select>
+              <?php endif; ?>
+              <select id="daily-filter-status" class="selectpicker" data-width="130px">
+                <option value="">All Status</option>
+                <option value="pending">Pending</option>
+                <option value="present">Present</option>
+                <option value="absent">Absent</option>
+                <option value="partial">Partial</option>
+              </select>
+            </div>
           </div>
           <div class="panel-body">
             <div class="table-responsive">
@@ -213,7 +266,7 @@ $sessions_by_date = array_column($sessions, null, 'session_date');
                 </tr></thead>
                 <tbody>
                   <?php foreach ($participants as $p): ?>
-                  <tr>
+                  <tr data-department="<?php echo htmlspecialchars($p->department_name ?? ''); ?>" data-status="<?php echo htmlspecialchars($p->attendance_status); ?>">
                     <td><?php echo htmlspecialchars($p->first_name.' '.$p->last_name); ?></td>
                     <?php foreach ($days as $day): ?>
                     <?php $day_status = $attendance_grid[$p->employee_id][$day] ?? 'pending'; ?>
@@ -439,38 +492,89 @@ $sessions_by_date = array_column($sessions, null, 'session_date');
 <?php init_tail(); ?>
 <script>
 $(function(){
-    // Plain client-side pagination - deliberately NOT the DataTables library:
-    // this page's tables already have all their real rows server-rendered
-    // (no AJAX), and initializing DataTables on top of them triggers Perfex's
-    // own "dt-table-loading" skeleton CSS (meant for tables that start empty
-    // and get filled via AJAX), which then never clears since no AJAX call
-    // ever fires to complete it. This just shows/hides the existing <tr>
-    // elements in pages - no data, columns, or row actions/forms/modals
-    // change at all.
-    function hrPaginateTable(selector, pageSize) {
-        var $table = $(selector);
+    // Plain client-side filter + pagination - deliberately NOT the DataTables
+    // library: this page's tables already have all their real rows
+    // server-rendered (no AJAX), and initializing DataTables on top of them
+    // triggers Perfex's own "dt-table-loading" skeleton CSS (meant for tables
+    // that start empty and get filled via AJAX), which then never clears
+    // since no AJAX call ever fires to complete it. This just shows/hides the
+    // existing <tr> elements (by filter match, then by page) - no data,
+    // columns, or row actions/forms/modals change at all.
+    function hrSetupTable(tableSelector, searchInputId, deptSelectId, statusSelectId, pageSize) {
+        var $table = $(tableSelector);
         if ($table.length === 0) return;
-        var $rows = $table.find('tbody tr');
-        var total = $rows.length;
-        if (total <= pageSize) return;
+        var $allRows = $table.find('tbody tr');
+        if ($allRows.length === 0) return;
 
-        var totalPages = Math.ceil(total / pageSize);
+        var $searchInput = searchInputId ? $('#' + searchInputId) : $();
+        var $deptSel      = deptSelectId   ? $('#' + deptSelectId)   : $();
+        var $statusSel    = statusSelectId ? $('#' + statusSelectId) : $();
         var current = 1;
-        // Same dataTables_info + Bootstrap ul.pagination markup DataTables
-        // itself renders everywhere else in the app - same look, without
-        // needing the DataTables engine (which is what caused the loading-
-        // skeleton bug on an already-server-rendered table).
-        var $nav  = $('<div class="dataTables_wrapper tw-mt-2 tw-flex tw-items-center tw-justify-between tw-flex-wrap tw-gap-2"></div>');
-        var $info = $('<div class="dataTables_info"></div>');
-        var $pager = $('<div class="dataTables_paginate paging_simple_numbers"><ul class="pagination"></ul></div>');
-        var $ul = $pager.find('ul.pagination');
-        $nav.append($info).append($pager);
-        $table.closest('.table-responsive').after($nav);
+        var $nav = null, $info, $ul;
+
+        function matchingRows() {
+            var search = $searchInput.length ? $.trim($searchInput.val()).toLowerCase() : '';
+            var dept   = $deptSel.length   ? $deptSel.val()   : '';
+            var status = $statusSel.length ? $statusSel.val() : '';
+            return $allRows.filter(function () {
+                var okSearch = !search || $(this).text().toLowerCase().indexOf(search) !== -1;
+                var okDept   = !dept   || $(this).attr('data-department') === dept;
+                var okStatus = !status || $(this).attr('data-status') === status;
+                return okSearch && okDept && okStatus;
+            });
+        }
+
+        // Perfex's own mainWrapperHeightFix() (assets/js/main.js) measures the
+        // page's full height on load and bakes it into an inline min-height on
+        // the content wrapper - it runs before this script hides most of the
+        // rows below, so it captures the tall, pre-pagination height and never
+        // recalculates on its own afterwards. Re-running it (it's just a plain
+        // global function, safe to call again) after every show/hide here keeps
+        // that min-height honest instead of leaving a huge blank gap under a
+        // short filtered/paginated table.
+        function hrRefreshWrapperHeight() {
+            if (typeof mainWrapperHeightFix === 'function') {
+                // Clear every element mainWrapperHeightFix() itself sets a
+                // min-height on - not just #wrapper - BEFORE recalculating.
+                // It measures $(document).outerHeight(true), which includes
+                // ALL THREE of these elements' current min-heights; leaving
+                // any one of them stale still feeds an inflated number back
+                // into the recalculation, so it has to be all or nothing.
+                $('#wrapper, #menu, #setup-menu-wrapper').css('min-height', '');
+                setTimeout(mainWrapperHeightFix, 0);
+            }
+        }
 
         function render() {
+            $allRows.hide();
+            var $matched = matchingRows();
+            var total = $matched.length;
+
+            if (total <= pageSize) {
+                $matched.show();
+                if ($nav) { $nav.remove(); $nav = null; }
+                hrRefreshWrapperHeight();
+                return;
+            }
+
+            if (!$nav) {
+                // Same dataTables_info + Bootstrap ul.pagination markup DataTables
+                // itself renders everywhere else in the app - same look, without
+                // needing the DataTables engine (which is what caused the
+                // loading-skeleton bug on an already-server-rendered table).
+                $nav  = $('<div class="dataTables_wrapper tw-mt-2 tw-flex tw-items-center tw-justify-between tw-flex-wrap tw-gap-2"></div>');
+                $info = $('<div class="dataTables_info"></div>');
+                var $pager = $('<div class="dataTables_paginate paging_simple_numbers"><ul class="pagination"></ul></div>');
+                $ul = $pager.find('ul.pagination');
+                $nav.append($info).append($pager);
+                $table.closest('.table-responsive').after($nav);
+            }
+
+            var totalPages = Math.ceil(total / pageSize);
+            if (current > totalPages) current = 1;
             var start = (current - 1) * pageSize;
             var end = Math.min(start + pageSize, total);
-            $rows.hide().slice(start, end).show();
+            $matched.hide().slice(start, end).show();
             $info.text('Showing ' + (start + 1) + ' to ' + end + ' of ' + total + ' entries');
 
             $ul.empty();
@@ -493,11 +597,32 @@ $(function(){
             var $nextA  = $('<a href="javascript:void(0)">Next</a>');
             if (current !== totalPages) $nextA.on('click', function(){ current++; render(); });
             $ul.append($nextLi.append($nextA));
+
+            hrRefreshWrapperHeight();
         }
+
+        $searchInput.on('keyup input', function(){ current = 1; render(); });
+        $deptSel.add($statusSel).on('change changed.bs.select', function(){ current = 1; render(); });
         render();
     }
-    hrPaginateTable('.table-hr-training-participants', 10);
-    hrPaginateTable('.table-hr-training-daily-attendance', 10);
+    hrSetupTable('.table-hr-training-participants', 'participants-filter-search', 'participants-filter-dept', 'participants-filter-status', 10);
+    hrSetupTable('.table-hr-training-daily-attendance', 'daily-filter-search', 'daily-filter-dept', 'daily-filter-status', 10);
+
+    // Perfex's own main.js also re-runs mainWrapperHeightFix() on the window's
+    // "load" event (assets/js/main.js, ~150ms after load fires) - that happens
+    // AFTER document-ready, i.e. after the two hrSetupTable() calls above
+    // already hid most of the rows, so it should already measure correctly.
+    // Belt-and-suspenders anyway: clear the wrapper's min-height and force one
+    // more recalculation slightly after that, so this is guaranteed to be the
+    // last word regardless of load timing.
+    $(window).on('load', function () {
+        setTimeout(function () {
+            if (typeof mainWrapperHeightFix === 'function') {
+                $('#wrapper, #menu, #setup-menu-wrapper').css('min-height', '');
+                mainWrapperHeightFix();
+            }
+        }, 300);
+    });
 
     $('#enroll-btn').on('click', function(){
         var ids = $('#enroll-select').val() || [];

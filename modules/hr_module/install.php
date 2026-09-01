@@ -1378,29 +1378,10 @@ if (!$CI->db->table_exists(db_prefix() . 'hr_shift_assignments')) {
       MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1;');
 }
 
-// 31. HR Email Queue - a small, hr_module-scoped background queue (separate
-// from Perfex's own core mail_queue/email_queue_enabled setting, which is a
-// site-wide toggle affecting every email in the whole CRM and not something
-// this module should flip as a side effect). Used specifically for bulk
-// sends like training-enrollment notifications, so saving a big enrollment
-// list doesn't block on sending one SMTP email per employee - rows are
-// queued instantly instead, then drained a few at a time, one by one, from
-// hr_module_cron_tasks() on the existing admin_init/cron cycle.
-if (!$CI->db->table_exists(db_prefix() . 'hr_email_queue')) {
-    $CI->db->query('CREATE TABLE `' . db_prefix() . 'hr_email_queue` (
-      `id` int(11) NOT NULL,
-      `to_email` varchar(191) NOT NULL,
-      `subject` varchar(255) NOT NULL,
-      `body` longtext NOT NULL,
-      `link_url` varchar(255) DEFAULT NULL,
-      `status` varchar(20) NOT NULL DEFAULT \'pending\',
-      `attempts` int(11) NOT NULL DEFAULT 0,
-      `created_at` datetime NOT NULL,
-      `sent_at` datetime DEFAULT NULL
-    ) ENGINE=InnoDB DEFAULT CHARSET=' . $CI->db->char_set . ';');
-    $CI->db->query('ALTER TABLE `' . db_prefix() . 'hr_email_queue`
-      ADD PRIMARY KEY (`id`),
-      ADD KEY `status` (`status`);');
-    $CI->db->query('ALTER TABLE `' . db_prefix() . 'hr_email_queue`
-      MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1;');
-}
+// Note: an earlier revision of this file created a custom hr_email_queue
+// table here for bulk-send notifications. That's been superseded - bulk
+// sends now rely on Perfex's own core mail queue (App_Email/mail_queue,
+// gated by the site-wide "Enable email queue" setting) instead of a
+// separate hr_module-specific one, so this table is intentionally no longer
+// created. A site that already migrated to that earlier revision keeps a
+// small, harmless, unused table - safe to ignore or drop manually.

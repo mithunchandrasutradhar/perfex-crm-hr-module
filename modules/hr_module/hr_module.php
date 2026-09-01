@@ -530,10 +530,4 @@ function hr_module_cron_tasks()
 
     // Day-before holiday reminder to all employees (see send_holiday_reminder())
     $CI->Hr_module_model->send_holiday_reminder();
-
-    // Drain a batch of the background email queue (see queue_employee_email()/
-    // process_email_queue() in Hr_module_model) - e.g. training-enrollment
-    // notifications queued instantly instead of sent inline during "Enroll
-    // Selected", so that request isn't blocked on N SMTP sends.
-    $CI->Hr_module_model->process_email_queue();
 }

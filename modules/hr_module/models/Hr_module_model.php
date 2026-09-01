@@ -184,70 +184,6 @@ class Hr_module_model extends App_Model
         return $this->_send_hr_email($to, $subject, $message . ($link_url ? $this->_notification_link_block($link_url) : ''));
     }
 
-    // ─── Background email queue (bulk sends only) ───────────────────────────
-    // Deliberately a small hr_module-owned queue, separate from Perfex core's
-    // own mail_queue/"Enable email queue" setting - that's a site-wide toggle
-    // affecting every email in the whole CRM, not something this module
-    // should flip as a side effect of fixing one bulk-send flow. Used only by
-    // callers that would otherwise send one SMTP email per row in a loop
-    // (e.g. notifying every newly-enrolled training participant) - queuing
-    // is a fast DB insert, so the request that triggered it (e.g. "Enroll
-    // Selected") returns immediately instead of blocking on N SMTP round-trips.
-    // The queue is drained a few rows at a time, one by one, from
-    // hr_module_cron_tasks() (process_email_queue() below) on the site's
-    // existing cron cycle - not sent inline here.
-    public function queue_employee_email($to, $subject, $message, $link_url = null)
-    {
-        $to = trim($to);
-        if ($to === '' || !filter_var($to, FILTER_VALIDATE_EMAIL)) {
-            return false;
-        }
-        return (bool) $this->db->insert(db_prefix() . 'hr_email_queue', [
-            'to_email'   => $to,
-            'subject'    => $subject,
-            'body'       => $message,
-            'link_url'   => $link_url,
-            'status'     => 'pending',
-            'created_at' => date('Y-m-d H:i:s'),
-        ]);
-    }
-
-    // Sends up to $limit pending queued emails, one at a time with a short
-    // pause between each (rather than all at once) - called from
-    // hr_module_cron_tasks() on every cron run. A row that fails 3 times is
-    // marked 'failed' and left alone; anything under that retries on the
-    // next cron cycle. Reuses send_employee_email() so a queued email is
-    // composed/sent identically to one sent directly.
-    public function process_email_queue($limit = 20, $delay_microseconds = 500000)
-    {
-        $rows = $this->db->where('status', 'pending')
-            ->order_by('id', 'ASC')
-            ->limit($limit)
-            ->get(db_prefix() . 'hr_email_queue')->result();
-
-        $total = count($rows);
-        foreach ($rows as $i => $row) {
-            $sent = $this->send_employee_email($row->to_email, $row->subject, $row->body, $row->link_url);
-            $attempts = (int) $row->attempts + 1;
-
-            if ($sent) {
-                $this->db->where('id', $row->id)->update(db_prefix() . 'hr_email_queue', [
-                    'status'   => 'sent',
-                    'attempts' => $attempts,
-                    'sent_at'  => date('Y-m-d H:i:s'),
-                ]);
-            } else {
-                $this->db->where('id', $row->id)->update(db_prefix() . 'hr_email_queue', [
-                    'status'   => $attempts >= 3 ? 'failed' : 'pending',
-                    'attempts' => $attempts,
-                ]);
-            }
-
-            if ($i < $total - 1) {
-                usleep($delay_microseconds);
-            }
-        }
-    }
 
     // ─── WhatsApp notifications (via WAHA) ──────────────────────────────────
     // Only ever used for public, broadcast-style team announcements (leave
@@ -327,12 +263,12 @@ class Hr_module_model extends App_Model
     // colleagues know the employee will be out. $message is caller-built HTML
     // (see format_notification_details()). No-op if there's no one to notify;
     // never throws, for the same reason as the other senders here.
-    // Queued one row per recipient (not one single BCC send) - a company with
-    // a lot of employees could otherwise mean this blocks whatever action
-    // triggered it (e.g. approving a leave request) while it builds/sends one
-    // big multi-recipient email; queuing returns immediately, and the actual
-    // sends happen a few at a time, one by one, from hr_module_cron_tasks()
-    // (see queue_employee_email()/process_email_queue()).
+    // Sent one by one via send_employee_email() rather than one big BCC blast,
+    // so each recipient gets their own copy - relies on Perfex's own core mail
+    // queue (Setup > Settings > Email > "Enable email queue") to keep that from
+    // blocking whatever triggered it: with that setting on, each call here is
+    // just a fast DB insert into Perfex's own mail_queue, sent later in the
+    // background by the site's existing cron; with it off, they send immediately.
     public function send_leave_announcement($subject, $message)
     {
         $emails = array_filter(array_column(
@@ -348,21 +284,21 @@ class Hr_module_model extends App_Model
             return false;
         }
 
-        $queued = 0;
+        $sent = 0;
         foreach ($emails as $email) {
-            if ($this->queue_employee_email($email, $subject, $message)) $queued++;
+            if ($this->send_employee_email($email, $subject, $message)) $sent++;
         }
-        return $queued > 0;
+        return $sent > 0;
     }
 
     // Broadcasts a newly-published (or updated) policy to its audience - every active
     // hr_module employee mapped to a staff account when $department_id is null (a
     // public policy), or just those departments' employees when it's a private one
     // targeting one or more specific departments.
-    // Queued one row per recipient, same reasoning as send_leave_announcement()
-    // above - a public (or large-department) policy could reach a lot of
-    // employees, so this shouldn't block publishing the policy while it
-    // builds/sends one big multi-recipient email.
+    // Sent one by one via send_employee_email(), same reasoning as
+    // send_leave_announcement() above - relies on Perfex's own core mail queue
+    // setting to avoid blocking on a large audience, rather than a separate
+    // hr_module-specific queue.
     public function send_policy_announcement($subject, $message, $department_ids = null, $link_url = null)
     {
         if (is_array($department_ids) && empty($department_ids)) {
@@ -386,11 +322,11 @@ class Hr_module_model extends App_Model
             return false;
         }
 
-        $queued = 0;
+        $sent = 0;
         foreach ($emails as $email) {
-            if ($this->queue_employee_email($email, $subject, $message, $link_url)) $queued++;
+            if ($this->send_employee_email($email, $subject, $message, $link_url)) $sent++;
         }
-        return $queued > 0;
+        return $sent > 0;
     }
 
     private function _send_hr_email($to, $subject, $message)
@@ -586,10 +522,13 @@ class Hr_module_model extends App_Model
             ->where_in('st.status', ['pending', 'in_progress', 'partially_completed'])
             ->count_all_results();
 
-        // Upcoming / ongoing trainings (enrolled, not yet completed)
-        $this->db->select('t.id, t.title, t.start_date, t.end_date, t.status', false)
+        // Upcoming / ongoing trainings (enrolled, not yet completed) - the
+        // first day's start_time (if one was set) comes from hr_training_sessions,
+        // since hr_training itself only stores the date, not a time-of-day.
+        $this->db->select('t.id, t.title, t.start_date, t.end_date, t.status, s.start_time', false)
             ->from(db_prefix() . 'hr_training_participants p')
             ->join(db_prefix() . 'hr_training t', 't.id = p.training_id', 'left')
+            ->join(db_prefix() . 'hr_training_sessions s', 's.training_id = t.id AND s.session_date = t.start_date', 'left')
             ->where('p.employee_id', $employee_id)
             ->where('p.completed', 0)
             ->where_in('t.status', ['scheduled', 'in_progress'])

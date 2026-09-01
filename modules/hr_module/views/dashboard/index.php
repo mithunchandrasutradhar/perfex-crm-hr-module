@@ -312,8 +312,8 @@ $task_status_colors = [
                         <tbody>
                             <?php foreach ($trainings as $tr): ?>
                             <tr>
-                                <td><?php echo htmlspecialchars($tr->title); ?></td>
-                                <td><?php echo _d($tr->start_date); ?></td>
+                                <td><a href="<?php echo admin_url('hr_module/training/view/' . $tr->id); ?>"><?php echo htmlspecialchars($tr->title); ?></a></td>
+                                <td><?php echo _d($tr->start_date); ?><?php if (!empty($tr->start_time)): ?><br><small class="text-muted"><?php echo date('g:i A', strtotime($tr->start_time)); ?></small><?php endif; ?></td>
                                 <td>
                                     <?php if ($tr->status === 'in_progress'): ?>
                                         <span class="label label-success">In Progress</span>

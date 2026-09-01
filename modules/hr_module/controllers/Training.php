@@ -454,12 +454,14 @@ class Training extends AdminController
         }
     }
 
-    // Queues each newly-enrolled employee's notification email for the
-    // background sender instead of sending it inline - enrolling a large
-    // batch of employees would otherwise block the "Enroll Selected" request
-    // on one SMTP round-trip per person. Queuing is just a fast DB insert per
-    // employee; actual sending happens a few at a time, one by one, from
-    // hr_module_cron_tasks() (see Hr_module_model::process_email_queue()).
+    // Emails each newly-enrolled employee the training's details. Sent via
+    // send_employee_email() - Perfex's own core mail library (App_Email,
+    // loaded transparently for every $this->email->send() call thanks to
+    // config's subclass_prefix) already defers to the site's "Enable email
+    // queue" setting on its own: when that's on, this is just a fast DB
+    // insert into Perfex's own mail_queue per employee (sent later, in the
+    // background, by the site's existing cron); when it's off, it sends
+    // immediately. No hr_module-specific queue needed on top of that.
     // Wrapped in try/catch for the same reason as _notify_instructor_assigned()
     // above - a notification hiccup must never break the save that triggered it.
     private function _notify_enrolled($training_id, $employee_ids)
@@ -485,7 +487,7 @@ class Training extends AdminController
                 ];
                 $tpl = $this->Email_templates_model->render('training_enrolled', $placeholders);
 
-                $this->Hr_module_model->queue_employee_email($emp->email, $tpl->subject, $tpl->body, $link);
+                $this->Hr_module_model->send_employee_email($emp->email, $tpl->subject, $tpl->body, $link);
             }
         } catch (Exception $e) {
             log_activity('HR Training enrollment email failed: ' . $e->getMessage());
