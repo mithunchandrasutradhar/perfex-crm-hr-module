@@ -25,8 +25,9 @@ $search_value = $CI->input->post('search');
 if (!empty($search_value['value'])) $filters['search'] = trim($search_value['value']);
 
 $rows = $CI->Shifts_model->get_all($filters);
-$can_manage_any = is_admin() || staff_can('approve', 'hr_shifts') || staff_can('edit', 'hr_shifts');
-$can_approve    = is_admin() || staff_can('approve', 'hr_shifts');
+$can_manage_any   = is_admin() || staff_can('approve', 'hr_shifts') || staff_can('edit', 'hr_shifts');
+$can_approve      = is_admin() || staff_can('approve', 'hr_shifts');
+$can_soft_approve = is_admin() || staff_can('soft_approve', 'hr_shifts');
 
 // The DataTable's own pagination - rows here are built manually (below)
 // instead of through the generic data_tables_init() helper, so start/length
@@ -47,7 +48,6 @@ $badge = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'danger
 
 foreach ($rows as $r) {
     $view_url = admin_url('hr_module/shifts/view/' . $r->id);
-    $is_owner = (int) $r->employee_id === hr_get_own_employee_id();
 
     $employee_cell = '<a href="' . $view_url . '">' . htmlspecialchars($r->employee_name) . '</a><br><small class="text-muted">' . htmlspecialchars($r->employee_code) . '</small>';
     $options = ['<a href="' . $view_url . '">' . _l('hr_view') . '</a>'];
@@ -55,7 +55,17 @@ foreach ($rows as $r) {
         $options[] = '<a href="#" class="hr-shift-approve" data-id="' . $r->id . '">' . _l('hr_shift_approve') . '</a>';
         $options[] = '<a href="#" class="hr-shift-reject" data-id="' . $r->id . '">' . _l('hr_shift_reject') . '</a>';
     }
-    if ($r->status === 'pending' && ($can_manage_any || $is_owner)) {
+    // Soft approve/reject: informational-only pre-approval, independent of the
+    // real Approve/Reject above - shown to a soft-approver role regardless of
+    // whether they also hold the full 'approve' capability (mirrors leave/table.php).
+    if ($r->status === 'pending' && $can_soft_approve && empty($r->soft_approved_by)) {
+        $options[] = '<a href="#" class="hr-shift-soft-approve" data-id="' . $r->id . '">' . _l('hr_shift_soft_approve') . '</a>';
+        $options[] = '<a href="#" class="hr-shift-soft-reject" data-id="' . $r->id . '">' . _l('hr_shift_soft_reject') . '</a>';
+    }
+    // Matches Shifts::delete()'s own authorization exactly: deleting requires
+    // the full 'delete' capability - there is no ownership-based self-delete
+    // exception for shift assignments.
+    if ($r->status === 'pending' && staff_can('delete', 'hr_shifts')) {
         $options[] = '<a href="' . admin_url('hr_module/shifts/delete/' . $r->id) . '" class="_delete text-danger">' . _l('hr_delete') . '</a>';
     }
     $employee_cell .= '<div class="row-options">' . implode(' | ', $options) . '</div>';

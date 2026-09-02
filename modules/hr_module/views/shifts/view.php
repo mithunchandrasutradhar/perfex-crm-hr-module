@@ -55,65 +55,92 @@ $badge = '<span class="label ' . ($badge_map[$a->status] ?? 'label-default') . '
       </div>
 
       <!-- Actions -->
-      <div class="col-md-4">
-        <div class="panel_s">
-          <div class="panel-body">
-            <h6 class="tw-font-semibold tw-mb-3"><?php echo _l('hr_actions'); ?></h6>
+      <?php ob_start(); ?>
 
-            <?php if (!empty($can_soft_approve) && $a->status === 'pending'): ?>
-            <!-- Soft Approve/Reject: informational-only pre-approval, never blocks the real Approve/Reject below -->
             <?php if (!empty($a->soft_approved_by)): ?>
             <div class="alert alert-info tw-py-2 tw-mb-3 tw-text-sm">
               Soft <?php echo ucfirst($a->soft_status); ?> by <strong><?php echo htmlspecialchars($a->soft_approved_by_name ?: '-'); ?></strong> &mdash; <?php echo _dt($a->soft_approved_at); ?>
             </div>
             <?php endif; ?>
-            <form action="<?php echo admin_url('hr_module/shifts/soft_approve/' . $a->id); ?>" method="post" class="tw-mb-2">
-              <?php echo form_hidden($this->security->get_csrf_token_name(), $this->security->get_csrf_hash()); ?>
-              <button type="submit" class="btn btn-success btn-outline btn-block btn-sm">
-                <i class="fa fa-check tw-mr-1"></i><?php echo _l('hr_shift_soft_approve'); ?>
-              </button>
-            </form>
-            <form action="<?php echo admin_url('hr_module/shifts/soft_reject/' . $a->id); ?>" method="post" class="tw-mb-3">
-              <?php echo form_hidden($this->security->get_csrf_token_name(), $this->security->get_csrf_hash()); ?>
-              <button type="submit" class="btn btn-danger btn-outline btn-block btn-sm">
-                <i class="fa fa-times tw-mr-1"></i><?php echo _l('hr_shift_soft_reject'); ?>
-              </button>
-            </form>
-            <hr>
+
+            <?php if ($can_approve && $a->status === 'pending'): ?>
+            <!-- Single shared note/reason field - copied into the Reject form's
+                 hidden "reason" field just before it submits, so there's one
+                 visible textarea instead of one per action (mirrors leave/view.php). -->
+            <div class="form-group">
+              <textarea id="shift-action-note" class="form-control" rows="3" placeholder="Notes / reason (optional)..."></textarea>
+            </div>
             <?php endif; ?>
 
             <?php if ($can_approve && $a->status === 'pending'): ?>
-            <form action="<?php echo admin_url('hr_module/shifts/approve/' . $a->id); ?>" method="post" class="tw-mb-3">
-              <?php echo form_hidden($this->security->get_csrf_token_name(), $this->security->get_csrf_hash()); ?>
-              <button type="submit" class="btn btn-success btn-block btn-sm">
-                <i class="fa fa-check tw-mr-1"></i><?php echo _l('hr_shift_approve'); ?>
-              </button>
-            </form>
-            <form action="<?php echo admin_url('hr_module/shifts/reject/' . $a->id); ?>" method="post" class="tw-mb-3">
-              <?php echo form_hidden($this->security->get_csrf_token_name(), $this->security->get_csrf_hash()); ?>
-              <div class="form-group">
-                <textarea name="reason" class="form-control input-sm" rows="2" placeholder="Rejection reason..."></textarea>
+            <!-- Approve / Reject: the real, final decision -->
+            <div class="row tw-mb-2">
+              <div class="col-xs-6">
+                <form action="<?php echo admin_url('hr_module/shifts/approve/' . $a->id); ?>" method="post">
+                  <?php echo form_hidden($this->security->get_csrf_token_name(), $this->security->get_csrf_hash()); ?>
+                  <button type="submit" class="btn btn-success btn-block">
+                    <i class="fa fa-check tw-mr-1"></i><?php echo _l('hr_shift_approve'); ?>
+                  </button>
+                </form>
               </div>
-              <button type="submit" class="btn btn-danger btn-block btn-sm">
-                <i class="fa fa-times tw-mr-1"></i><?php echo _l('hr_shift_reject'); ?>
-              </button>
-            </form>
+              <div class="col-xs-6">
+                <form action="<?php echo admin_url('hr_module/shifts/reject/' . $a->id); ?>" method="post" onsubmit="hrCopyShiftNote(this)">
+                  <?php echo form_hidden($this->security->get_csrf_token_name(), $this->security->get_csrf_hash()); ?>
+                  <input type="hidden" name="reason">
+                  <button type="submit" class="btn btn-danger btn-block">
+                    <i class="fa fa-times tw-mr-1"></i><?php echo _l('hr_shift_reject'); ?>
+                  </button>
+                </form>
+              </div>
+            </div>
             <?php endif; ?>
 
-            <?php if ($a->status === 'pending'): ?>
-            <a href="<?php echo admin_url('hr_module/shifts/delete/' . $a->id); ?>" class="btn btn-default btn-block btn-sm text-danger _delete">
+            <?php if (!empty($can_soft_approve) && $a->status === 'pending' && empty($a->soft_approved_by)): ?>
+            <!-- Soft Approve/Reject: informational-only pre-approval, never blocks the real Approve/Reject above -->
+            <div class="row tw-mb-2">
+              <div class="col-xs-6">
+                <form action="<?php echo admin_url('hr_module/shifts/soft_approve/' . $a->id); ?>" method="post">
+                  <?php echo form_hidden($this->security->get_csrf_token_name(), $this->security->get_csrf_hash()); ?>
+                  <button type="submit" class="btn btn-success btn-block">
+                    <i class="fa fa-check tw-mr-1"></i><?php echo _l('hr_shift_soft_approve'); ?>
+                  </button>
+                </form>
+              </div>
+              <div class="col-xs-6">
+                <form action="<?php echo admin_url('hr_module/shifts/soft_reject/' . $a->id); ?>" method="post">
+                  <?php echo form_hidden($this->security->get_csrf_token_name(), $this->security->get_csrf_hash()); ?>
+                  <button type="submit" class="btn btn-danger btn-block">
+                    <i class="fa fa-times tw-mr-1"></i><?php echo _l('hr_shift_soft_reject'); ?>
+                  </button>
+                </form>
+              </div>
+            </div>
+            <?php endif; ?>
+
+            <?php if ($a->status === 'pending' && !empty($can_delete)): ?>
+            <a href="<?php echo admin_url('hr_module/shifts/delete/' . $a->id); ?>" class="btn btn-danger btn-block _delete">
               <i class="fa fa-trash tw-mr-1"></i><?php echo _l('hr_delete'); ?>
             </a>
             <?php endif; ?>
-
-            <hr>
-            <a href="<?php echo admin_url('hr_module/shifts'); ?>" class="btn btn-default btn-block btn-sm">
-              <i class="fa fa-arrow-left tw-mr-1"></i><?php echo _l('hr_back'); ?>
-            </a>
+      <?php $shift_actions_body = ob_get_clean(); ?>
+      <?php if (trim($shift_actions_body) !== ''): ?>
+      <div class="col-md-4">
+        <div class="panel_s">
+          <div class="panel-body">
+            <h6 class="tw-font-semibold tw-mb-3"><?php echo _l('hr_actions'); ?></h6>
+            <?php echo $shift_actions_body; ?>
           </div>
         </div>
       </div>
+      <?php endif; ?>
     </div>
   </div>
 </div>
 <?php init_tail(); ?>
+<script>
+function hrCopyShiftNote(form) {
+    var note = document.getElementById('shift-action-note');
+    var target = form.querySelector('input[type="hidden"][name="reason"]');
+    if (note && target) target.value = note.value;
+}
+</script>

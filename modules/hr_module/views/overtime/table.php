@@ -53,8 +53,7 @@ $day_type_labels = [
     'company_holiday'    => _l('hr_overtime_company_holiday'),
 ];
 
-// Self-service users (no global/"view" permission) may act on their own pending requests.
-$own_emp_id = (!is_admin() && !staff_can('view', 'hr_overtime')) ? hr_get_own_employee_id() : 0;
+$can_soft_approve = is_admin() || staff_can('soft_approve', 'hr_overtime');
 
 foreach ($rows as $r) {
     $status  = '<span class="label label-' . ($badge[$r->status] ?? 'default') . '">' . ucfirst($r->status) . '</span>';
@@ -68,8 +67,6 @@ foreach ($rows as $r) {
         : date('d M', strtotime($r->first_date)) . ' - ' . date('d M Y', strtotime($r->last_date));
     $date_cell .= '<br><small class="text-muted">' . $r->day_count . ' ' . ($r->day_count == 1 ? 'day' : 'days') . '</small>';
 
-    $is_own_pending = $own_emp_id && (int) $r->employee_id === $own_emp_id && $r->status === 'pending';
-
     $view_url = admin_url('hr_module/overtime/view/' . $r->id);
     $employee_cell = '<a href="' . $view_url . '">' . htmlspecialchars($r->first_name . ' ' . $r->last_name) . '</a><br><small class="text-muted">' . $r->employee_code . '</small>';
     $options = [];
@@ -79,10 +76,17 @@ foreach ($rows as $r) {
         $reject_form_id = 'hr-ot-reject-' . $r->id;
         $options[] = '<a href="#" class="text-danger hr-ot-reject" data-target="' . $reject_form_id . '">' . _l('hr_overtime_reject') . '</a>';
     }
-    if ((staff_can('edit', 'hr_overtime') || $is_own_pending) && $r->status === 'pending') {
+    // Soft approve/reject: informational-only pre-approval, independent of the
+    // real Approve/Reject above - shown to a soft-approver role regardless of
+    // whether they also hold the full 'edit' capability (mirrors leave/table.php).
+    if ($can_soft_approve && $r->status === 'pending' && empty($r->soft_approved_by)) {
+        $options[] = '<a href="#" class="hr-ot-soft-approve" data-id="' . $r->id . '">' . _l('hr_overtime_soft_approve') . '</a>';
+        $options[] = '<a href="#" class="hr-ot-soft-reject" data-id="' . $r->id . '">' . _l('hr_overtime_soft_reject') . '</a>';
+    }
+    if (staff_can('edit', 'hr_overtime') && $r->status === 'pending') {
         $options[] = '<a href="' . admin_url('hr_module/overtime/edit/' . $r->id) . '">' . _l('hr_edit') . '</a>';
     }
-    if ((staff_can('delete', 'hr_overtime') && $r->status !== 'approved') || $is_own_pending) {
+    if (staff_can('delete', 'hr_overtime') && $r->status !== 'approved') {
         $options[] = '<a href="' . admin_url('hr_module/overtime/delete/' . $r->id) . '" class="_delete text-danger">' . _l('hr_delete') . '</a>';
     }
     $employee_cell .= '<div class="row-options">' . implode(' | ', $options) . '</div>';

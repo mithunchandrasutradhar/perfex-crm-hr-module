@@ -106,9 +106,9 @@ class Overtime extends AdminController
     {
         $overtime = $this->Overtime_model->get($id);
         if (!$overtime) show_404();
-        $is_owner = (int) $overtime->employee_id === hr_get_own_employee_id();
-        $can_edit = staff_can('edit', 'hr_overtime') || ($is_owner && staff_can('create', 'hr_overtime'));
-        if (!$can_edit) access_denied('hr_overtime');
+        // Editing requires the full 'edit' capability - there is no
+        // ownership-based self-edit exception for overduty requests.
+        if (staff_cant('edit', 'hr_overtime')) access_denied('hr_overtime');
 
         // Self-service users can only edit their own request, and can't reassign it to someone else.
         $own_only = !staff_can('edit', 'hr_overtime');
@@ -197,6 +197,10 @@ class Overtime extends AdminController
     {
         if (staff_cant('soft_approve', 'hr_overtime')) access_denied('hr_overtime');
         $result = $this->Overtime_model->soft_approve($id);
+        if ($this->input->is_ajax_request()) {
+            echo json_encode($result);
+            return;
+        }
         if ($result['success']) set_alert('success', _l('hr_overtime_soft_approve'));
         else                    set_alert('danger',  $result['message']);
         redirect(admin_url('hr_module/overtime/view/' . $id));
@@ -206,6 +210,10 @@ class Overtime extends AdminController
     {
         if (staff_cant('soft_approve', 'hr_overtime')) access_denied('hr_overtime');
         $result = $this->Overtime_model->soft_reject($id);
+        if ($this->input->is_ajax_request()) {
+            echo json_encode($result);
+            return;
+        }
         if ($result['success']) set_alert('success', _l('hr_overtime_soft_reject'));
         else                    set_alert('danger',  $result['message']);
         redirect(admin_url('hr_module/overtime/view/' . $id));
@@ -215,10 +223,9 @@ class Overtime extends AdminController
     {
         $overtime = $this->Overtime_model->get($id);
         if (!$overtime) show_404();
-        $is_owner = (int) $overtime->employee_id === hr_get_own_employee_id();
-        $can_delete = staff_can('delete', 'hr_overtime')
-            || ($is_owner && staff_can('create', 'hr_overtime') && $overtime->status === 'pending');
-        if (!$can_delete) access_denied('hr_overtime');
+        // Deleting requires the full 'delete' capability - there is no
+        // ownership-based self-delete exception for overduty requests.
+        if (staff_cant('delete', 'hr_overtime')) access_denied('hr_overtime');
 
         $result = $this->Overtime_model->delete($id);
         if ($result['success']) set_alert('success', _l('hr_deleted_successfully'));

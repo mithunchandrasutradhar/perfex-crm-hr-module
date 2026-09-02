@@ -111,21 +111,21 @@ $badge = '<span class="label ' . ($badge_map[$r->status] ?? 'label-default') . '
       </div>
 
       <!-- Actions sidebar -->
-      <div class="col-md-4">
-        <div class="panel_s">
-          <div class="panel-body">
-            <h6 class="tw-font-semibold tw-mb-3"><?php echo _l('hr_actions'); ?></h6>
-
-            <?php
-              $show_soft    = $r->status === 'pending' && staff_can('soft_approve', 'hr_leave') && empty($r->soft_approved_by);
-              $show_approve = $r->status === 'pending' && (staff_can('approve', 'hr_leave') || is_admin());
-              // Matches Leave::cancel()'s own authorization exactly: full 'view',
-              // or 'view_own' limited to the requester's own record - a
-              // view_department-tier viewer could see this page but was never
-              // actually allowed to cancel, so the button shouldn't show for them.
-              $show_cancel  = $r->status === 'pending' && (is_admin() || staff_can('view', 'hr_leave')
-                  || (staff_can('view_own', 'hr_leave') && (int) $r->employee_id === hr_get_own_employee_id()));
-            ?>
+      <?php
+        $show_soft    = $r->status === 'pending' && staff_can('soft_approve', 'hr_leave') && empty($r->soft_approved_by);
+        $show_approve = $r->status === 'pending' && (staff_can('approve', 'hr_leave') || is_admin());
+        // Matches Leave::cancel()'s own authorization exactly: full 'view',
+        // or 'view_own' limited to the requester's own record - a
+        // view_department-tier viewer could see this page but was never
+        // actually allowed to cancel, so the button shouldn't show for them.
+        $show_cancel  = $r->status === 'pending' && (is_admin() || staff_can('view', 'hr_leave')
+            || (staff_can('view_own', 'hr_leave') && (int) $r->employee_id === hr_get_own_employee_id()));
+        // The panel spans several status-dependent branches (pending, approved
+        // with/without a cancellation request pending) - buffering the body is
+        // simpler and less error-prone than re-deriving every branch's own
+        // "is there anything to show" condition up front.
+        ob_start();
+      ?>
 
             <?php if (!empty($r->soft_approved_by)): ?>
             <div class="alert alert-info tw-py-2 tw-mb-3 tw-text-sm">
@@ -144,26 +144,32 @@ $badge = '<span class="label ' . ($badge_map[$r->status] ?? 'label-default') . '
             </div>
             <?php endif; ?>
 
-            <!-- Approve / Reject: the real, final decision -->
             <?php if ($show_approve): ?>
-            <form action="<?php echo admin_url('hr_module/leave/approve/' . $r->id); ?>" method="post" class="tw-mb-2" onsubmit="hrCopyLeaveNote(this)">
-              <?php echo form_hidden($this->security->get_csrf_token_name(), $this->security->get_csrf_hash()); ?>
-              <input type="hidden" name="notes">
-              <button type="submit" class="btn btn-success btn-block">
-                <i class="fa fa-check tw-mr-1"></i><?php echo _l('hr_leave_approve'); ?>
-              </button>
-            </form>
-            <form action="<?php echo admin_url('hr_module/leave/reject/' . $r->id); ?>" method="post" class="tw-mb-2" onsubmit="hrCopyLeaveNote(this)">
-              <?php echo form_hidden($this->security->get_csrf_token_name(), $this->security->get_csrf_hash()); ?>
-              <input type="hidden" name="reason">
-              <button type="submit" class="btn btn-danger btn-block">
-                <i class="fa fa-times tw-mr-1"></i><?php echo _l('hr_leave_reject'); ?>
-              </button>
-            </form>
+            <!-- Approve / Reject: the real, final decision -->
+            <div class="row tw-mb-2">
+              <div class="col-xs-6">
+                <form action="<?php echo admin_url('hr_module/leave/approve/' . $r->id); ?>" method="post" onsubmit="hrCopyLeaveNote(this)">
+                  <?php echo form_hidden($this->security->get_csrf_token_name(), $this->security->get_csrf_hash()); ?>
+                  <input type="hidden" name="notes">
+                  <button type="submit" class="btn btn-success btn-block">
+                    <i class="fa fa-check tw-mr-1"></i><?php echo _l('hr_leave_approve'); ?>
+                  </button>
+                </form>
+              </div>
+              <div class="col-xs-6">
+                <form action="<?php echo admin_url('hr_module/leave/reject/' . $r->id); ?>" method="post" onsubmit="hrCopyLeaveNote(this)">
+                  <?php echo form_hidden($this->security->get_csrf_token_name(), $this->security->get_csrf_hash()); ?>
+                  <input type="hidden" name="reason">
+                  <button type="submit" class="btn btn-danger btn-block">
+                    <i class="fa fa-times tw-mr-1"></i><?php echo _l('hr_leave_reject'); ?>
+                  </button>
+                </form>
+              </div>
+            </div>
             <?php endif; ?>
 
-            <!-- Soft Approve / Soft Reject: informational-only pre-approval, never blocks the real Approve/Reject above -->
             <?php if ($show_soft): ?>
+            <!-- Soft Approve / Soft Reject: informational-only pre-approval, never blocks the real Approve/Reject above -->
             <div class="row tw-mb-2">
               <div class="col-xs-6">
                 <form action="<?php echo admin_url('hr_module/leave/soft_approve/' . $r->id); ?>" method="post">
@@ -184,8 +190,8 @@ $badge = '<span class="label ' . ($badge_map[$r->status] ?? 'label-default') . '
             </div>
             <?php endif; ?>
 
-            <!-- Cancel Leave: a withdrawal, separate from the approve/reject decision -->
             <?php if ($show_cancel): ?>
+            <!-- Cancel Leave: a withdrawal, separate from the approve/reject decision -->
             <form action="<?php echo admin_url('hr_module/leave/cancel/' . $r->id); ?>" method="post" class="tw-mb-2"
               onsubmit="hrCopyLeaveNote(this); return confirm('Cancel this leave request?')">
               <?php echo form_hidden($this->security->get_csrf_token_name(), $this->security->get_csrf_hash()); ?>
@@ -234,9 +240,19 @@ $badge = '<span class="label ' . ($badge_map[$r->status] ?? 'label-default') . '
               </button>
             </form>
             <?php endif; ?>
+      <?php
+        $actions_body = ob_get_clean();
+      ?>
+      <?php if (trim($actions_body) !== ''): ?>
+      <div class="col-md-4">
+        <div class="panel_s">
+          <div class="panel-body">
+            <h6 class="tw-font-semibold tw-mb-3"><?php echo _l('hr_actions'); ?></h6>
+            <?php echo $actions_body; ?>
           </div>
         </div>
       </div>
+      <?php endif; ?>
     </div>
   </div>
 </div>

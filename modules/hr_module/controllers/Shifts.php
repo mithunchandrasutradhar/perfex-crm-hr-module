@@ -137,6 +137,9 @@ class Shifts extends AdminController
         $data['assignment']       = $assignment;
         $data['can_approve']      = is_admin() || staff_can('approve', 'hr_shifts');
         $data['can_soft_approve'] = staff_can('soft_approve', 'hr_shifts');
+        // Deleting requires the full 'delete' capability - there is no
+        // ownership-based self-delete exception for shift assignments.
+        $data['can_delete'] = staff_can('delete', 'hr_shifts');
         $this->load->view('hr_module/shifts/view', $data);
     }
 
@@ -213,10 +216,9 @@ class Shifts extends AdminController
     {
         $assignment = $this->Shifts_model->get($id);
         if (!$assignment) show_404();
-        $is_owner   = (int) $assignment->employee_id === hr_get_own_employee_id();
-        $can_delete = staff_can('delete', 'hr_shifts')
-            || ($is_owner && staff_can('create', 'hr_shifts') && $assignment->status === 'pending');
-        if (!$can_delete) {
+        // Deleting requires the full 'delete' capability - there is no
+        // ownership-based self-delete exception for shift assignments.
+        if (staff_cant('delete', 'hr_shifts')) {
             access_denied('hr_shifts');
         }
         $this->Shifts_model->delete($id);

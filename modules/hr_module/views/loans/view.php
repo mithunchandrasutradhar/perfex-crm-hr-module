@@ -297,38 +297,63 @@ if (!isset($can_manage_deductions)) $can_manage_deductions = staff_can('edit', '
         <?php endif; ?>
 
         <!-- Actions -->
+        <?php
+          $can_approve_reject = $loan->status === 'pending' && staff_can('edit','hr_loans');
+          $can_repay          = in_array($loan->status, ['approved','active']) && staff_can('edit','hr_loans');
+          $can_view_deductions = staff_can('view','hr_loans');
+          $can_delete_loan    = !in_array($loan->status, ['active','closed']) && staff_can('delete','hr_loans');
+        ?>
+        <?php if ($can_approve_reject || $can_repay || $can_view_deductions || $can_delete_loan): ?>
         <div class="panel_s">
           <div class="panel-body">
             <h5 class="tw-font-semibold tw-mb-3">Actions</h5>
 
-            <?php if ($loan->status === 'pending' && staff_can('edit','hr_loans')): ?>
-            <button class="btn btn-success btn-block tw-mb-2" data-toggle="modal" data-target="#approveModal">
-              <i class="fa fa-check tw-mr-1"></i><?php echo _l('hr_loan_approve'); ?>
-            </button>
-            <button class="btn btn-danger btn-block tw-mb-2" data-toggle="modal" data-target="#rejectModal">
-              <i class="fa fa-times tw-mr-1"></i><?php echo _l('hr_loan_reject'); ?>
-            </button>
+            <?php
+              // Approve+Reject are a package (one condition gates both), Delete
+              // is independent - split the row evenly across however many of
+              // these three buttons actually apply, so they share one row
+              // without leaving an empty gap when Delete isn't available.
+              $row1_count = ($can_approve_reject ? 2 : 0) + ($can_delete_loan ? 1 : 0);
+              $row1_col   = $row1_count === 3 ? 'col-xs-4' : ($row1_count === 2 ? 'col-xs-6' : 'col-xs-12');
+            ?>
+            <?php if ($can_approve_reject || $can_delete_loan): ?>
+            <div class="row tw-mb-2">
+              <?php if ($can_approve_reject): ?>
+              <div class="<?php echo $row1_col; ?>">
+                <button class="btn btn-success btn-block" data-toggle="modal" data-target="#approveModal">
+                  <i class="fa fa-check tw-mr-1"></i><?php echo _l('hr_loan_approve'); ?>
+                </button>
+              </div>
+              <div class="<?php echo $row1_col; ?>">
+                <button class="btn btn-danger btn-block" data-toggle="modal" data-target="#rejectModal">
+                  <i class="fa fa-times tw-mr-1"></i><?php echo _l('hr_loan_reject'); ?>
+                </button>
+              </div>
+              <?php endif; ?>
+              <?php if ($can_delete_loan): ?>
+              <div class="<?php echo $row1_col; ?>">
+                <a href="<?php echo admin_url('hr_module/loans/delete/'.$loan->id); ?>" class="btn btn-danger btn-block _delete">
+                  <i class="fa fa-trash tw-mr-1"></i>Delete
+                </a>
+              </div>
+              <?php endif; ?>
+            </div>
             <?php endif; ?>
 
-            <?php if (in_array($loan->status, ['approved','active']) && staff_can('edit','hr_loans')): ?>
+            <?php if ($can_repay): ?>
             <button class="btn btn-primary btn-block tw-mb-2" data-toggle="modal" data-target="#repayModal">
               <i class="fa fa-money-bill-wave tw-mr-1"></i>Record Repayment
             </button>
             <?php endif; ?>
 
-            <?php if (staff_can('view','hr_loans')): ?>
+            <?php if ($can_view_deductions): ?>
             <a href="<?php echo admin_url('hr_module/loans/deduction_requests'); ?>" class="btn btn-default btn-block tw-mb-2">
               <i class="fa fa-list tw-mr-1"></i>All Deduction Requests
             </a>
             <?php endif; ?>
-
-            <?php if (!in_array($loan->status, ['active','closed']) && staff_can('delete','hr_loans')): ?>
-            <a href="<?php echo admin_url('hr_module/loans/delete/'.$loan->id); ?>" class="btn btn-default btn-block _delete">
-              <i class="fa fa-trash tw-mr-1"></i>Delete
-            </a>
-            <?php endif; ?>
           </div>
         </div>
+        <?php endif; ?>
       </div>
     </div>
   </div>

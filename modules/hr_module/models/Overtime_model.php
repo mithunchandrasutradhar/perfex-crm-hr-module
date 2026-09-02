@@ -75,6 +75,7 @@ class Overtime_model extends App_Model
     {
         $this->db->select('MIN(o.id) as id, o.employee_id, SUM(o.total_amount) as total_amount,
                            MIN(o.status) as status, MIN(o.created_at) as created_at,
+                           MIN(o.soft_status) as soft_status, MIN(o.soft_approved_by) as soft_approved_by,
                            COUNT(*) as day_count, MIN(o.overtime_date) as first_date, MAX(o.overtime_date) as last_date,
                            GROUP_CONCAT(DISTINCT o.day_type) as day_types,
                            e.first_name, e.last_name, e.employee_code,

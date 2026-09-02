@@ -72,5 +72,31 @@ $(function(){
         $form.find('[name="rejection_reason"]').val(reason);
         $form.trigger('submit');
     });
+
+    function csrf_pair() {
+        return '<?php echo $this->security->get_csrf_token_name(); ?>=<?php echo $this->security->get_csrf_hash(); ?>';
+    }
+
+    // Soft Approve / Soft Reject: informational-only pre-approval, independent
+    // of the real Approve/Reject above and never blocks it (mirrors the
+    // buttons already on the overtime/view.php detail page).
+    $(document).on('click', '.hr-ot-soft-approve', function(e){
+        e.preventDefault();
+        if (!confirm('<?php echo _l('hr_overtime_soft_approve'); ?>?')) return;
+        var id = $(this).data('id');
+        $.post('<?php echo admin_url('hr_module/overtime/soft_approve/'); ?>' + id, csrf_pair(), function(r){
+            if (r.success) { alert_float('success', '<?php echo _l('hr_overtime_soft_approve'); ?>'); $('.table-hr-overtime').DataTable().ajax.reload(null, false); }
+            else alert_float('danger', r.message);
+        }, 'json');
+    });
+    $(document).on('click', '.hr-ot-soft-reject', function(e){
+        e.preventDefault();
+        if (!confirm('<?php echo _l('hr_overtime_soft_reject'); ?>?')) return;
+        var id = $(this).data('id');
+        $.post('<?php echo admin_url('hr_module/overtime/soft_reject/'); ?>' + id, csrf_pair(), function(r){
+            if (r.success) { alert_float('success', '<?php echo _l('hr_overtime_soft_reject'); ?>'); $('.table-hr-overtime').DataTable().ajax.reload(null, false); }
+            else alert_float('danger', r.message);
+        }, 'json');
+    });
 });
 </script>
