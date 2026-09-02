@@ -116,64 +116,88 @@ $badge = '<span class="label ' . ($badge_map[$r->status] ?? 'label-default') . '
           <div class="panel-body">
             <h6 class="tw-font-semibold tw-mb-3"><?php echo _l('hr_actions'); ?></h6>
 
-            <?php if ($r->status === 'pending' && staff_can('soft_approve', 'hr_leave')): ?>
-            <!-- Soft Approve/Reject: informational-only pre-approval, never blocks the real Approve/Reject below -->
+            <?php
+              $show_soft    = $r->status === 'pending' && staff_can('soft_approve', 'hr_leave') && empty($r->soft_approved_by);
+              $show_approve = $r->status === 'pending' && (staff_can('approve', 'hr_leave') || is_admin());
+              // Matches Leave::cancel()'s own authorization exactly: full 'view',
+              // or 'view_own' limited to the requester's own record - a
+              // view_department-tier viewer could see this page but was never
+              // actually allowed to cancel, so the button shouldn't show for them.
+              $show_cancel  = $r->status === 'pending' && (is_admin() || staff_can('view', 'hr_leave')
+                  || (staff_can('view_own', 'hr_leave') && (int) $r->employee_id === hr_get_own_employee_id()));
+            ?>
+
             <?php if (!empty($r->soft_approved_by)): ?>
             <div class="alert alert-info tw-py-2 tw-mb-3 tw-text-sm">
               <?php echo ($r->soft_status == 'approved' ? _l('hr_leave_soft_approve') : _l('hr_leave_soft_reject')) . 'd by'; ?>
               <strong><?php echo htmlspecialchars($r->soft_approved_by_name); ?></strong> &mdash; <?php echo _dt($r->soft_approved_at); ?>
             </div>
             <?php endif; ?>
-            <form action="<?php echo admin_url('hr_module/leave/soft_approve/' . $r->id); ?>" method="post" class="tw-mb-2">
-              <?php echo form_hidden($this->security->get_csrf_token_name(), $this->security->get_csrf_hash()); ?>
-              <button type="submit" class="btn btn-success btn-outline btn-block btn-sm">
-                <i class="fa fa-check tw-mr-1"></i><?php echo _l('hr_leave_soft_approve'); ?>
-              </button>
-            </form>
-            <form action="<?php echo admin_url('hr_module/leave/soft_reject/' . $r->id); ?>" method="post" class="tw-mb-3">
-              <?php echo form_hidden($this->security->get_csrf_token_name(), $this->security->get_csrf_hash()); ?>
-              <button type="submit" class="btn btn-danger btn-outline btn-block btn-sm">
-                <i class="fa fa-times tw-mr-1"></i><?php echo _l('hr_leave_soft_reject'); ?>
-              </button>
-            </form>
-            <hr>
+
+            <?php if ($show_approve || $show_cancel): ?>
+            <!-- Single shared note/reason field - copied into whichever form
+                 below actually gets submitted (Approve uses it as "notes",
+                 Reject/Cancel use it as "reason"), so there's one visible
+                 textarea instead of one per action. -->
+            <div class="form-group">
+              <textarea id="leave-action-note" class="form-control" rows="3" placeholder="Notes / reason (optional)..."></textarea>
+            </div>
             <?php endif; ?>
 
-            <?php if ($r->status === 'pending' && (staff_can('approve', 'hr_leave') || is_admin())): ?>
-            <!-- Approve -->
-            <form action="<?php echo admin_url('hr_module/leave/approve/' . $r->id); ?>" method="post" class="tw-mb-3">
+            <!-- Approve / Reject: the real, final decision -->
+            <?php if ($show_approve): ?>
+            <form action="<?php echo admin_url('hr_module/leave/approve/' . $r->id); ?>" method="post" class="tw-mb-2" onsubmit="hrCopyLeaveNote(this)">
               <?php echo form_hidden($this->security->get_csrf_token_name(), $this->security->get_csrf_hash()); ?>
-              <div class="form-group">
-                <textarea name="notes" class="form-control input-sm" rows="2" placeholder="Optional notes..."></textarea>
-              </div>
-              <button type="submit" class="btn btn-success btn-block btn-sm">
+              <input type="hidden" name="notes">
+              <button type="submit" class="btn btn-success btn-block">
                 <i class="fa fa-check tw-mr-1"></i><?php echo _l('hr_leave_approve'); ?>
               </button>
             </form>
-            <!-- Reject -->
-            <form action="<?php echo admin_url('hr_module/leave/reject/' . $r->id); ?>" method="post" class="tw-mb-3">
+            <form action="<?php echo admin_url('hr_module/leave/reject/' . $r->id); ?>" method="post" class="tw-mb-2" onsubmit="hrCopyLeaveNote(this)">
               <?php echo form_hidden($this->security->get_csrf_token_name(), $this->security->get_csrf_hash()); ?>
-              <div class="form-group">
-                <textarea name="reason" class="form-control input-sm" rows="2" placeholder="Rejection reason..."></textarea>
-              </div>
-              <button type="submit" class="btn btn-danger btn-block btn-sm">
+              <input type="hidden" name="reason">
+              <button type="submit" class="btn btn-danger btn-block">
                 <i class="fa fa-times tw-mr-1"></i><?php echo _l('hr_leave_reject'); ?>
               </button>
             </form>
             <?php endif; ?>
 
-            <?php if ($r->status === 'pending'): ?>
-            <form action="<?php echo admin_url('hr_module/leave/cancel/' . $r->id); ?>" method="post" class="tw-mb-3"
-              onsubmit="return confirm('Cancel this leave request?')">
-              <?php echo form_hidden($this->security->get_csrf_token_name(), $this->security->get_csrf_hash()); ?>
-              <div class="form-group">
-                <label><?php echo _l('hr_leave_cancellation_reason'); ?></label>
-                <textarea name="reason" class="form-control input-sm" rows="2" placeholder="Why are you cancelling this leave request?"></textarea>
+            <!-- Soft Approve / Soft Reject: informational-only pre-approval, never blocks the real Approve/Reject above -->
+            <?php if ($show_soft): ?>
+            <div class="row tw-mb-2">
+              <div class="col-xs-6">
+                <form action="<?php echo admin_url('hr_module/leave/soft_approve/' . $r->id); ?>" method="post">
+                  <?php echo form_hidden($this->security->get_csrf_token_name(), $this->security->get_csrf_hash()); ?>
+                  <button type="submit" class="btn btn-success btn-block">
+                    <i class="fa fa-check tw-mr-1"></i><?php echo _l('hr_leave_soft_approve'); ?>
+                  </button>
+                </form>
               </div>
-              <button type="submit" class="btn btn-warning btn-block btn-sm">
+              <div class="col-xs-6">
+                <form action="<?php echo admin_url('hr_module/leave/soft_reject/' . $r->id); ?>" method="post">
+                  <?php echo form_hidden($this->security->get_csrf_token_name(), $this->security->get_csrf_hash()); ?>
+                  <button type="submit" class="btn btn-danger btn-block">
+                    <i class="fa fa-times tw-mr-1"></i><?php echo _l('hr_leave_soft_reject'); ?>
+                  </button>
+                </form>
+              </div>
+            </div>
+            <?php endif; ?>
+
+            <!-- Cancel Leave: a withdrawal, separate from the approve/reject decision -->
+            <?php if ($show_cancel): ?>
+            <form action="<?php echo admin_url('hr_module/leave/cancel/' . $r->id); ?>" method="post" class="tw-mb-2"
+              onsubmit="hrCopyLeaveNote(this); return confirm('Cancel this leave request?')">
+              <?php echo form_hidden($this->security->get_csrf_token_name(), $this->security->get_csrf_hash()); ?>
+              <input type="hidden" name="reason">
+              <button type="submit" class="btn btn-warning btn-block">
                 <i class="fa fa-ban tw-mr-1"></i><?php echo _l('hr_leave_cancel'); ?>
               </button>
             </form>
+            <?php endif; ?>
+
+            <?php if ($show_soft || $show_approve || $show_cancel): ?>
+            <hr>
             <?php endif; ?>
 
             <?php if ($r->status === 'approved' && $r->cancellation_status === 'pending'): ?>
@@ -210,11 +234,6 @@ $badge = '<span class="label ' . ($badge_map[$r->status] ?? 'label-default') . '
               </button>
             </form>
             <?php endif; ?>
-
-            <hr>
-            <a href="<?php echo admin_url('hr_module/leave'); ?>" class="btn btn-default btn-block btn-sm">
-              <i class="fa fa-arrow-left tw-mr-1"></i><?php echo _l('hr_back'); ?>
-            </a>
           </div>
         </div>
       </div>
@@ -222,3 +241,10 @@ $badge = '<span class="label ' . ($badge_map[$r->status] ?? 'label-default') . '
   </div>
 </div>
 <?php init_tail(); ?>
+<script>
+function hrCopyLeaveNote(form) {
+    var note = document.getElementById('leave-action-note');
+    var target = form.querySelector('input[type="hidden"][name="notes"], input[type="hidden"][name="reason"]');
+    if (note && target) target.value = note.value;
+}
+</script>

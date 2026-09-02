@@ -57,7 +57,8 @@ $badge_map = [
     'cancelled' => 'label-default',
 ];
 
-$can_approve = is_admin() || staff_can('approve', 'hr_leave');
+$can_approve      = is_admin() || staff_can('approve', 'hr_leave');
+$can_soft_approve = is_admin() || staff_can('soft_approve', 'hr_leave');
 
 foreach ($rows as $r) {
     $badge = '<span class="label ' . ($badge_map[$r->status] ?? 'label-default') . '">' . ucfirst($r->status) . '</span>';
@@ -68,6 +69,13 @@ foreach ($rows as $r) {
     if ($can_approve && $r->status === 'pending') {
         $options[] = '<a href="#" class="hr-leave-approve" data-id="' . $r->id . '">' . _l('hr_leave_approve') . '</a>';
         $options[] = '<a href="#" class="hr-leave-reject" data-id="' . $r->id . '">' . _l('hr_leave_reject') . '</a>';
+    }
+    // Soft approve/reject: informational-only pre-approval, independent of the
+    // real Approve/Reject above - shown to a soft-approver role regardless of
+    // whether they also hold the full 'approve' capability (mirrors leave/view.php).
+    if ($can_soft_approve && $r->status === 'pending' && empty($r->soft_approved_by)) {
+        $options[] = '<a href="#" class="hr-leave-soft-approve" data-id="' . $r->id . '">' . _l('hr_leave_soft_approve') . '</a>';
+        $options[] = '<a href="#" class="hr-leave-soft-reject" data-id="' . $r->id . '">' . _l('hr_leave_soft_reject') . '</a>';
     }
     if (staff_can('delete', 'hr_leave') && in_array($r->status, ['rejected', 'cancelled'])) {
         $options[] = '<a href="' . admin_url('hr_module/leave/delete/' . $r->id) . '" class="_delete text-danger">' . _l('hr_delete') . '</a>';

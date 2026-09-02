@@ -122,6 +122,28 @@ $(function(){
         }, 'json');
     });
 
+    // Soft Approve / Soft Reject: informational-only pre-approval, independent
+    // of the real Approve/Reject above and never blocks it (mirrors the
+    // buttons already on the leave/view.php detail page).
+    $(document).on('click', '.hr-leave-soft-approve', function(e){
+        e.preventDefault();
+        if (!confirm('<?php echo _l('hr_leave_soft_approve'); ?>?')) return;
+        var id = $(this).data('id');
+        $.post('<?php echo admin_url('hr_module/leave/soft_approve/'); ?>' + id, csrf_pair(), function(r){
+            if (r.success) { alert_float('success', '<?php echo _l('hr_leave_soft_approve'); ?>'); $('.table-hr-leave').DataTable().ajax.reload(null, false); }
+            else alert_float('danger', r.message);
+        }, 'json');
+    });
+    $(document).on('click', '.hr-leave-soft-reject', function(e){
+        e.preventDefault();
+        if (!confirm('<?php echo _l('hr_leave_soft_reject'); ?>?')) return;
+        var id = $(this).data('id');
+        $.post('<?php echo admin_url('hr_module/leave/soft_reject/'); ?>' + id, csrf_pair(), function(r){
+            if (r.success) { alert_float('success', '<?php echo _l('hr_leave_soft_reject'); ?>'); $('.table-hr-leave').DataTable().ajax.reload(null, false); }
+            else alert_float('danger', r.message);
+        }, 'json');
+    });
+
     // Reject (needs a reason, so it goes through a modal)
     var rejectLeaveId = null;
     $(document).on('click', '.hr-leave-reject', function(e){
