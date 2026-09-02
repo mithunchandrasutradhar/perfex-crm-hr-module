@@ -221,7 +221,7 @@ class Payroll_model extends App_Model
     // basic salary + every currently-active payroll item allowance/deduction that
     // applies to them (fixed or % of basic) + evening/night shift allowance for
     // this period. Deliberately excludes overtime and bonus: overtime is computed
-    // FROM this figure (Overtime_model uses it as the day-rate base for weekend/
+    // FROM this figure (Overduty_model uses it as the day-rate base for weekend/
     // holiday overtime), so including overtime here would be circular, and bonus
     // is a manual per-payroll override decided at generation time, not knowable
     // in advance. Uses the same allowance math as generate(), so overtime

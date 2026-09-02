@@ -8,11 +8,11 @@ if (!isset($own_emp_id)) $own_emp_id = 0;
 if (!isset($dates))      $dates      = [];
 $is_edit  = !empty($overtime);
 $form_url = $is_edit
-    ? admin_url('hr_module/overtime/edit/' . $overtime->id)
-    : admin_url('hr_module/overtime/request');
+    ? admin_url('hr_module/overduty/edit/' . $overtime->id)
+    : admin_url('hr_module/overduty/request');
 $existing_dates = $is_edit ? array_column($dates, 'overtime_date') : [];
 // Self-service employees may only request overtime within the current
-// calendar month (see Overtime::request() for the actual enforcement) -
+// calendar month (see Overduty::request() for the actual enforcement) -
 // this only narrows the date picker for a NEW request; edit() is untouched.
 $restrict_to_current_month = $own_only && !$is_edit;
 // The xdsoft datetimepicker (assets/plugins/datetimepicker) parses
@@ -30,9 +30,9 @@ $current_month_end   = $restrict_to_current_month ? date('Y/m/t') : '';
     <div class="row">
       <div class="col-md-8 col-md-offset-2">
         <ol class="breadcrumb tw-mb-4">
-          <li><a href="<?php echo admin_url('hr_module/overtime'); ?>"><?php echo _l('hr_overtime_list'); ?></a></li>
+          <li><a href="<?php echo admin_url('hr_module/overduty'); ?>"><?php echo _l('hr_overtime_list'); ?></a></li>
           <?php if ($is_edit): ?>
-          <li><a href="<?php echo admin_url('hr_module/overtime/view/'.$overtime->id); ?>">#<?php echo $overtime->id; ?></a></li>
+          <li><a href="<?php echo admin_url('hr_module/overduty/view/'.$overtime->id); ?>">#<?php echo $overtime->id; ?></a></li>
           <?php endif; ?>
           <li class="active"><?php echo $is_edit ? _l('hr_overtime_edit') : _l('hr_overtime_add'); ?></li>
         </ol>
@@ -46,7 +46,7 @@ $current_month_end   = $restrict_to_current_month ? date('Y/m/t') : '';
               <?php echo _l('hr_overtime_current_month_only'); ?>
               <?php endif; ?>
             </div>
-            <?php echo form_open($form_url, ['id' => 'overtimeForm']); ?>
+            <?php echo form_open($form_url, ['id' => 'overdutyForm']); ?>
               <div class="row">
                 <div class="col-md-6">
                   <div class="form-group select-placeholder">
@@ -118,7 +118,7 @@ $current_month_end   = $restrict_to_current_month ? date('Y/m/t') : '';
                 <button type="submit" class="btn btn-primary" id="ot_submit_btn">
                   <?php echo $is_edit ? _l('hr_save') : 'Submit Request'; ?>
                 </button>
-                <a href="<?php echo $is_edit ? admin_url('hr_module/overtime/view/'.$overtime->id) : admin_url('hr_module/overtime'); ?>" class="btn btn-default">Cancel</a>
+                <a href="<?php echo $is_edit ? admin_url('hr_module/overduty/view/'.$overtime->id) : admin_url('hr_module/overduty'); ?>" class="btn btn-default">Cancel</a>
               </div>
             <?php echo form_close(); ?>
           </div>
@@ -150,7 +150,7 @@ $(function(){
             $row.attr('data-eligible', '0');
             return;
         }
-        $.getJSON('<?php echo admin_url('hr_module/overtime/preview'); ?>', {employee_id: eid, overtime_date: date}, function(d){
+        $.getJSON('<?php echo admin_url('hr_module/overduty/preview'); ?>', {employee_id: eid, overtime_date: date}, function(d){
             if (!d || !d.eligible) {
                 $status.removeClass('text-muted text-success').addClass('text-danger')
                     .html('<i class="fa fa-times-circle tw-mr-1"></i>' + (d && d.message ? d.message : notEligible));
@@ -199,7 +199,7 @@ $(function(){
     updateAllPreviews();
     refreshRemoveButtons();
 
-    $('#overtimeForm').on('submit', function(e){
+    $('#overdutyForm').on('submit', function(e){
         var dates = [];
         var allEligible = true;
         $('#ot_dates_wrap .ot-date-row').each(function(){

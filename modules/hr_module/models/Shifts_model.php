@@ -221,7 +221,7 @@ class Shifts_model extends App_Model
 
         // If payroll for any month/year this assignment's range falls in was already
         // generated (draft), reflect the just-approved shift allowance in it immediately -
-        // same pattern as Overtime_model::approve()'s sync_overtime_for_period() call.
+        // same pattern as Overduty_model::approve()'s sync_overtime_for_period() call.
         $CI = &get_instance();
         $CI->load->model('hr_module/Payroll_model');
         $month = (int) date('n', strtotime($assignment->from_date));

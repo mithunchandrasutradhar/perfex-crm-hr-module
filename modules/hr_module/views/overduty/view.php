@@ -5,7 +5,7 @@ $day_type_labels = [
     'government_holiday' => _l('hr_overtime_government_holiday'),
     'company_holiday'    => _l('hr_overtime_company_holiday'),
 ];
-// $can_self_edit is computed by Overtime::view() (includes the soft-decision
+// $can_self_edit is computed by Overduty::view() (includes the soft-decision
 // lock) and arrives here via $data - not recomputed locally.
 ?>
 <?php init_head(); ?>
@@ -14,7 +14,7 @@ $day_type_labels = [
     <div class="row">
       <div class="col-md-12">
         <ol class="breadcrumb tw-mb-4">
-          <li><a href="<?php echo admin_url('hr_module/overtime'); ?>"><?php echo _l('hr_overtime_list'); ?></a></li>
+          <li><a href="<?php echo admin_url('hr_module/overduty'); ?>"><?php echo _l('hr_overtime_list'); ?></a></li>
           <li class="active">#<?php echo $overtime->id; ?></li>
         </ol>
       </div>
@@ -120,7 +120,7 @@ $day_type_labels = [
               <!-- Approve / Reject: the real, final decision -->
               <div class="row tw-mb-2">
                 <div class="col-xs-6">
-                  <a href="<?php echo admin_url('hr_module/overtime/approve/'.$overtime->id); ?>"
+                  <a href="<?php echo admin_url('hr_module/overduty/approve/'.$overtime->id); ?>"
                      class="btn btn-success btn-block"
                      onclick="return confirm('Approve this overduty request?')">
                     <i class="fa fa-check tw-mr-1"></i><?php echo _l('hr_overtime_approve'); ?>
@@ -138,14 +138,14 @@ $day_type_labels = [
               <!-- Soft Approve/Reject: informational-only pre-approval, never blocks the real Approve/Reject above -->
               <div class="row tw-mb-2">
                 <div class="col-xs-6">
-                  <a href="<?php echo admin_url('hr_module/overtime/soft_approve/'.$overtime->id); ?>"
+                  <a href="<?php echo admin_url('hr_module/overduty/soft_approve/'.$overtime->id); ?>"
                      class="btn btn-success btn-block"
                      onclick="return confirm('Soft approve this overduty request?')">
                     <i class="fa fa-check tw-mr-1"></i><?php echo _l('hr_overtime_soft_approve'); ?>
                   </a>
                 </div>
                 <div class="col-xs-6">
-                  <a href="<?php echo admin_url('hr_module/overtime/soft_reject/'.$overtime->id); ?>"
+                  <a href="<?php echo admin_url('hr_module/overduty/soft_reject/'.$overtime->id); ?>"
                      class="btn btn-danger btn-block"
                      onclick="return confirm('Soft reject this overduty request?')">
                     <i class="fa fa-times tw-mr-1"></i><?php echo _l('hr_overtime_soft_reject'); ?>
@@ -155,12 +155,12 @@ $day_type_labels = [
               <?php endif; ?>
 
               <?php if (staff_can('edit','hr_overtime')): ?>
-              <a href="<?php echo admin_url('hr_module/overtime/edit/'.$overtime->id); ?>" class="btn btn-default btn-block tw-mb-2">
+              <a href="<?php echo admin_url('hr_module/overduty/edit/'.$overtime->id); ?>" class="btn btn-default btn-block tw-mb-2">
                 <i class="fa fa-pencil-alt tw-mr-1"></i><?php echo _l('hr_overtime_edit'); ?>
               </a>
               <?php endif; ?>
               <?php if (staff_can('delete','hr_overtime')): ?>
-              <a href="<?php echo admin_url('hr_module/overtime/delete/'.$overtime->id); ?>" class="btn btn-default btn-block _delete">
+              <a href="<?php echo admin_url('hr_module/overduty/delete/'.$overtime->id); ?>" class="btn btn-default btn-block _delete">
                 <i class="fa fa-trash tw-mr-1"></i>Delete
               </a>
               <?php endif; ?>
@@ -193,7 +193,7 @@ $day_type_labels = [
       <button class="close" data-dismiss="modal"><span>&times;</span></button>
       <h4 class="modal-title"><?php echo _l('hr_overtime_reject'); ?></h4>
     </div>
-    <?php echo form_open(admin_url('hr_module/overtime/reject/'.$overtime->id)); ?>
+    <?php echo form_open(admin_url('hr_module/overduty/reject/'.$overtime->id)); ?>
     <div class="modal-body">
       <div class="form-group">
         <label>Reason <span class="text-danger">*</span></label>

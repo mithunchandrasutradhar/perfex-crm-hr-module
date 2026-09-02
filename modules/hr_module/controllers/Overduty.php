@@ -1,12 +1,12 @@
 <?php
 defined('BASEPATH') or exit('No direct script access allowed');
 
-class Overtime extends AdminController
+class Overduty extends AdminController
 {
     public function __construct()
     {
         parent::__construct();
-        $this->load->model('hr_module/Overtime_model');
+        $this->load->model('hr_module/Overduty_model');
         $this->load->model('hr_module/Hr_module_model');
         $this->load->model('hr_module/Departments_model');
         $this->load->model('hr_module/Employees_model');
@@ -17,7 +17,7 @@ class Overtime extends AdminController
     {
         if (staff_cant('view', 'hr_overtime') && staff_cant('view_own', 'hr_overtime') && staff_cant('view_department', 'hr_overtime')) access_denied('hr_overtime');
         if ($this->input->is_ajax_request()) {
-            $this->app->get_table_data(module_views_path('hr_module', 'overtime/table'));
+            $this->app->get_table_data(module_views_path('hr_module', 'overduty/table'));
             return;
         }
         // The department filter only makes sense for someone who can see more
@@ -29,7 +29,7 @@ class Overtime extends AdminController
         $data['show_dept_filter'] = $can_view_all;
         $data['departments']      = $can_view_all ? $this->Departments_model->get_active() : [];
         $data['employees']        = $this->Hr_module_model->get_active_employees_dropdown();
-        $this->load->view('hr_module/overtime/index', $data);
+        $this->load->view('hr_module/overduty/index', $data);
     }
 
     public function request()
@@ -52,12 +52,12 @@ class Overtime extends AdminController
                 foreach ($dates as $d) {
                     if (substr($d, 0, 7) !== $current_ym) {
                         set_alert('danger', _l('hr_overtime_current_month_only'));
-                        redirect(admin_url('hr_module/overtime/request'));
+                        redirect(admin_url('hr_module/overduty/request'));
                     }
                 }
             }
 
-            $result = $this->Overtime_model->request([
+            $result = $this->Overduty_model->request([
                 'employee_id' => $employee_id,
                 'dates'       => $dates,
                 'reason'      => $this->input->post('reason', true),
@@ -71,20 +71,20 @@ class Overtime extends AdminController
                         '{reason}'        => $this->input->post('reason', true) ?: '-',
                     ];
                     $tpl  = $this->Email_templates_model->render('overtime_apply', $placeholders);
-                    $link = admin_url('hr_module/overtime/view/' . $result['id']);
+                    $link = admin_url('hr_module/overduty/view/' . $result['id']);
                     $this->Hr_module_model->send_notification_email($tpl->subject, $tpl->body, $link);
                     $this->Hr_module_model->notify_by_permission(
                         'edit', 'hr_overtime',
                         'not_hr_overtime_applied',
-                        'hr_module/overtime/view/' . $result['id'],
+                        'hr_module/overduty/view/' . $result['id'],
                         [$emp ? $emp->first_name . ' ' . $emp->last_name : 'Unknown']
                     );
                 }
                 set_alert('success', $result['message']);
-                redirect(admin_url('hr_module/overtime/view/' . $result['id']));
+                redirect(admin_url('hr_module/overduty/view/' . $result['id']));
             }
             set_alert('danger', $result['message']);
-            redirect(admin_url('hr_module/overtime/request'));
+            redirect(admin_url('hr_module/overduty/request'));
         }
         $data['title']     = _l('hr_overtime_add');
         $data['own_only']  = $own_only;
@@ -99,12 +99,12 @@ class Overtime extends AdminController
             $data['employees'] = $this->Hr_module_model->get_active_employees_dropdown();
         }
         $data['overtime']  = null;
-        $this->load->view('hr_module/overtime/form', $data);
+        $this->load->view('hr_module/overduty/form', $data);
     }
 
     public function edit($id)
     {
-        $overtime = $this->Overtime_model->get($id);
+        $overtime = $this->Overduty_model->get($id);
         if (!$overtime) show_404();
         // Editing requires the full 'edit' capability - there is no
         // ownership-based self-edit exception for overduty requests.
@@ -115,17 +115,17 @@ class Overtime extends AdminController
 
         if ($this->input->post()) {
             $employee_id = $own_only ? $overtime->employee_id : (int) $this->input->post('employee_id');
-            $result = $this->Overtime_model->update([
+            $result = $this->Overduty_model->update([
                 'employee_id' => $employee_id,
                 'dates'       => $this->_post_dates(),
                 'reason'      => $this->input->post('reason', true),
             ], $id);
             if ($result['success']) {
                 set_alert('success', $result['message']);
-                redirect(admin_url('hr_module/overtime/view/' . $result['id']));
+                redirect(admin_url('hr_module/overduty/view/' . $result['id']));
             }
             set_alert('danger', $result['message']);
-            redirect(admin_url('hr_module/overtime/edit/' . $id));
+            redirect(admin_url('hr_module/overduty/edit/' . $id));
         }
         $data['title']      = _l('hr_overtime_edit');
         $data['own_only']   = $own_only;
@@ -134,14 +134,14 @@ class Overtime extends AdminController
             ? [$overtime->employee_id => $overtime->first_name . ' ' . $overtime->last_name]
             : $this->Hr_module_model->get_active_employees_dropdown();
         $data['overtime']   = $overtime;
-        $data['dates']      = $this->Overtime_model->get_dates($id);
-        $this->load->view('hr_module/overtime/form', $data);
+        $data['dates']      = $this->Overduty_model->get_dates($id);
+        $this->load->view('hr_module/overduty/form', $data);
     }
 
     public function view($id)
     {
         if (staff_cant('view', 'hr_overtime') && staff_cant('view_own', 'hr_overtime') && staff_cant('view_department', 'hr_overtime')) access_denied('hr_overtime');
-        $overtime = $this->Overtime_model->get($id);
+        $overtime = $this->Overduty_model->get($id);
         if (!$overtime) show_404();
         if (!staff_can('view', 'hr_overtime')) {
             $allowed = staff_can('view_own', 'hr_overtime') && (int) $overtime->employee_id === hr_get_own_employee_id();
@@ -152,9 +152,9 @@ class Overtime extends AdminController
         }
         $data['title']            = _l('hr_overtime_view');
         $data['overtime']         = $overtime;
-        $data['dates']            = $this->Overtime_model->get_dates($id);
+        $data['dates']            = $this->Overduty_model->get_dates($id);
         $data['can_soft_approve'] = staff_can('soft_approve', 'hr_overtime');
-        $this->load->view('hr_module/overtime/view', $data);
+        $this->load->view('hr_module/overduty/view', $data);
     }
 
     public function preview()
@@ -166,7 +166,7 @@ class Overtime extends AdminController
             echo json_encode(['eligible' => false, 'message' => _l('hr_overtime_not_eligible_date')]);
             return;
         }
-        $result = $this->Overtime_model->preview($employee_id, $date);
+        $result = $this->Overduty_model->preview($employee_id, $date);
         unset($result['amount'], $result['multiplier']);
         echo json_encode($result);
     }
@@ -174,63 +174,63 @@ class Overtime extends AdminController
     public function approve($id)
     {
         if (staff_cant('edit', 'hr_overtime')) access_denied('hr_overtime');
-        $result = $this->Overtime_model->approve($id);
+        $result = $this->Overduty_model->approve($id);
         if ($result['success']) set_alert('success', $result['message']);
         else                    set_alert('danger',  $result['message']);
-        redirect(admin_url('hr_module/overtime/view/' . $id));
+        redirect(admin_url('hr_module/overduty/view/' . $id));
     }
 
     public function reject($id)
     {
         if (staff_cant('edit', 'hr_overtime')) access_denied('hr_overtime');
         $reason = $this->input->post('rejection_reason', true);
-        $result = $this->Overtime_model->reject($id, $reason);
+        $result = $this->Overduty_model->reject($id, $reason);
         if ($result['success']) set_alert('success', $result['message']);
         else                    set_alert('danger',  $result['message']);
-        redirect(admin_url('hr_module/overtime/view/' . $id));
+        redirect(admin_url('hr_module/overduty/view/' . $id));
     }
 
-    // Informational-only pre-approval step (see Overtime_model::soft_approve()) -
+    // Informational-only pre-approval step (see Overduty_model::soft_approve()) -
     // gated by its own 'soft_approve' capability, independent of 'edit' (which is
     // what gates the real approve/reject above).
     public function soft_approve($id)
     {
         if (staff_cant('soft_approve', 'hr_overtime')) access_denied('hr_overtime');
-        $result = $this->Overtime_model->soft_approve($id);
+        $result = $this->Overduty_model->soft_approve($id);
         if ($this->input->is_ajax_request()) {
             echo json_encode($result);
             return;
         }
         if ($result['success']) set_alert('success', _l('hr_overtime_soft_approve'));
         else                    set_alert('danger',  $result['message']);
-        redirect(admin_url('hr_module/overtime/view/' . $id));
+        redirect(admin_url('hr_module/overduty/view/' . $id));
     }
 
     public function soft_reject($id)
     {
         if (staff_cant('soft_approve', 'hr_overtime')) access_denied('hr_overtime');
-        $result = $this->Overtime_model->soft_reject($id);
+        $result = $this->Overduty_model->soft_reject($id);
         if ($this->input->is_ajax_request()) {
             echo json_encode($result);
             return;
         }
         if ($result['success']) set_alert('success', _l('hr_overtime_soft_reject'));
         else                    set_alert('danger',  $result['message']);
-        redirect(admin_url('hr_module/overtime/view/' . $id));
+        redirect(admin_url('hr_module/overduty/view/' . $id));
     }
 
     public function delete($id)
     {
-        $overtime = $this->Overtime_model->get($id);
+        $overtime = $this->Overduty_model->get($id);
         if (!$overtime) show_404();
         // Deleting requires the full 'delete' capability - there is no
         // ownership-based self-delete exception for overduty requests.
         if (staff_cant('delete', 'hr_overtime')) access_denied('hr_overtime');
 
-        $result = $this->Overtime_model->delete($id);
+        $result = $this->Overduty_model->delete($id);
         if ($result['success']) set_alert('success', _l('hr_deleted_successfully'));
         else                    set_alert('danger',  $result['message']);
-        redirect(admin_url('hr_module/overtime'));
+        redirect(admin_url('hr_module/overduty'));
     }
 
     // Overtime dates are submitted as overtime_date[] on the "request" form (one employee

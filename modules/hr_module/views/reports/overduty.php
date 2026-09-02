@@ -48,7 +48,7 @@ $day_type_labels = [
         </div>
       </div>
       <div class="col-md-2">
-        <a id="btn-csv" href="<?php echo admin_url('hr_module/reports/overtime?'.http_build_query($filters).'&export=csv'); ?>" class="btn btn-default btn-sm btn-block"><i class="fa fa-download"></i> CSV</a>
+        <a id="btn-csv" href="<?php echo admin_url('hr_module/reports/overduty?'.http_build_query($filters).'&export=csv'); ?>" class="btn btn-default btn-sm btn-block"><i class="fa fa-download"></i> CSV</a>
       </div>
     </div>
   </div></div>
@@ -67,14 +67,14 @@ $day_type_labels = [
   <div class="panel_s"><div class="panel-body panel-table-full">
     <?php render_datatable([
       'Employee', 'Department', 'Date', 'Day Type', 'Rate', 'Amount', 'Status',
-    ], 'hr-report-overtime'); ?>
+    ], 'hr-report-overduty'); ?>
   </div></div>
 </div></div>
 </div></div>
 <?php init_tail(); ?>
 <script>
 $(function(){
-    initDataTable('.table-hr-report-overtime', window.location.href, [], [], undefined, [2, 'desc']);
+    initDataTable('.table-hr-report-overduty', window.location.href, [], [], undefined, [2, 'desc']);
 
     function currentFilters() {
         return 'department_id=' + $('#f-department').val()
@@ -83,13 +83,13 @@ $(function(){
             + '&to_date=' + $('#f-to-date').val();
     }
     function reload() {
-        $('.table-hr-report-overtime').DataTable().ajax.url(window.location.href.split('?')[0] + '?' + currentFilters()).load();
+        $('.table-hr-report-overduty').DataTable().ajax.url(window.location.href.split('?')[0] + '?' + currentFilters()).load();
         $('#btn-csv').attr('href', window.location.pathname + '?' + currentFilters() + '&export=csv');
     }
     $('#f-department, #f-status').on('change changed.bs.select', reload);
     $('#f-from-date, #f-to-date').on('change', reload);
 
-    $('.table-hr-report-overtime').on('draw.dt', function(){
+    $('.table-hr-report-overduty').on('draw.dt', function(){
         var sums = $(this).DataTable().ajax.json().sums;
         if (!sums) return;
         $('#sum-total-records').text(sums.total_records);

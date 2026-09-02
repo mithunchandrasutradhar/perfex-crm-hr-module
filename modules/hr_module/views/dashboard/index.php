@@ -160,7 +160,7 @@ $task_status_colors = [
 
 </div>
 
-<!-- Row 2: Payroll · Loan · Overtime · Performance -->
+<!-- Row 2: Payroll · Loan · Overduty · Performance -->
 <div class="row">
 
     <!-- Latest Payslip -->
@@ -232,9 +232,9 @@ $task_status_colors = [
         </a>
     </div>
 
-    <!-- Overtime this month -->
+    <!-- Overduty this month -->
     <div class="col-md-3 col-sm-6">
-        <a href="<?php echo admin_url('hr_module/overtime'); ?>" class="block-link">
+        <a href="<?php echo admin_url('hr_module/overduty'); ?>" class="block-link">
         <div class="panel_s hr-stat-card">
             <div class="panel-body tw-p-4">
                 <div class="tw-flex tw-items-center tw-gap-3 tw-mb-3">
@@ -498,7 +498,7 @@ $task_status_colors = [
         </a>
     </div>
     <div class="col-md-3 col-sm-6">
-        <a href="<?php echo admin_url('hr_module/overtime'); ?>" class="block-link">
+        <a href="<?php echo admin_url('hr_module/overduty'); ?>" class="block-link">
             <div class="panel_s hr-stat-card">
                 <div class="panel-body tw-p-4 tw-flex tw-items-center tw-gap-4">
                     <div class="hr-stat-icon" style="background:#0891b2">

@@ -8,7 +8,7 @@ defined('BASEPATH') or exit('No direct script access allowed');
  * batch), so the list can show and act on it as a single request even though each date
  * is still stored as its own row for Payroll/Reports to sum/count individually.
  */
-class Overtime_model extends App_Model
+class Overduty_model extends App_Model
 {
     private $table = 'hr_overtime';
 

@@ -12,7 +12,7 @@ foreach (['department_id', 'status', 'from_date', 'to_date'] as $k) {
 if (!empty($f['from_date'])) $f['from_date'] = to_sql_date($f['from_date']);
 if (!empty($f['to_date']))   $f['to_date']   = to_sql_date($f['to_date']);
 
-$rows = $CI->Reports_model->overtime($f);
+$rows = $CI->Reports_model->overduty($f);
 
 $sbadge = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'danger'];
 $day_type_labels = [

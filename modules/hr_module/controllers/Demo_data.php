@@ -581,7 +581,7 @@ class Demo_data extends AdminController
         $log[] = '[OK] Created ' . $loan_count . ' loans with repayment records';
 
         // ====================================================================
-        // OVERTIME  (day-based: weekend entries over the last ~6 weeks per employee)
+        // OVERDUTY  (day-based: weekend entries over the last ~6 weeks per employee)
         // ====================================================================
         $ot_reasons    = ['Project deadline delivery', 'Client presentation preparation', 'Emergency server maintenance', 'Month-end report preparation', 'Product launch support'];
         $ot_multiplier = 1.5;

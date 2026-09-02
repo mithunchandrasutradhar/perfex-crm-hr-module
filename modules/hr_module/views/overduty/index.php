@@ -30,7 +30,7 @@
               <option value="rejected">Rejected</option>
             </select>
             <?php if (staff_can('create', 'hr_overtime')): ?>
-            <a href="<?php echo admin_url('hr_module/overtime/request'); ?>" class="btn btn-primary">
+            <a href="<?php echo admin_url('hr_module/overduty/request'); ?>" class="btn btn-primary">
               <i class="fa-regular fa-plus tw-mr-1"></i><?php echo _l('hr_overtime_add'); ?>
             </a>
             <?php endif; ?>
@@ -42,7 +42,7 @@
               _l('hr_employee'), _l('hr_department'),
               _l('hr_overtime_date'), _l('hr_overtime_day_type'),
               _l('hr_status'),
-            ], 'hr-overtime'); ?>
+            ], 'hr-overduty'); ?>
           </div>
         </div>
       </div>
@@ -52,7 +52,7 @@
 <?php init_tail(); ?>
 <script>
 $(function(){
-    initDataTable('.table-hr-overtime', window.location.href, [], [2,'desc']);
+    initDataTable('.table-hr-overduty', window.location.href, [], [2,'desc']);
     function reload(){
         var deptVal = $('#f-dept').length ? $('#f-dept').val() : '';
         var url = window.location.href.split('?')[0]
@@ -60,7 +60,7 @@ $(function(){
             + '&status='        + $('#f-status').val()
             + '&from_date='     + $('#f-from').val()
             + '&to_date='       + $('#f-to').val();
-        $('.table-hr-overtime').DataTable().ajax.url(url).load();
+        $('.table-hr-overduty').DataTable().ajax.url(url).load();
     }
     $('#f-dept,#f-status,#f-from,#f-to').on('change changed.bs.select', reload);
 
@@ -79,13 +79,13 @@ $(function(){
 
     // Soft Approve / Soft Reject: informational-only pre-approval, independent
     // of the real Approve/Reject above and never blocks it (mirrors the
-    // buttons already on the overtime/view.php detail page).
+    // buttons already on the overduty/view.php detail page).
     $(document).on('click', '.hr-ot-soft-approve', function(e){
         e.preventDefault();
         if (!confirm('<?php echo _l('hr_overtime_soft_approve'); ?>?')) return;
         var id = $(this).data('id');
-        $.post('<?php echo admin_url('hr_module/overtime/soft_approve/'); ?>' + id, csrf_pair(), function(r){
-            if (r.success) { alert_float('success', '<?php echo _l('hr_overtime_soft_approve'); ?>'); $('.table-hr-overtime').DataTable().ajax.reload(null, false); }
+        $.post('<?php echo admin_url('hr_module/overduty/soft_approve/'); ?>' + id, csrf_pair(), function(r){
+            if (r.success) { alert_float('success', '<?php echo _l('hr_overtime_soft_approve'); ?>'); $('.table-hr-overduty').DataTable().ajax.reload(null, false); }
             else alert_float('danger', r.message);
         }, 'json');
     });
@@ -93,8 +93,8 @@ $(function(){
         e.preventDefault();
         if (!confirm('<?php echo _l('hr_overtime_soft_reject'); ?>?')) return;
         var id = $(this).data('id');
-        $.post('<?php echo admin_url('hr_module/overtime/soft_reject/'); ?>' + id, csrf_pair(), function(r){
-            if (r.success) { alert_float('success', '<?php echo _l('hr_overtime_soft_reject'); ?>'); $('.table-hr-overtime').DataTable().ajax.reload(null, false); }
+        $.post('<?php echo admin_url('hr_module/overduty/soft_reject/'); ?>' + id, csrf_pair(), function(r){
+            if (r.success) { alert_float('success', '<?php echo _l('hr_overtime_soft_reject'); ?>'); $('.table-hr-overduty').DataTable().ajax.reload(null, false); }
             else alert_float('danger', r.message);
         }, 'json');
     });

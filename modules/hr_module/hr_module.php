@@ -347,12 +347,12 @@ function hr_module_init_menu_items()
         ]);
     }
 
-    // Overtime
+    // Overduty
     if (staff_can('view', 'hr_overtime') || staff_can('view_own', 'hr_overtime')) {
         $CI->app_menu->add_sidebar_children_item('human-resource', [
-            'slug'     => 'hr-overtime',
+            'slug'     => 'hr-overduty',
             'name'     => _l('hr_menu_overtime'),
-            'href'     => admin_url('hr_module/overtime'),
+            'href'     => admin_url('hr_module/overduty'),
             'position' => 8,
         ]);
     }
@@ -414,7 +414,7 @@ function hr_module_init_menu_items()
             'slug'     => 'hr-shifts',
             'name'     => 'Shift',
             'href'     => admin_url('hr_module/shifts'),
-            'position' => 8.5, // right after Overtime (8), before Performance (9)
+            'position' => 8.5, // right after Overduty (8), before Performance (9)
         ]);
     }
 

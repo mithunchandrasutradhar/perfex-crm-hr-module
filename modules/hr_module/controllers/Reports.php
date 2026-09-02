@@ -129,21 +129,21 @@ class Reports extends AdminController
         $this->load->view('hr_module/reports/loan', $data);
     }
 
-    public function overtime()
+    public function overduty()
     {
         if (staff_cant('view', 'hr_reports')) access_denied('hr_reports');
         if ($this->input->is_ajax_request()) {
-            $this->app->get_table_data(module_views_path('hr_module', 'reports/overtime_table'));
+            $this->app->get_table_data(module_views_path('hr_module', 'reports/overduty_table'));
             return;
         }
         $f = $this->_get_filters(['department_id','status','from_date','to_date']);
         if (!empty($f['from_date'])) $f['from_date'] = to_sql_date($f['from_date']);
         if (!empty($f['to_date']))   $f['to_date']   = to_sql_date($f['to_date']);
 
-        $rows = $this->Reports_model->overtime($f);
+        $rows = $this->Reports_model->overduty($f);
 
         if ($this->input->get('export') === 'csv') {
-            $this->_export_csv($rows, ['employee_code','first_name','last_name','department_name','overtime_date','day_type','holiday_name','rate_multiplier','total_amount','status'], 'overtime_report');
+            $this->_export_csv($rows, ['employee_code','first_name','last_name','department_name','overtime_date','day_type','holiday_name','rate_multiplier','total_amount','status'], 'overduty_report');
             return;
         }
         $total_amount = array_sum(array_column((array) $rows, 'total_amount'));
@@ -152,7 +152,7 @@ class Reports extends AdminController
         $data['filters']      = $f;
         $data['total_amount'] = $total_amount;
         $data['departments']  = $this->Departments_model->get_active();
-        $this->load->view('hr_module/reports/overtime', $data);
+        $this->load->view('hr_module/reports/overduty', $data);
     }
 
     public function performance()

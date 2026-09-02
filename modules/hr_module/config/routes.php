@@ -110,17 +110,17 @@ $route['hr_module/loans/reject/(:num)']           = 'hr_module/Loans/reject/$1';
 $route['hr_module/loans/delete/(:num)']           = 'hr_module/Loans/delete/$1';
 $route['hr_module/loans/add_repayment/(:num)']    = 'hr_module/Loans/add_repayment/$1';
 
-// Overtime
-$route['hr_module/overtime']                      = 'hr_module/Overtime/index';
-$route['hr_module/overtime/request']              = 'hr_module/Overtime/request';
-$route['hr_module/overtime/preview']              = 'hr_module/Overtime/preview';
-$route['hr_module/overtime/edit/(:num)']          = 'hr_module/Overtime/edit/$1';
-$route['hr_module/overtime/view/(:num)']          = 'hr_module/Overtime/view/$1';
-$route['hr_module/overtime/approve/(:num)']       = 'hr_module/Overtime/approve/$1';
-$route['hr_module/overtime/reject/(:num)']        = 'hr_module/Overtime/reject/$1';
-$route['hr_module/overtime/soft_approve/(:num)']  = 'hr_module/Overtime/soft_approve/$1';
-$route['hr_module/overtime/soft_reject/(:num)']   = 'hr_module/Overtime/soft_reject/$1';
-$route['hr_module/overtime/delete/(:num)']        = 'hr_module/Overtime/delete/$1';
+// Overduty
+$route['hr_module/overduty']                      = 'hr_module/Overduty/index';
+$route['hr_module/overduty/request']              = 'hr_module/Overduty/request';
+$route['hr_module/overduty/preview']              = 'hr_module/Overduty/preview';
+$route['hr_module/overduty/edit/(:num)']          = 'hr_module/Overduty/edit/$1';
+$route['hr_module/overduty/view/(:num)']          = 'hr_module/Overduty/view/$1';
+$route['hr_module/overduty/approve/(:num)']       = 'hr_module/Overduty/approve/$1';
+$route['hr_module/overduty/reject/(:num)']        = 'hr_module/Overduty/reject/$1';
+$route['hr_module/overduty/soft_approve/(:num)']  = 'hr_module/Overduty/soft_approve/$1';
+$route['hr_module/overduty/soft_reject/(:num)']   = 'hr_module/Overduty/soft_reject/$1';
+$route['hr_module/overduty/delete/(:num)']        = 'hr_module/Overduty/delete/$1';
 
 // Performance
 $route['hr_module/performance']                   = 'hr_module/Performance/index';
@@ -175,7 +175,7 @@ $route['hr_module/reports/attendance']            = 'hr_module/Reports/attendanc
 $route['hr_module/reports/leave']                 = 'hr_module/Reports/leave';
 $route['hr_module/reports/payroll']               = 'hr_module/Reports/payroll';
 $route['hr_module/reports/loan']                  = 'hr_module/Reports/loan';
-$route['hr_module/reports/overtime']              = 'hr_module/Reports/overtime';
+$route['hr_module/reports/overduty']              = 'hr_module/Reports/overduty';
 $route['hr_module/reports/performance']           = 'hr_module/Reports/performance';
 $route['hr_module/reports/training']              = 'hr_module/Reports/training';
 $route['hr_module/reports/headcount']             = 'hr_module/Reports/headcount';

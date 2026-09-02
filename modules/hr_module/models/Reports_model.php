@@ -130,8 +130,8 @@ class Reports_model extends App_Model
         return $this->db->order_by('l.created_at DESC')->get()->result();
     }
 
-    // ── Overtime ──────────────────────────────────────────────────────────────
-    public function overtime($f = [])
+    // ── Overduty ──────────────────────────────────────────────────────────────
+    public function overduty($f = [])
     {
         $this->db->select('o.*, e.first_name, e.last_name, e.employee_code, d.name as department_name')
             ->from(db_prefix() . 'hr_overtime o')

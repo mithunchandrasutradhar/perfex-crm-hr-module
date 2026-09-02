@@ -2,7 +2,7 @@
 defined('BASEPATH') or exit('No direct script access allowed');
 
 $CI = &get_instance();
-$CI->load->model('hr_module/Overtime_model');
+$CI->load->model('hr_module/Overduty_model');
 
 $filters = [];
 foreach (['employee_id', 'department_id', 'status', 'from_date', 'to_date'] as $key) {
@@ -11,7 +11,7 @@ foreach (['employee_id', 'department_id', 'status', 'from_date', 'to_date'] as $
 }
 // The date filters now come from the same site-display-format datepicker
 // widget Attendance's list already uses (see attendance/table.php) - convert
-// back to the ISO format Overtime_model's date comparisons expect.
+// back to the ISO format Overduty_model's date comparisons expect.
 if (!empty($filters['from_date'])) $filters['from_date'] = to_sql_date($filters['from_date']);
 if (!empty($filters['to_date']))   $filters['to_date']   = to_sql_date($filters['to_date']);
 
@@ -29,7 +29,7 @@ if (!is_admin() && !staff_can('view', 'hr_overtime')) {
 $search_value = $CI->input->post('search');
 if (!empty($search_value['value'])) $filters['search'] = trim($search_value['value']);
 
-$rows = $CI->Overtime_model->get_for_table($filters);
+$rows = $CI->Overduty_model->get_for_table($filters);
 
 // The DataTable's own pagination - rows here are built manually (below)
 // instead of through the generic data_tables_init() helper, so start/length
@@ -67,12 +67,12 @@ foreach ($rows as $r) {
         : date('d M', strtotime($r->first_date)) . ' - ' . date('d M Y', strtotime($r->last_date));
     $date_cell .= '<br><small class="text-muted">' . $r->day_count . ' ' . ($r->day_count == 1 ? 'day' : 'days') . '</small>';
 
-    $view_url = admin_url('hr_module/overtime/view/' . $r->id);
+    $view_url = admin_url('hr_module/overduty/view/' . $r->id);
     $employee_cell = '<a href="' . $view_url . '">' . htmlspecialchars($r->first_name . ' ' . $r->last_name) . '</a><br><small class="text-muted">' . $r->employee_code . '</small>';
     $options = [];
     $options[] = '<a href="' . $view_url . '">' . _l('hr_view') . '</a>';
     if (staff_can('edit', 'hr_overtime') && $r->status === 'pending') {
-        $options[] = '<a href="' . admin_url('hr_module/overtime/approve/' . $r->id) . '" class="text-success" onclick="return confirm(\'' . addslashes(_l('hr_overtime_approve_confirm')) . '\');">' . _l('hr_overtime_approve') . '</a>';
+        $options[] = '<a href="' . admin_url('hr_module/overduty/approve/' . $r->id) . '" class="text-success" onclick="return confirm(\'' . addslashes(_l('hr_overtime_approve_confirm')) . '\');">' . _l('hr_overtime_approve') . '</a>';
         $reject_form_id = 'hr-ot-reject-' . $r->id;
         $options[] = '<a href="#" class="text-danger hr-ot-reject" data-target="' . $reject_form_id . '">' . _l('hr_overtime_reject') . '</a>';
     }
@@ -84,15 +84,15 @@ foreach ($rows as $r) {
         $options[] = '<a href="#" class="hr-ot-soft-reject" data-id="' . $r->id . '">' . _l('hr_overtime_soft_reject') . '</a>';
     }
     if (staff_can('edit', 'hr_overtime') && $r->status === 'pending') {
-        $options[] = '<a href="' . admin_url('hr_module/overtime/edit/' . $r->id) . '">' . _l('hr_edit') . '</a>';
+        $options[] = '<a href="' . admin_url('hr_module/overduty/edit/' . $r->id) . '">' . _l('hr_edit') . '</a>';
     }
     if (staff_can('delete', 'hr_overtime') && $r->status !== 'approved') {
-        $options[] = '<a href="' . admin_url('hr_module/overtime/delete/' . $r->id) . '" class="_delete text-danger">' . _l('hr_delete') . '</a>';
+        $options[] = '<a href="' . admin_url('hr_module/overduty/delete/' . $r->id) . '" class="_delete text-danger">' . _l('hr_delete') . '</a>';
     }
     $employee_cell .= '<div class="row-options">' . implode(' | ', $options) . '</div>';
 
     if (staff_can('edit', 'hr_overtime') && $r->status === 'pending') {
-        $employee_cell .= '<form id="' . $reject_form_id . '" method="post" action="' . admin_url('hr_module/overtime/reject/' . $r->id) . '" style="display:none">'
+        $employee_cell .= '<form id="' . $reject_form_id . '" method="post" action="' . admin_url('hr_module/overduty/reject/' . $r->id) . '" style="display:none">'
             . form_hidden($CI->security->get_csrf_token_name(), $CI->security->get_csrf_hash())
             . '<input type="hidden" name="rejection_reason" value="">'
             . '</form>';

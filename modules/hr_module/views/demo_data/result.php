@@ -50,7 +50,7 @@ if (!isset($log))     $log     = [];
                 <a href="<?php echo admin_url('hr_module/attendance'); ?>"  class="btn btn-default btn-sm"><i class="fa fa-clock tw-mr-1"></i>Attendance</a>
                 <a href="<?php echo admin_url('hr_module/payroll'); ?>"     class="btn btn-default btn-sm"><i class="fa fa-money-bill tw-mr-1"></i>Payroll</a>
                 <a href="<?php echo admin_url('hr_module/loans'); ?>"       class="btn btn-default btn-sm"><i class="fa fa-hand-holding-usd tw-mr-1"></i>Loan</a>
-                <a href="<?php echo admin_url('hr_module/overtime'); ?>"    class="btn btn-default btn-sm"><i class="fa fa-stopwatch tw-mr-1"></i>Overduty</a>
+                <a href="<?php echo admin_url('hr_module/overduty'); ?>"    class="btn btn-default btn-sm"><i class="fa fa-stopwatch tw-mr-1"></i>Overduty</a>
                 <a href="<?php echo admin_url('hr_module/performance'); ?>" class="btn btn-default btn-sm"><i class="fa fa-star tw-mr-1"></i>Performance</a>
                 <a href="<?php echo admin_url('hr_module/training'); ?>"    class="btn btn-default btn-sm"><i class="fa fa-graduation-cap tw-mr-1"></i>Training</a>
                 <a href="<?php echo admin_url('hr_module/helpdesk'); ?>"    class="btn btn-default btn-sm"><i class="fa fa-ticket-alt tw-mr-1"></i>Helpdesk</a>

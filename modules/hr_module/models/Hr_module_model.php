@@ -477,9 +477,9 @@ class Hr_module_model extends App_Model
         $stats['pending_overtime'] = $this->db->count_all_results(db_prefix() . 'hr_overtime');
 
         // Approved overtime days this month - overtime is tracked per day (see
-        // Overtime_model), not hourly, so this counts approved day-rows rather
+        // Overduty_model), not hourly, so this counts approved day-rows rather
         // than summing the unused legacy 'hours' column (never populated by
-        // Overtime_model::request()/update(), always 0).
+        // Overduty_model::request()/update(), always 0).
         $this->db->where('employee_id', $employee_id)
             ->where('status', 'approved')
             ->where('MONTH(overtime_date)', $month)
