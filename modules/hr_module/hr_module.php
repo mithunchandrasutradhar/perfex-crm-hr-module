@@ -23,7 +23,7 @@ define('HR_MODULE_NAME', 'hr_module');
 // bump this number whenever install.php gains a new guarded table/column, and
 // every site running this module will pick it up automatically on its very
 // next admin page load - no manual reactivation step, ever, on any install.
-define('HR_MODULE_SCHEMA_VERSION', 15);
+define('HR_MODULE_SCHEMA_VERSION', 16);
 
 // ─── Hook registrations ────────────────────────────────────────────────────
 
@@ -418,17 +418,9 @@ function hr_module_init_menu_items()
         ]);
     }
 
-    // Attendance Devices (ZKTeco, AiFace/AI07F, etc.) - permission capability
-    // stays 'hr_zkteco' so existing staff role grants aren't dropped by this
-    // rename, even though the menu/URL/label are now brand-neutral.
-    if (staff_can('view', 'hr_zkteco')) {
-        $CI->app_menu->add_sidebar_children_item('human-resource', [
-            'slug'     => 'hr-devices',
-            'name'     => _l('hr_menu_zkteco'),
-            'href'     => admin_url('hr_module/devices'),
-            'position' => 13,
-        ]);
-    }
+    // Attendance Devices (ZKTeco, AiFace/AI07F, etc.) — no sidebar entry;
+    // already reachable from Settings > Attendance Devices, same as
+    // Designations/Branches are Settings-only rather than sidebar items.
 
     // Official Calendar
     if (is_admin() || staff_can('view', 'hr_holidays')) {

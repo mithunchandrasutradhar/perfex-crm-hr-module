@@ -133,13 +133,15 @@ function ev($obj, $key, $default = '') {
               </div>
               <div class="<?php echo $row1_col; ?>">
                 <div class="form-group">
-                  <label><?php echo _l('hr_employee_basic_salary'); ?></label>
+                  <label style="color:inherit;opacity:1">
+                    <?php echo _l('hr_employee_basic_salary'); ?>
+                    <?php if ($restrict_sensitive_fields): ?>
+                    <i class="fa-solid fa-circle-info tw-text-neutral-400" data-toggle="tooltip" data-title="Set by HR - contact HR to change." style="cursor:help;"></i>
+                    <?php endif; ?>
+                  </label>
                   <input type="number" name="basic_salary" class="form-control" step="0.01" min="0"
                     value="<?php echo $is_edit ? ev($e,'basic_salary','0') : '0'; ?>"
                     <?php echo $restrict_sensitive_fields ? 'disabled' : ''; ?>>
-                  <?php if ($restrict_sensitive_fields): ?>
-                  <p class="help-block tw-text-xs tw-mt-1">Set by HR - contact HR to change.</p>
-                  <?php endif; ?>
                 </div>
               </div>
             </div>
@@ -147,14 +149,16 @@ function ev($obj, $key, $default = '') {
             <div class="row">
               <div class="col-md-4 col-sm-6">
                 <div class="form-group">
-                  <label><?php echo _l('hr_employee_max_loan_amount'); ?></label>
+                  <label style="color:inherit;opacity:1">
+                    <?php echo _l('hr_employee_max_loan_amount'); ?>
+                    <?php if ($restrict_sensitive_fields): ?>
+                    <i class="fa-solid fa-circle-info tw-text-neutral-400" data-toggle="tooltip" data-title="Set by HR - contact HR to change." style="cursor:help;"></i>
+                    <?php endif; ?>
+                  </label>
                   <input type="number" name="max_loan_amount" class="form-control" step="0.01" min="0" max="99999999.99"
                     value="<?php echo $is_edit ? ev($e,'max_loan_amount','') : ''; ?>"
                     placeholder="<?php echo _l('hr_employee_max_loan_amount_hint'); ?>"
                     <?php echo $restrict_sensitive_fields ? 'disabled' : ''; ?>>
-                  <?php if ($restrict_sensitive_fields): ?>
-                  <p class="help-block tw-text-xs tw-mt-1">Set by HR - contact HR to change.</p>
-                  <?php endif; ?>
                 </div>
               </div>
               <div class="col-md-4 col-sm-6">
@@ -183,13 +187,29 @@ function ev($obj, $key, $default = '') {
                   </select>
                 </div>
               </div>
+              <div class="col-md-4 col-sm-6">
+                <div class="form-group select-placeholder">
+                  <label><?php echo _l('hr_employee_branch'); ?></label>
+                  <select name="branch_id" id="emp_branch" class="selectpicker" data-width="100%" data-live-search="true">
+                    <option value=""><?php echo _l('hr_select'); ?></option>
+                    <?php foreach ($branches as $b): ?>
+                    <option value="<?php echo $b->id; ?>" <?php if($is_edit && $e->branch_id == $b->id) echo 'selected'; ?>>
+                      <?php echo htmlspecialchars($b->name); ?>
+                    </option>
+                    <?php endforeach; ?>
+                  </select>
+                </div>
+              </div>
             </div>
 
             <?php $mapped_device_ids = array_map(function($m) { return (int) $m->device_id; }, $device_mappings); ?>
             <div class="row">
               <div class="col-md-4 col-sm-6">
                 <div class="form-group select-placeholder">
-                  <label><i class="fa fa-fingerprint tw-mr-1"></i>Attendance Devices</label>
+                  <label style="color:inherit;opacity:1">
+                    <i class="fa fa-fingerprint tw-mr-1"></i>Attendance Devices
+                    <i class="fa-solid fa-circle-info tw-text-neutral-400" data-toggle="tooltip" data-title="<?php echo $restrict_sensitive_fields ? 'Set by HR - contact HR to change.' : 'Select every device this employee should be able to punch on.'; ?>" style="cursor:help;"></i>
+                  </label>
                   <select name="zkteco_device_id[]" id="emp_zkteco_device" class="selectpicker" multiple
                           data-width="100%" data-live-search="true"
                           data-none-selected-text="— No devices —"
@@ -200,30 +220,27 @@ function ev($obj, $key, $default = '') {
                     </option>
                     <?php endforeach; ?>
                   </select>
-                  <p class="help-block tw-text-xs tw-mt-1">
-                    <?php echo $restrict_sensitive_fields ? 'Set by HR - contact HR to change.' : 'Select every device this employee should be able to punch on.'; ?>
-                  </p>
                 </div>
               </div>
               <div class="col-md-4 col-sm-6">
                 <div class="form-group">
-                  <label>ID Number (Device) <?php if (!$restrict_sensitive_fields): ?><span class="text-danger">*</span><?php endif; ?></label>
+                  <label style="color:inherit;opacity:1">
+                    ID Number (Device) <?php if (!$restrict_sensitive_fields): ?><span class="text-danger">*</span><?php endif; ?>
+                    <i class="fa-solid fa-circle-info tw-text-neutral-400" data-toggle="tooltip" data-title="<?php echo $restrict_sensitive_fields ? 'Set by HR - contact HR to change.' : 'The numeric User ID set on the attendance device for this employee.'; ?>" style="cursor:help;"></i>
+                  </label>
                   <input type="text" name="device_user_id" id="device_user_id_input" class="form-control"
                     value="<?php echo ($is_edit && !empty($device_mappings)) ? htmlspecialchars($device_mappings[0]->device_user_id) : ''; ?>"
                     <?php echo $restrict_sensitive_fields ? 'disabled' : 'required'; ?>>
-                  <p class="help-block tw-text-xs tw-mt-1">
-                    <?php echo $restrict_sensitive_fields ? 'Set by HR - contact HR to change.' : 'The numeric User ID set on the attendance device for this employee.'; ?>
-                  </p>
                 </div>
               </div>
               <div class="col-md-4 col-sm-6">
                 <div class="form-group">
-                  <label>Employee ID</label>
+                  <label>
+                    Employee ID
+                    <i class="fa-solid fa-circle-info tw-text-neutral-400" data-toggle="tooltip" data-title="Auto-generated: &quot;<?php echo htmlspecialchars($employee_id_prefix); ?>&quot; + the ID Number (Device)." style="cursor:help;"></i>
+                  </label>
                   <input type="text" class="form-control" id="employee_code_preview" readonly
                     value="<?php echo $is_edit ? ev($e,'employee_code') : ''; ?>">
-                  <p class="help-block tw-text-xs tw-mt-1">
-                    Auto-generated: "<?php echo htmlspecialchars($employee_id_prefix); ?>" + the ID Number (Device).
-                  </p>
                 </div>
               </div>
             </div>
@@ -233,7 +250,10 @@ function ev($obj, $key, $default = '') {
               <textarea name="notes" class="form-control" rows="2"><?php echo $is_edit ? ev($e,'notes') : ''; ?></textarea>
             </div>
             <div class="form-group">
-              <label class="tw-block tw-mb-1"><?php echo _l('hr_status'); ?></label>
+              <label class="tw-block tw-mb-1">
+                <?php echo _l('hr_status'); ?>
+                <i class="fa-solid fa-circle-info tw-text-neutral-400" data-toggle="tooltip" data-title="<?php echo _l('hr_employee_status_follows_staff'); ?>" style="cursor:help;"></i>
+              </label>
               <?php if ($is_edit): ?>
                 <?php if ($e->staff_active == 1): ?>
                 <span class="label label-success"><?php echo _l('hr_active'); ?></span>
@@ -241,9 +261,6 @@ function ev($obj, $key, $default = '') {
                 <span class="label label-danger"><?php echo _l('hr_inactive'); ?></span>
                 <?php endif; ?>
               <?php endif; ?>
-              <p class="help-block tw-text-xs tw-mt-1 tw-mb-0">
-                <?php echo _l('hr_employee_status_follows_staff'); ?>
-              </p>
             </div>
           </div>
         </div>
@@ -263,7 +280,10 @@ function ev($obj, $key, $default = '') {
             <div class="row">
               <div class="col-md-3">
                 <div class="form-group tw-text-center">
-                  <label class="tw-block tw-mb-2">HR Profile Photo <small class="text-muted">(optional, overrides staff photo)</small></label>
+                  <label class="tw-block tw-mb-2">
+                    HR Profile Photo <small class="text-muted">(optional, overrides staff photo)</small>
+                    <i class="fa-solid fa-circle-info tw-text-neutral-400" data-toggle="tooltip" data-title="Recommended: a square image (1:1 ratio), at least 200x200px, for best display. Max file size: 2MB (JPG, PNG, or GIF)." style="cursor:help;"></i>
+                  </label>
                   <?php
                   // No HR-specific photo uploaded yet - default the preview to the
                   // linked staff's own photo (same thumbnail path/existence check the
@@ -350,9 +370,14 @@ function ev($obj, $key, $default = '') {
                     </div>
                   </div>
                   <div class="col-md-4 col-sm-6">
-                    <div class="form-group">
+                    <div class="form-group select-placeholder">
                       <label><?php echo _l('hr_employee_religion'); ?></label>
-                      <input type="text" name="religion" class="form-control" value="<?php echo $is_edit ? ev($e,'religion') : ''; ?>">
+                      <select name="religion" class="selectpicker" data-width="100%">
+                        <option value=""><?php echo _l('hr_select'); ?></option>
+                        <?php foreach (['Islam','Hinduism','Christianity','Buddhism','Other'] as $r): ?>
+                        <option value="<?php echo strtolower($r); ?>" <?php if($is_edit && $e->religion==strtolower($r)) echo 'selected'; ?>><?php echo $r; ?></option>
+                        <?php endforeach; ?>
+                      </select>
                     </div>
                   </div>
                   <div class="col-md-4 col-sm-6">

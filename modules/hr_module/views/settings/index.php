@@ -96,6 +96,14 @@ $can_edit = staff_can('edit', 'hr_settings') || is_admin();
                                         </a>
                                     </div>
                                 </div>
+                                <div class="col-md-3 col-sm-6">
+                                    <div class="form-group tw-mb-0">
+                                        <label>&nbsp;</label>
+                                        <a href="<?php echo admin_url('hr_module/branches'); ?>" class="btn btn-default btn-sm btn-block">
+                                            <i class="fa fa-code-branch tw-mr-1"></i><?php echo _l('hr_menu_branches'); ?>
+                                        </a>
+                                    </div>
+                                </div>
                                 <?php endif; ?>
                             </div>
                         </div>

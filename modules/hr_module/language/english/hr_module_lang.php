@@ -10,6 +10,7 @@ $lang['hr_module_settings']                = 'Settings';
 $lang['hr_menu_employees']                 = 'Employee';
 $lang['hr_menu_departments']               = 'Departments';
 $lang['hr_menu_designations']              = 'Designations';
+$lang['hr_menu_branches']                  = 'Branches';
 $lang['hr_menu_leave']                     = 'Leave';
 $lang['hr_menu_leave_requests']            = 'Leave Requests';
 $lang['hr_menu_leave_types']               = 'Leave Types';
@@ -24,7 +25,7 @@ $lang['hr_menu_overtime']                  = 'Overduty';
 $lang['hr_menu_performance']               = 'Performance';
 $lang['hr_menu_training']                  = 'Training';
 $lang['hr_menu_helpdesk']                  = 'Helpdesk';
-$lang['hr_menu_contracts']                 = 'Contracts';
+$lang['hr_menu_contracts']                 = 'Contract';
 $lang['hr_menu_reports']                   = 'Reports';
 
 // Permissions
@@ -145,6 +146,7 @@ $lang['hr_employee_tin']                   = 'TIN Number';
 $lang['hr_employee_nid']                   = 'NID Number';
 $lang['hr_employee_passport']              = 'Passport Number';
 $lang['hr_employee_emergency_contact']     = 'Emergency Contact';
+$lang['hr_employee_branch']                = 'Branch';
 $lang['hr_employee_blood_group']           = 'Blood Group';
 $lang['hr_employee_religion']              = 'Religion';
 $lang['hr_employee_marital_status']        = 'Marital Status';
@@ -181,6 +183,14 @@ $lang['hr_designation_edit']               = 'Edit Designation';
 $lang['hr_designation_added']              = 'Designation added successfully';
 $lang['hr_designation_updated']            = 'Designation updated successfully';
 $lang['hr_designation_deleted']            = 'Designation deleted successfully';
+
+// Branches
+$lang['hr_branch_list']                    = 'Branch List';
+$lang['hr_branch_add']                     = 'Add Branch';
+$lang['hr_branch_edit']                    = 'Edit Branch';
+$lang['hr_branch_added']                   = 'Branch added successfully';
+$lang['hr_branch_updated']                 = 'Branch updated successfully';
+$lang['hr_branch_deleted']                 = 'Branch deleted successfully';
 
 // Leave
 $lang['hr_leave_list']                     = 'Leave Requests';

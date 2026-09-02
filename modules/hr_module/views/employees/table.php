@@ -7,9 +7,11 @@ $aColumns = [
     "CONCAT(COALESCE(s.firstname, e.first_name), ' ', COALESCE(s.lastname, e.last_name)) as employee_name", // [0]
     'd.name as department_name',    // [1]
     'ds.name as designation_name',  // [2]
-    "COALESCE(s.phonenumber, e.phone) as phone_col", // [3]
-    'e.personal_email as personal_email_col', // [4]
-    's.active as staff_active', // [5] employee status mirrors the linked staff account's status
+    'b.name as branch_name',        // [3]
+    "COALESCE(s.phonenumber, e.phone) as phone_col", // [4]
+    'e.personal_email as personal_email_col', // [5]
+    'e.blood_group as blood_group_col', // [6]
+    's.active as staff_active', // [7] employee status mirrors the linked staff account's status
 ];
 
 $sIndexColumn = 'e.id';
@@ -17,6 +19,7 @@ $sTable       = db_prefix() . 'hr_employees e';
 
 $join = [
     'LEFT JOIN ' . db_prefix() . 'departments d ON d.departmentid = e.department_id',
+    'LEFT JOIN ' . db_prefix() . 'hr_branches b ON b.id = e.branch_id',
     'LEFT JOIN ' . db_prefix() . 'hr_designations ds ON ds.id = e.designation_id',
     'LEFT JOIN ' . db_prefix() . 'staff s ON s.staffid = e.staff_id',
 ];
@@ -24,10 +27,14 @@ $join = [
 $where = [];
 
 $dept_filter   = $CI->input->get('department_id');
+$branch_filter = $CI->input->get('branch_id');
 $status_filter = $CI->input->get('status');
 
 if (!empty($dept_filter)) {
     $where[] = 'AND e.department_id = ' . (int) $dept_filter;
+}
+if (!empty($branch_filter)) {
+    $where[] = 'AND e.branch_id = ' . (int) $branch_filter;
 }
 if ($status_filter !== null && $status_filter !== '') {
     $where[] = 'AND s.active = ' . (int) $status_filter;
@@ -62,15 +69,22 @@ foreach ($rResult as $aRow) {
     // [2] Designation
     $row[] = !empty($aRow['designation_name']) ? htmlspecialchars($aRow['designation_name']) : '-';
 
-    // [3] Phone
+    // [3] Branch
+    $row[] = !empty($aRow['branch_name']) ? htmlspecialchars($aRow['branch_name']) : '-';
+
+    // [4] Phone
     $phone = $aRow['phone_col'] ?? '';
     $row[] = $phone ? htmlspecialchars($phone) : '-';
 
-    // [4] Personal Email
+    // [5] Personal Email
     $personal_email = $aRow['personal_email_col'] ?? '';
     $row[] = $personal_email ? '<a href="mailto:' . htmlspecialchars($personal_email) . '">' . htmlspecialchars($personal_email) . '</a>' : '-';
 
-    // [5] Status badge - mirrors the linked staff account's active status
+    // [6] Blood Group
+    $blood_group = $aRow['blood_group_col'] ?? '';
+    $row[] = $blood_group ? htmlspecialchars($blood_group) : '-';
+
+    // [7] Status badge - mirrors the linked staff account's active status
     $row[] = $aRow['staff_active'] == 1
         ? '<span class="label label-success">' . _l('hr_active') . '</span>'
         : '<span class="label label-danger">' . _l('hr_inactive') . '</span>';

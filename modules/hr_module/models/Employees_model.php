@@ -20,11 +20,12 @@ class Employees_model extends App_Model
                 COALESCE(s.phonenumber, e.phone)     as phone,
                 s.profile_image as staff_photo,
                 s.active as staff_active,
-                d.name as department_name, ds.name as designation_name,
+                d.name as department_name, ds.name as designation_name, b.name as branch_name,
                 CONCAT(s.firstname," ",s.lastname) as staff_name', false)
             ->from($this->table . ' e')
             ->join(db_prefix() . 'departments d', 'd.departmentid = e.department_id', 'left')
             ->join(db_prefix() . 'hr_designations ds','ds.id = e.designation_id', 'left')
+            ->join(db_prefix() . 'hr_branches b',     'b.id = e.branch_id',        'left')
             ->join(db_prefix() . 'staff s',           's.staffid = e.staff_id',   'left');
 
         if ($id) {

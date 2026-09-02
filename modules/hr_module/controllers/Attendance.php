@@ -56,7 +56,7 @@ class Attendance extends AdminController
             // verify-mode field) - the client renders these via .html(), so
             // all three must be escaped before they ever leave the server.
             return [
-                'time'            => date('H:i:s', strtotime($r->punch_time)),
+                'time'            => date('h:i:s A', strtotime($r->punch_time)),
                 'device_name'     => htmlspecialchars($r->device_name ?: '-'),
                 'device_location' => htmlspecialchars($r->device_location ?: '-'),
                 'verify_mode'     => htmlspecialchars($r->verify_mode ?: '-'),

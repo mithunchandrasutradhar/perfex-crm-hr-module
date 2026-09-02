@@ -13,6 +13,12 @@
               <option value="<?php echo $d->id; ?>"><?php echo htmlspecialchars($d->name); ?></option>
               <?php endforeach; ?>
             </select>
+            <select id="filter-branch" class="selectpicker" data-width="160px" data-live-search="true">
+              <option value=""><?php echo _l('hr_all') . ' ' . _l('hr_employee_branch'); ?></option>
+              <?php foreach ($branches as $b): ?>
+              <option value="<?php echo $b->id; ?>"><?php echo htmlspecialchars($b->name); ?></option>
+              <?php endforeach; ?>
+            </select>
             <select id="filter-status" class="selectpicker" data-width="130px">
               <option value=""><?php echo _l('hr_all'); ?></option>
               <option value="1"><?php echo _l('hr_active'); ?></option>
@@ -31,8 +37,10 @@
               _l('hr_employee_full_name'),
               _l('hr_department'),
               _l('hr_designation'),
+              _l('hr_employee_branch'),
               _l('hr_phone'),
               'Personal Email',
+              _l('hr_employee_blood_group'),
               _l('hr_status'),
             ], 'hr-employees'); ?>
           </div>
@@ -49,10 +57,11 @@ $(function(){
     function reloadWithFilters() {
         var url = window.location.href.split('?')[0]
             + '?department_id=' + $('#filter-dept').val()
+            + '&branch_id=' + $('#filter-branch').val()
             + '&status=' + $('#filter-status').val();
         $('.table-hr-employees').DataTable().ajax.url(url).load();
     }
 
-    $('#filter-dept, #filter-status').on('change', function(){ reloadWithFilters(); });
+    $('#filter-dept, #filter-branch, #filter-status').on('change', function(){ reloadWithFilters(); });
 });
 </script>

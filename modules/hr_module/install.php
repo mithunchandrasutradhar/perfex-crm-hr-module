@@ -59,6 +59,23 @@ if ($CI->db->table_exists(db_prefix() . 'hr_designations')) {
     }
 }
 
+// 2b. Branches - a predefined list (Settings > Company Structure), same shape
+// and management pattern as Designations
+if (!$CI->db->table_exists(db_prefix() . 'hr_branches')) {
+    $CI->db->query('CREATE TABLE `' . db_prefix() . 'hr_branches` (
+      `id` int(11) NOT NULL,
+      `name` varchar(191) NOT NULL,
+      `description` text DEFAULT NULL,
+      `status` tinyint(1) NOT NULL DEFAULT 1,
+      `created_at` datetime NOT NULL,
+      `updated_at` datetime DEFAULT NULL
+    ) ENGINE=InnoDB DEFAULT CHARSET=' . $CI->db->char_set . ';');
+    $CI->db->query('ALTER TABLE `' . db_prefix() . 'hr_branches`
+      ADD PRIMARY KEY (`id`);');
+    $CI->db->query('ALTER TABLE `' . db_prefix() . 'hr_branches`
+      MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1;');
+}
+
 // 3. Employees
 if (!$CI->db->table_exists(db_prefix() . 'hr_employees')) {
     $CI->db->query('CREATE TABLE `' . db_prefix() . 'hr_employees` (
@@ -74,6 +91,7 @@ if (!$CI->db->table_exists(db_prefix() . 'hr_employees')) {
       `date_of_birth` date DEFAULT NULL,
       `address` text DEFAULT NULL,
       `department_id` int(11) DEFAULT NULL,
+      `branch_id` int(11) DEFAULT NULL,
       `designation_id` int(11) DEFAULT NULL,
       `joining_date` date DEFAULT NULL,
       `end_date` date DEFAULT NULL,
@@ -101,6 +119,7 @@ if (!$CI->db->table_exists(db_prefix() . 'hr_employees')) {
       ADD PRIMARY KEY (`id`),
       ADD KEY `staff_id` (`staff_id`),
       ADD KEY `department_id` (`department_id`),
+      ADD KEY `branch_id` (`branch_id`),
       ADD KEY `designation_id` (`designation_id`);');
     $CI->db->query('ALTER TABLE `' . db_prefix() . 'hr_employees`
       MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1;');
@@ -121,6 +140,14 @@ if ($CI->db->table_exists(db_prefix() . 'hr_employees')) {
     $col = $CI->db->query("SHOW COLUMNS FROM `" . db_prefix() . "hr_employees` LIKE 'personal_email'")->num_rows();
     if ($col === 0) {
         $CI->db->query("ALTER TABLE `" . db_prefix() . "hr_employees` ADD COLUMN `personal_email` varchar(191) DEFAULT NULL AFTER `email`");
+    }
+}
+// Upgrade: add branch_id column (FK to the new hr_branches list, same pattern
+// as designation_id) if the table existed before it was added to the schema
+if ($CI->db->table_exists(db_prefix() . 'hr_employees')) {
+    $col = $CI->db->query("SHOW COLUMNS FROM `" . db_prefix() . "hr_employees` LIKE 'branch_id'")->num_rows();
+    if ($col === 0) {
+        $CI->db->query("ALTER TABLE `" . db_prefix() . "hr_employees` ADD COLUMN `branch_id` int(11) DEFAULT NULL AFTER `department_id`");
     }
 }
 

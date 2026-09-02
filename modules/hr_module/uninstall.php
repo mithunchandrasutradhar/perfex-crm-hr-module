@@ -65,6 +65,7 @@ $tables = [
     'hr_whatsapp_templates',
     'hr_employees',
     'hr_designations',
+    'hr_branches',
     'hr_departments',
 ];
 

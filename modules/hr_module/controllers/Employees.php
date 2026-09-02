@@ -9,6 +9,7 @@ class Employees extends AdminController
         $this->load->model('hr_module/Employees_model');
         $this->load->model('hr_module/Departments_model');
         $this->load->model('hr_module/Designations_model');
+        $this->load->model('hr_module/Branches_model');
         $this->load->model('hr_module/Hr_module_model');
         $this->load->model('hr_module/Zkteco_model');
     }
@@ -23,6 +24,7 @@ class Employees extends AdminController
         }
         $data['title']       = _l('hr_employee_list');
         $data['departments'] = $this->Departments_model->get_active();
+        $data['branches']    = $this->Branches_model->get_active();
         $this->load->view('hr_module/employees/index', $data);
     }
 
@@ -86,6 +88,7 @@ class Employees extends AdminController
         $data['employee']      = null;
         $data['departments']   = $this->Departments_model->get_active();
         $data['designations']  = $this->Designations_model->get_active();
+        $data['branches']      = $this->Branches_model->get_active();
         $data['staff_members'] = $this->Employees_model->get_unlinked_staff();
         $data['devices']         = $this->Zkteco_model->get_devices(true);
         $data['device_mappings'] = [];
@@ -172,6 +175,7 @@ class Employees extends AdminController
         $data['employee']     = $employee;
         $data['departments']  = $this->Departments_model->get_active();
         $data['designations'] = $this->Designations_model->get_active();
+        $data['branches']     = $this->Branches_model->get_active();
         $data['devices']         = $this->Zkteco_model->get_devices(true);
         $data['device_mappings'] = $this->Zkteco_model->get_mappings_for_employee($id);
         $data['employee_id_prefix'] = $this->Hr_module_model->get_setting('employee_id_prefix', 'EMP');
@@ -275,6 +279,7 @@ class Employees extends AdminController
             'date_of_birth'           => to_sql_date($this->input->post('date_of_birth')) ?: null,
             'address'                 => $this->input->post('address', true),
             'department_id'           => $this->input->post('department_id') ?: null,
+            'branch_id'               => $this->input->post('branch_id') ?: null,
             'designation_id'          => $this->input->post('designation_id') ?: null,
             'joining_date'            => to_sql_date($this->input->post('joining_date')) ?: null,
             'end_date'                => to_sql_date($this->input->post('end_date')) ?: null,
