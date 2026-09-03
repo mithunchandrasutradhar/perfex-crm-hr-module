@@ -308,6 +308,17 @@ $can_edit = staff_can('edit', 'hr_settings') || is_admin();
                                     </div>
                                 </div>
                             </div>
+                            <div class="row">
+                                <div class="col-md-4 col-sm-6">
+                                    <div class="form-group">
+                                        <label><?php echo _l('hr_settings_sync_logs_retention_days'); ?> <i class="fa-solid fa-circle-info tw-text-neutral-400" data-toggle="tooltip" data-title="<?php echo _l('hr_settings_sync_logs_retention_days_hint'); ?>" style="cursor:help;"></i></label>
+                                        <input type="number" name="sync_logs_retention_days" class="form-control" min="0" max="3650"
+                                            value="<?php echo isset($settings['sync_logs_retention_days']) ? (int)$settings['sync_logs_retention_days'] : ''; ?>"
+                                            placeholder="0"
+                                            <?php echo !$can_edit ? 'readonly' : ''; ?>>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>

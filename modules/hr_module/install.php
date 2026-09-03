@@ -479,6 +479,21 @@ if (!file_exists($hr_module_my_routes_path)) {
     }
 }
 
+// Upgrade: same reasoning as the ZKTeco block above, for the TIMMY AI05
+// terminal - its firmware has no configurable request path and is
+// hardcoded to always POST to /pub/api, so that fixed path needs the same
+// global route file to reach hr_module's AiFace receiver. Written
+// automatically so a fresh install (or an existing site picking up this
+// version) works out of the box, with no manual server-config step.
+$hr_module_pub_api_route = "\$route['pub/api'] = 'hr_module/aiface/receive';\n";
+$hr_module_my_routes_existing = @file_get_contents($hr_module_my_routes_path);
+if ($hr_module_my_routes_existing !== false && strpos($hr_module_my_routes_existing, "'pub/api'") === false) {
+    @file_put_contents(
+        $hr_module_my_routes_path,
+        $hr_module_my_routes_existing . "\n// Added by hr_module's installer for the TIMMY AI05 push protocol.\n" . $hr_module_pub_api_route
+    );
+}
+
 // 11. Payroll Items (allowance/deduction definitions)
 if (!$CI->db->table_exists(db_prefix() . 'hr_payroll_items')) {
     $CI->db->query('CREATE TABLE `' . db_prefix() . 'hr_payroll_items` (

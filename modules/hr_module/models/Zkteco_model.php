@@ -258,11 +258,12 @@ class Zkteco_model extends App_Model
     // AiFace BS Communication Protocol doc) to the same human labels used
     // for ZKTeco punches, so the Attendance list's Source column and Punch
     // Log popup read identically regardless of which brand recorded them.
+    // Per TIMMY's AI05 integration guide: 1=Fingerprint, 2=Password/PIN,
+    // 3=RFID Card, 8=Face Recognition.
     private function _aiface_verify_mode_label($mode)
     {
         $map = [
-            '1' => 'Face', '2' => 'Fingerprint', '4' => 'ID Card', '8' => 'Password',
-            '16' => 'Palm Vein', '32' => 'QR Code', '64' => 'Face', '128' => 'Face',
+            '1' => 'Fingerprint', '2' => 'Password', '3' => 'ID Card', '8' => 'Face Recognition',
         ];
         return $map[(string) $mode] ?? ('Code ' . $mode);
     }
@@ -487,5 +488,15 @@ class Zkteco_model extends App_Model
             'status'          => $status,
             'error_message'   => $error,
         ]);
+    }
+
+    // Settings > Attendance Devices > "Sync Log Retention (days)" - $days <= 0
+    // means the setting is unset/disabled, so logs are kept forever.
+    public function delete_old_sync_logs($days)
+    {
+        $days = (int) $days;
+        if ($days <= 0) return;
+        $cutoff = date('Y-m-d H:i:s', strtotime('-' . $days . ' days'));
+        $this->db->where('sync_at <', $cutoff)->delete(db_prefix() . $this->logs_table);
     }
 }

@@ -98,10 +98,11 @@ $editing = !empty($device);
               <div class="alert alert-info" id="device-type-hint-aiface"
                    style="font-size:0.85rem<?php echo $device_type!='aiface' ? ';display:none' : ''; ?>">
                 <i class="fa fa-info-circle tw-mr-1"></i>
-                This device pushes attendance data to this server too (TIMY AiFace BS protocol) - on the
-                device's own <strong>Comm. set &rarr; Server</strong> screen, set <strong>Server Req = Yes</strong>,
+                This device pushes attendance data to this server too (TIMMY AI05 / AiFace BS protocol) - on
+                the device's own <strong>Comm. set &rarr; Server</strong> screen, set <strong>Server Req = Yes</strong>,
                 <strong>Use domainNm = Yes</strong>, and point <strong>DomainNm</strong> / <strong>Port</strong>
-                at this same CRM domain - no separate subdomain needed.
+                at this same CRM domain - no separate subdomain needed. If the keypad asks for a
+                <strong>Target Path</strong>, set it to exactly <code>hr_module/aiface/receive</code>.
               </div>
 
               <div class="tw-flex tw-gap-2 tw-mt-3">

@@ -190,6 +190,7 @@ class Settings extends AdminController
             'fiscal_year_start_month'        => [1, 12,   'Fiscal year start month must be between 1 and 12.'],
             'payroll_generation_day'         => [1, 31,   'Payroll generation day must be between 1 and 31.'],
             'default_max_loan_amount'        => [0, 99999999.99, 'Default maximum loan amount must be between 0 and 99,999,999.99.'],
+            'sync_logs_retention_days'       => [0, 3650, 'Sync log retention must be between 0 and 3650 days.'],
         ];
         foreach ($numeric_ranges as $key => list($min, $max, $message)) {
             $posted = $this->input->post($key);
@@ -230,6 +231,7 @@ class Settings extends AdminController
             'hr_notification_email',
             'zkteco_enabled',
             'aiface_enabled',
+            'sync_logs_retention_days',
             'holiday_reminder_enabled',
             'holiday_reminder_time',
             'whatsapp_enabled',
