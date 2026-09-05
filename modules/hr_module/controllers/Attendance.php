@@ -15,7 +15,7 @@ class Attendance extends AdminController
 
     public function index()
     {
-        if (staff_cant('view', 'hr_attendance') && staff_cant('view_own', 'hr_attendance')) {
+        if (staff_cant('view', 'hr_attendance') && staff_cant('view_own', 'hr_attendance') && staff_cant('view_department', 'hr_attendance')) {
             access_denied('hr_attendance');
         }
         if ($this->input->is_ajax_request()) {
@@ -40,13 +40,17 @@ class Attendance extends AdminController
     // attendance list's "View Log" popup.
     public function punches($employee_id, $date)
     {
-        if (staff_cant('view', 'hr_attendance') && staff_cant('view_own', 'hr_attendance')) {
+        if (staff_cant('view', 'hr_attendance') && staff_cant('view_own', 'hr_attendance') && staff_cant('view_department', 'hr_attendance')) {
             echo json_encode([]);
             return;
         }
         if (!is_admin() && !staff_can('view', 'hr_attendance') && (int) $employee_id !== (int) hr_get_own_employee_id()) {
-            echo json_encode([]);
-            return;
+            $own_dept = staff_can('view_department', 'hr_attendance') ? hr_get_own_department_id() : 0;
+            $target   = $own_dept ? $this->Employees_model->get($employee_id) : null;
+            if (!$own_dept || !$target || (int) $target->department_id !== $own_dept) {
+                echo json_encode([]);
+                return;
+            }
         }
         $this->load->model('hr_module/Zkteco_model');
         $rows = $this->Zkteco_model->get_punches((int) $employee_id, $date);

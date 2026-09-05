@@ -19,7 +19,11 @@ $search_value = $CI->input->post('search');
 if (!empty($search_value['value'])) $filters['search'] = trim($search_value['value']);
 
 if (!is_admin() && !staff_can('view', 'hr_attendance')) {
-    $filters['employee_id'] = hr_get_own_employee_id();
+    if (staff_can('view_department', 'hr_attendance')) {
+        $filters['department_id'] = hr_get_own_department_id();
+    } else {
+        $filters['employee_id'] = hr_get_own_employee_id();
+    }
 }
 
 $rows = $CI->Attendance_model->get_for_table($filters);

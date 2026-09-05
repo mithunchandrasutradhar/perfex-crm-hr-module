@@ -153,7 +153,7 @@ function hr_module_register_permissions()
     register_staff_capabilities('hr_employees',   ['capabilities' => $cap_personal],         _l('hr_perm_employees'));
     register_staff_capabilities('hr_departments',  ['capabilities' => $cap_config],            _l('hr_perm_departments'));
     register_staff_capabilities('hr_leave',        ['capabilities' => $cap_personal_soft_approve_dept], _l('hr_perm_leave'));
-    register_staff_capabilities('hr_attendance',   ['capabilities' => $cap_personal],          _l('hr_perm_attendance'));
+    register_staff_capabilities('hr_attendance',   ['capabilities' => $cap_personal_dept],      _l('hr_perm_attendance'));
     register_staff_capabilities('hr_payroll',      ['capabilities' => $cap_personal_approve],  _l('hr_perm_payroll'));
     register_staff_capabilities('hr_loans',        ['capabilities' => $cap_personal_approve],  _l('hr_perm_loans'));
     register_staff_capabilities('hr_overtime',     ['capabilities' => $cap_personal_soft_approve_dept], _l('hr_perm_overtime'));
@@ -318,7 +318,7 @@ function hr_module_init_menu_items()
     }
 
     // Attendance
-    if (staff_can('view', 'hr_attendance') || staff_can('view_own', 'hr_attendance')) {
+    if (staff_can('view', 'hr_attendance') || staff_can('view_own', 'hr_attendance') || staff_can('view_department', 'hr_attendance')) {
         $CI->app_menu->add_sidebar_children_item('human-resource', [
             'slug'     => 'hr-attendance',
             'name'     => _l('hr_menu_attendance'),

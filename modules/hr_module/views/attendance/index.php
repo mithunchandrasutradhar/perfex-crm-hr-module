@@ -188,12 +188,20 @@ $(function(){
     initDataTable('.table-hr-attendance', window.location.href, [], [2, 'desc']);
 
     function reload() {
+        // #f-dept/#f-emp only exist in the DOM for a global viewer (see the
+        // $is_global checks above) - reading .val() on a selector that
+        // matches nothing returns undefined, which string-concatenation
+        // below would otherwise turn into the literal text "undefined",
+        // sent as a real (non-empty) filter value and silently zeroing out
+        // every result for any restricted role, regardless of other filters.
+        var deptVal = $('#f-dept').length ? $('#f-dept').val() : '';
+        var empVal  = $('#f-emp').length  ? $('#f-emp').val()  : '';
         var url = window.location.href.split('?')[0]
-            + '?department_id=' + $('#f-dept').val()
-            + '&employee_id=' + $('#f-emp').val()
-            + '&status=' + $('#f-status').val()
-            + '&from_date=' + encodeURIComponent($('#f-from').val())
-            + '&to_date=' + encodeURIComponent($('#f-to').val());
+            + '?department_id=' + encodeURIComponent(deptVal || '')
+            + '&employee_id=' + encodeURIComponent(empVal || '')
+            + '&status=' + encodeURIComponent($('#f-status').val() || '')
+            + '&from_date=' + encodeURIComponent($('#f-from').val() || '')
+            + '&to_date=' + encodeURIComponent($('#f-to').val() || '');
         $('.table-hr-attendance').DataTable().ajax.url(url).load();
     }
     $('#f-dept, #f-emp, #f-status, #f-from, #f-to').on('change changed.bs.select', reload);
