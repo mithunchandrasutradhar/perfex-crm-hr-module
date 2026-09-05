@@ -30,6 +30,7 @@ define('HR_MODULE_SCHEMA_VERSION', 17);
 hooks()->add_action('admin_init', 'hr_module_ensure_schema');
 hooks()->add_action('admin_init', 'hr_module_init_menu_items');
 hooks()->add_action('admin_init', 'hr_module_register_permissions');
+hooks()->add_action('admin_init', 'hr_module_require_employee_profile');
 hooks()->add_action('after_cron_run', 'hr_module_cron_tasks');
 hooks()->add_action('after_render_aside_menu', 'hr_module_sidebar_active_fix');
 // get_dashboard_widgets() (application/helpers/widgets_helper.php) is the
@@ -197,6 +198,62 @@ function hr_get_own_employee_id()
     }
     $emp = $CI->Employees_model->get_by_staff_id(get_staff_user_id());
     return $emp ? (int) $emp->id : 0;
+}
+
+// Shared by hr_module_require_employee_profile() below and Hr_module::index()
+// - single source of truth for which controllers are "self-service" pages
+// (assume a linked hr_employees profile or full manager access) and what to
+// call each one on the "not linked" screen. Labels reuse the exact same
+// strings already used for each capability's Role Management group title
+// (register_staff_capabilities() below), so this needs no new language keys.
+function hr_module_personal_controller_labels()
+{
+    return [
+        'employees'    => _l('hr_perm_employees'),
+        'leave'        => _l('hr_perm_leave'),
+        'attendance'   => _l('hr_perm_attendance'),
+        'payroll'      => _l('hr_perm_payroll'),
+        'loans'        => _l('hr_perm_loans'),
+        'overduty'     => _l('hr_perm_overtime'),
+        'performance'  => _l('hr_perm_performance'),
+        'training'     => _l('hr_perm_training'),
+        'helpdesk'     => _l('hr_perm_helpdesk'),
+        'hr_contracts' => _l('hr_perm_contracts'),
+        'policies'     => _l('hr_perm_policies'),
+        'shifts'       => _l('hr_perm_shifts'),
+    ];
+}
+
+// Every self-service ("personal-data") controller assumes its caller is
+// either an HR manager (full company-wide access) or someone with their own
+// linked hr_employees profile to fall back to (view_own/view_department
+// filters all key off hr_get_own_employee_id()/hr_get_own_department_id()).
+// A staff account that's neither - e.g. never mapped to an employee record
+// by HR yet, but still applied for leave through some other means - would
+// otherwise just see a silently empty/broken list on these pages with no
+// explanation. Redirects to the HR dashboard (rather than rendering a view
+// straight from this admin_init hook, which fires too early in the request
+// lifecycle for init_head()/init_tail() to produce a real page - that was
+// tried and just came out blank) with which page it was in the query string,
+// so Hr_module::index() can still show a page-specific title instead of
+// always the same generic one. Admin-only controllers (Departments, Settings,
+// Zkteco, Reports, etc.) are deliberately left out of this list - those
+// already correctly access_denied() such a user via their own existing
+// permission checks, unaffected by this.
+function hr_module_require_employee_profile()
+{
+    $CI = &get_instance();
+    if (!isset($CI->router) || strtolower((string) $CI->router->fetch_module()) !== 'hr_module') {
+        return;
+    }
+    $class = strtolower((string) $CI->router->fetch_class());
+    if (!array_key_exists($class, hr_module_personal_controller_labels())) {
+        return;
+    }
+    if (is_admin() || staff_can('view', 'hr_employees') || hr_get_own_employee_id()) {
+        return;
+    }
+    redirect(admin_url('hr_module?blocked=' . $class));
 }
 
 // Memoized per-request - the 5 separate "HR ..." dashboard widgets (Today's

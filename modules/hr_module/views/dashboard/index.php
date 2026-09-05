@@ -24,7 +24,7 @@ $show_manager = (bool) $is_manager;
         <div class="panel_s tw-mt-8">
             <div class="panel-body tw-text-center tw-py-12">
                 <i class="fa fa-user-times fa-3x text-muted tw-mb-4"></i>
-                <h4 class="tw-font-semibold"><?php echo _l('hr_dashboard_title'); ?></h4>
+                <h4 class="tw-font-semibold"><?php echo isset($no_profile_title) ? htmlspecialchars($no_profile_title) : _l('hr_dashboard_title'); ?></h4>
                 <p class="text-muted">Your staff account is not linked to an HR employee profile yet.<br>Please contact HR to set up your employee record.</p>
             </div>
         </div>

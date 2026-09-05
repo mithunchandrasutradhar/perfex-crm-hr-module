@@ -24,6 +24,18 @@ class Hr_module extends AdminController
         $data['employee_id'] = $employee_id;
         $data['no_profile']  = !$is_manager && !$employee_id;
 
+        // Set only when hr_module_require_employee_profile() (hr_module.php)
+        // redirected here from another page for this exact reason - shows
+        // which section they were trying to reach instead of the generic
+        // dashboard title. Ignored otherwise (e.g. landing here directly).
+        if ($data['no_profile']) {
+            $blocked = $this->input->get('blocked');
+            $labels  = hr_module_personal_controller_labels();
+            if ($blocked && isset($labels[$blocked])) {
+                $data['no_profile_title'] = $labels[$blocked];
+            }
+        }
+
         if ($is_manager) {
             $data['manager_stats'] = $this->Hr_module_model->get_dashboard_stats();
         }
