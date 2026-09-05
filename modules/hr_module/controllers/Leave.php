@@ -211,13 +211,17 @@ class Leave extends AdminController
     // directly-fetchable static file.
     public function download($id)
     {
-        if (staff_cant('view', 'hr_leave') && staff_cant('view_own', 'hr_leave')) {
+        if (staff_cant('view', 'hr_leave') && staff_cant('view_own', 'hr_leave') && staff_cant('view_department', 'hr_leave')) {
             access_denied('hr_leave');
         }
         $request = $this->Leave_model->get_request($id);
         if (!$request) show_404();
-        if (!staff_can('view', 'hr_leave') && staff_can('view_own', 'hr_leave')) {
-            if ((int) $request->employee_id !== hr_get_own_employee_id()) {
+        if (!staff_can('view', 'hr_leave')) {
+            $allowed = staff_can('view_own', 'hr_leave') && (int) $request->employee_id === hr_get_own_employee_id();
+            if (!$allowed && staff_can('view_department', 'hr_leave')) {
+                $allowed = $request->employee_department_id && (int) $request->employee_department_id === hr_get_own_department_id();
+            }
+            if (!$allowed) {
                 access_denied('hr_leave');
             }
         }

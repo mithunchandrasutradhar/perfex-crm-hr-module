@@ -125,8 +125,11 @@ class Training extends AdminController
 
         $is_instructor  = $this->Training_model->is_instructor($id, get_staff_user_id());
         $is_participant = $this->Training_model->is_participant($id, hr_get_own_employee_id());
+        $has_dept_participant = staff_can('view_department', 'hr_training')
+            && $this->Training_model->has_department_participant($id, hr_get_own_department_id());
         if (staff_cant('view', 'hr_training') && !$is_instructor
-            && !($is_participant && staff_can('view_own', 'hr_training'))) {
+            && !($is_participant && staff_can('view_own', 'hr_training'))
+            && !$has_dept_participant) {
             access_denied('hr_training');
         }
         if (empty($training->attachment)) show_404();
