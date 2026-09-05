@@ -300,9 +300,14 @@ class Shifts_model extends App_Model
 
         $roster = [];
         foreach ($types as $t) {
-            $roster[$t->id] = ['name' => $t->name, 'employees' => []];
+            $roster[$t->id] = [
+                'name'       => $t->name,
+                'start_time' => $t->start_time,
+                'end_time'   => $t->end_time,
+                'employees'  => [],
+            ];
         }
-        $roster[0] = ['name' => _l('hr_shift_default_day'), 'employees' => []];
+        $roster[0] = ['name' => _l('hr_shift_default_day'), 'start_time' => null, 'end_time' => null, 'employees' => []];
 
         $assigned = $this->db->select('employee_id, shift_type_id', false)
             ->from($this->tbl_assignments)

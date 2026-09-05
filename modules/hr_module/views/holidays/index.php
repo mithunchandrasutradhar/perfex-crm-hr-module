@@ -312,6 +312,9 @@ $day_names = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Satur
                     <span class="label label-info">
                       <?php echo htmlspecialchars($group['name']); ?>
                     </span>
+                    <?php if (!empty($group['start_time']) && !empty($group['end_time'])): ?>
+                    <span class="text-muted tw-text-sm"><?php echo date('h:i A', strtotime($group['start_time'])) . ' - ' . date('h:i A', strtotime($group['end_time'])); ?></span>
+                    <?php endif; ?>
                     <span class="text-muted tw-text-sm">(<?php echo count($group['employees']); ?>)</span>
                   </td>
                   <td>
