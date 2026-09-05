@@ -5,7 +5,7 @@ $CI = &get_instance();
 $CI->load->model('hr_module/Leave_model');
 
 $filters = [];
-foreach (['status', 'leave_type_id', 'employee_id'] as $key) {
+foreach (['status', 'leave_type_id', 'employee_id', 'department_id'] as $key) {
     $v = $CI->input->get($key);
     if ($v !== null && $v !== '') $filters[$key] = $v;
 }

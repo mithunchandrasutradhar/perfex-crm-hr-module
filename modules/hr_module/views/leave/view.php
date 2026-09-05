@@ -85,7 +85,7 @@ $badge = '<span class="label ' . ($badge_map[$r->status] ?? 'label-default') . '
                   <td>
                     <?php echo htmlspecialchars(hr_leave_day_type_label($d->day_type)); ?>
                     <?php if ($d->day_type === 'hourly' && $d->hour_start && $d->hour_end): ?>
-                    <span class="text-muted tw-text-sm">(<?php echo substr($d->hour_start, 0, 5); ?> — <?php echo substr($d->hour_end, 0, 5); ?>)</span>
+                    <span class="text-muted tw-text-sm">(<?php echo date('h:i A', strtotime($d->hour_start)); ?> — <?php echo date('h:i A', strtotime($d->hour_end)); ?>)</span>
                     <?php endif; ?>
                     <?php if (!empty($d->note)): ?>
                     <br><span class="text-muted tw-text-sm"><i class="fa fa-info-circle tw-mr-1"></i><?php echo htmlspecialchars($d->note); ?><?php if ($d->day_type === 'bridge') echo ' — ' . _l('hr_leave_bridge_hint'); ?></span>

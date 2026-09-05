@@ -21,6 +21,12 @@
               <?php endforeach; ?>
             </select>
             <?php if (!empty($show_all_employees)): ?>
+            <select id="f-dept" class="selectpicker" data-width="200px">
+              <option value=""><?php echo _l('hr_all') . ' Dept'; ?></option>
+              <?php foreach ($departments as $d): ?>
+              <option value="<?php echo $d->id; ?>"><?php echo htmlspecialchars($d->name); ?></option>
+              <?php endforeach; ?>
+            </select>
             <select id="f-emp" class="selectpicker" data-width="200px" data-live-search="true"
                     data-none-selected-text="<?php echo _l('hr_employee'); ?>">
               <option value=""><?php echo _l('hr_all') . ' Employees'; ?></option>
@@ -87,13 +93,22 @@
 $(function(){
     initDataTable('.table-hr-leave', window.location.href, [], [7, 'desc']);
     function reload() {
+        // #f-dept/#f-emp only exist in the DOM when $show_all_employees is
+        // true (see the PHP condition above) - reading .val() on a selector
+        // that matches nothing returns undefined, which would otherwise be
+        // sent as the literal text "undefined" and silently zero out every
+        // result for a restricted role (same issue fixed on the Attendance
+        // list's equivalent reload()).
+        var deptVal = $('#f-dept').length ? $('#f-dept').val() : '';
+        var empVal  = $('#f-emp').length  ? $('#f-emp').val()  : '';
         var url = window.location.href.split('?')[0]
-            + '?status=' + $('#f-status').val()
-            + '&leave_type_id=' + $('#f-type').val()
-            + '&employee_id=' + $('#f-emp').val();
+            + '?status=' + encodeURIComponent($('#f-status').val() || '')
+            + '&leave_type_id=' + encodeURIComponent($('#f-type').val() || '')
+            + '&department_id=' + encodeURIComponent(deptVal || '')
+            + '&employee_id=' + encodeURIComponent(empVal || '');
         $('.table-hr-leave').DataTable().ajax.url(url).load();
     }
-    $('#f-status, #f-type, #f-emp').on('change changed.bs.select', reload);
+    $('#f-status, #f-type, #f-dept, #f-emp').on('change changed.bs.select', reload);
 
     // Pre-select the Employee filter when landing here with ?employee_id=
     // in the URL (e.g. the dashboard's "My Leaves" quick action) - the
