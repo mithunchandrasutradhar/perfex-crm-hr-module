@@ -36,7 +36,7 @@ class Reports extends AdminController
         $rows = $this->Reports_model->attendance_summary_by_employee($f);
 
         if ($this->input->get('export') === 'csv') {
-            $this->_export_csv($rows, ['employee_code','first_name','last_name','department_name','present','late','absent'], 'attendance_report');
+            $this->_export_csv($rows, ['employee_code','first_name','last_name','department_name','present','late','absent','leave'], 'attendance_report');
             return;
         }
         $data['title']       = 'Attendance Report';

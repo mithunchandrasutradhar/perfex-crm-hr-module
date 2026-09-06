@@ -228,6 +228,8 @@ class Loans extends AdminController
         // Approving/rejecting a deduction request stays HR-only ('edit'); submitting one
         // (including this loan's own view() ownership check above already guarantees it's theirs).
         $data['can_manage_deductions'] = staff_can('edit', 'hr_loans') || staff_can('create', 'hr_loans');
+        $data['can_adjust']  = staff_can('edit', 'hr_loans') && $this->Loans_model->can_adjust($loan);
+        $data['adjustments'] = $this->Loans_model->get_adjustments($id);
         $this->load->view('hr_module/loans/view', $data);
     }
 
@@ -275,6 +277,24 @@ class Loans extends AdminController
         } else {
             set_alert('danger', $result['message']);
         }
+        redirect(admin_url('hr_module/loans/view/' . $id));
+    }
+
+    // Adjusts the loan's principal (e.g. requested 50,000, only 30,000 is
+    // actually being disbursed) - re-checked server-side via can_adjust()
+    // rather than trusting the view's own button-visibility check.
+    public function adjust($id)
+    {
+        if (staff_cant('edit', 'hr_loans')) access_denied('hr_loans');
+        $result = $this->Loans_model->adjust_amount(
+            $id,
+            $this->input->post('new_amount'),
+            $this->input->post('monthly_installment'),
+            $this->input->post('repayment_months'),
+            $this->input->post('reason', true)
+        );
+        set_alert($result['success'] ? 'success' : 'danger',
+            $result['success'] ? 'Loan amount adjusted.' : $result['message']);
         redirect(admin_url('hr_module/loans/view/' . $id));
     }
 

@@ -42,6 +42,17 @@ class Reports_model extends App_Model
         $clamped_to = ($to_date > $today) ? $today : $to_date;
         $expected_days = ($clamped_to >= $from_date) ? $CI->Holidays_model->count_working_days($from_date, $clamped_to) : 0;
 
+        // A day with no attendance row but an approved leave request covering
+        // it isn't a missing/absent day - it's accounted for separately below.
+        // Without this, every leave day in the range was silently folded into
+        // "absent" (expected_days - attended, with no way to tell them apart).
+        $CI->load->model('hr_module/Leave_model');
+        $leave_counts = [];
+        foreach ($CI->Leave_model->get_approved_leave_days_in_range($from_date, $to_date) as $ld) {
+            $eid = (int) $ld->employee_id;
+            $leave_counts[$eid] = ($leave_counts[$eid] ?? 0) + 1;
+        }
+
         $rows = [];
         foreach ($employees as $emp) {
             $this->db->select('status, COUNT(*) as cnt')
@@ -56,7 +67,8 @@ class Reports_model extends App_Model
 
             $attended        = $counts['present'] + $counts['half_day'] + $counts['late'];
             $explicit_absent = $counts['absent'];
-            $missing         = max(0, $expected_days - $attended - $explicit_absent);
+            $leave           = $leave_counts[$emp->id] ?? 0;
+            $missing         = max(0, $expected_days - $attended - $explicit_absent - $leave);
 
             $rows[] = (object) [
                 'employee_id'     => $emp->id,
@@ -67,6 +79,7 @@ class Reports_model extends App_Model
                 'present'         => $counts['present'] + $counts['half_day'],
                 'late'            => $counts['late'],
                 'absent'          => $explicit_absent + $missing,
+                'leave'           => $leave,
             ];
         }
 

@@ -34,6 +34,7 @@ if ($search !== '') {
 $total_present = array_sum(array_column((array) $rows, 'present'));
 $total_late    = array_sum(array_column((array) $rows, 'late'));
 $total_absent  = array_sum(array_column((array) $rows, 'absent'));
+$total_leave   = array_sum(array_column((array) $rows, 'leave'));
 
 // DataTables (serverSide:true) expects only the requested page's rows back -
 // totals above are computed over the full (post-search) $rows set, only
@@ -51,6 +52,7 @@ $output = [
         'present' => $total_present,
         'late'    => $total_late,
         'absent'  => $total_absent,
+        'leave'   => $total_leave,
     ],
 ];
 
@@ -59,8 +61,9 @@ foreach ($paged_rows as $r) {
         htmlspecialchars($r->first_name . ' ' . $r->last_name),
         htmlspecialchars($r->employee_code),
         htmlspecialchars($r->department_name ?? '-'),
-        '<span class="label label-success"><i class="fa fa-check tw-mr-1"></i>' . $r->present . '</span>',
-        '<span class="label label-warning"><i class="fa fa-clock tw-mr-1"></i>' . $r->late . '</span>',
-        '<span class="label label-danger"><i class="fa fa-xmark tw-mr-1"></i>' . $r->absent . '</span>',
+        '<span class="label label-success" style="font-weight:700">' . $r->present . '</span>',
+        '<span class="label label-warning" style="font-weight:700">' . $r->late . '</span>',
+        '<span class="label label-danger" style="font-weight:700">' . $r->absent . '</span>',
+        '<span class="label" style="background:#6f42c1;font-weight:700">' . $r->leave . '</span>',
     ];
 }

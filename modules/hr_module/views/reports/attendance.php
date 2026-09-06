@@ -43,24 +43,28 @@
   </div>
 
   <div class="row tw-mb-3">
-    <div class="col-md-4"><div style="background:#fff;border-radius:8px;padding:12px 16px;border-left:3px solid #059669;box-shadow:0 1px 3px rgba(0,0,0,.08)">
+    <div class="col-md-3"><div style="background:#fff;border-radius:8px;padding:12px 16px;border-left:3px solid #059669;box-shadow:0 1px 3px rgba(0,0,0,.08)">
       <div style="font-size:1.3rem;font-weight:700;color:#059669" id="sum-present">0</div>
       <div style="font-size:0.78rem;color:#64748b">Present</div>
     </div></div>
-    <div class="col-md-4"><div style="background:#fff;border-radius:8px;padding:12px 16px;border-left:3px solid #d97706;box-shadow:0 1px 3px rgba(0,0,0,.08)">
+    <div class="col-md-3"><div style="background:#fff;border-radius:8px;padding:12px 16px;border-left:3px solid #d97706;box-shadow:0 1px 3px rgba(0,0,0,.08)">
       <div style="font-size:1.3rem;font-weight:700;color:#d97706" id="sum-late">0</div>
       <div style="font-size:0.78rem;color:#64748b">Late</div>
     </div></div>
-    <div class="col-md-4"><div style="background:#fff;border-radius:8px;padding:12px 16px;border-left:3px solid #dc2626;box-shadow:0 1px 3px rgba(0,0,0,.08)">
+    <div class="col-md-3"><div style="background:#fff;border-radius:8px;padding:12px 16px;border-left:3px solid #dc2626;box-shadow:0 1px 3px rgba(0,0,0,.08)">
       <div style="font-size:1.3rem;font-weight:700;color:#dc2626" id="sum-absent">0</div>
       <div style="font-size:0.78rem;color:#64748b">Absent</div>
+    </div></div>
+    <div class="col-md-3"><div style="background:#fff;border-radius:8px;padding:12px 16px;border-left:3px solid #6f42c1;box-shadow:0 1px 3px rgba(0,0,0,.08)">
+      <div style="font-size:1.3rem;font-weight:700;color:#6f42c1" id="sum-leave">0</div>
+      <div style="font-size:0.78rem;color:#64748b">Leave</div>
     </div></div>
   </div>
 
   <!-- Table -->
   <div class="panel_s"><div class="panel-body panel-table-full">
     <?php render_datatable([
-      'Employee', 'Employee Code', 'Department', 'Present', 'Late', 'Absent',
+      'Employee', 'Employee Code', 'Department', 'Present', 'Late', 'Absent', 'Leave',
     ], 'hr-report-attendance'); ?>
   </div></div>
 </div></div>
@@ -89,6 +93,7 @@ $(function(){
         $('#sum-present').text(sums.present);
         $('#sum-late').text(sums.late);
         $('#sum-absent').text(sums.absent);
+        $('#sum-leave').text(sums.leave);
     });
 });
 </script>

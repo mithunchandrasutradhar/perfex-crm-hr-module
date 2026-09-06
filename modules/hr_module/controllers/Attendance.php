@@ -142,6 +142,22 @@ class Attendance extends AdminController
             sprintf('%04d-%02d-01', $year, $month),
             date('Y-m-t', mktime(0, 0, 0, $month, 1, $year))
         );
+        // Same source the Holidays calendar already uses for "who's on leave" -
+        // filtered down to just this one employee so a day they were on
+        // approved leave shows as such instead of a blank/unexplained cell.
+        $data['leave_map'] = [];
+        if ($emp_id) {
+            $this->load->model('hr_module/Leave_model');
+            $leave_days = $this->Leave_model->get_approved_leave_days_in_range(
+                sprintf('%04d-%02d-01', $year, $month),
+                date('Y-m-t', mktime(0, 0, 0, $month, 1, $year))
+            );
+            foreach ($leave_days as $ld) {
+                if ((int) $ld->employee_id === (int) $emp_id) {
+                    $data['leave_map'][$ld->leave_date] = $ld->day_type;
+                }
+            }
+        }
         $this->load->view('hr_module/attendance/monthly', $data);
     }
 

@@ -14,6 +14,8 @@ foreach ($deduction_requests as $dr) {
 }
 $req_badge = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'danger'];
 if (!isset($can_manage_deductions)) $can_manage_deductions = staff_can('edit', 'hr_loans');
+if (!isset($can_adjust))  $can_adjust  = false;
+if (!isset($adjustments)) $adjustments = [];
 ?>
 <?php init_head(); ?>
 <div id="wrapper">
@@ -55,6 +57,11 @@ if (!isset($can_manage_deductions)) $can_manage_deductions = staff_can('edit', '
               <div class="col-md-3"><div class="panel_s" style="background:#f8fafc"><div class="panel-body tw-text-center tw-py-2">
                 <div class="tw-font-bold tw-text-lg"><?php echo number_format($loan->amount,2); ?></div>
                 <div class="tw-text-xs text-muted">Loan Amount</div>
+                <?php if (!empty($loan->requested_amount) && (float) $loan->requested_amount !== (float) $loan->amount): ?>
+                <div class="tw-text-xs text-muted" title="Amount originally requested, before adjustment">
+                  Originally requested: <?php echo number_format($loan->requested_amount, 2); ?>
+                </div>
+                <?php endif; ?>
               </div></div></div>
               <div class="col-md-3"><div class="panel_s" style="background:#f0fdf4"><div class="panel-body tw-text-center tw-py-2">
                 <div class="tw-font-bold tw-text-lg text-success"><?php echo number_format($loan->total_repaid,2); ?></div>
@@ -147,6 +154,27 @@ if (!isset($can_manage_deductions)) $can_manage_deductions = staff_can('edit', '
                         <span class="text-muted">—</span>
                       <?php endif; ?>
                     </td>
+                  </tr>
+                  <?php endforeach; ?>
+                </tbody>
+              </table>
+            </div>
+            <?php endif; ?>
+
+            <!-- Adjustment history -->
+            <?php if (!empty($adjustments)): ?>
+            <h5 class="tw-font-semibold tw-mt-4">Amount Adjustment History</h5>
+            <div class="table-responsive">
+              <table class="table table-condensed table-hover">
+                <thead><tr><th>Date</th><th>Amount</th><th>Installment</th><th>Adjusted By</th><th>Reason</th></tr></thead>
+                <tbody>
+                  <?php foreach ($adjustments as $adj): ?>
+                  <tr>
+                    <td><?php echo date('d M Y', strtotime($adj->created_at)); ?></td>
+                    <td><?php echo number_format($adj->previous_amount, 2); ?> &rarr; <?php echo number_format($adj->new_amount, 2); ?></td>
+                    <td><?php echo number_format($adj->previous_monthly_installment, 2); ?> &rarr; <?php echo number_format($adj->new_monthly_installment, 2); ?></td>
+                    <td><?php echo $adj->adjusted_by_name ? htmlspecialchars($adj->adjusted_by_name) : '-'; ?></td>
+                    <td><?php echo $adj->reason ? htmlspecialchars($adj->reason) : '-'; ?></td>
                   </tr>
                   <?php endforeach; ?>
                 </tbody>
@@ -303,35 +331,45 @@ if (!isset($can_manage_deductions)) $can_manage_deductions = staff_can('edit', '
           $can_view_deductions = staff_can('view','hr_loans');
           $can_delete_loan    = !in_array($loan->status, ['active','closed']) && staff_can('delete','hr_loans');
         ?>
-        <?php if ($can_approve_reject || $can_repay || $can_view_deductions || $can_delete_loan): ?>
+        <?php if ($can_approve_reject || $can_repay || $can_view_deductions || $can_delete_loan || $can_adjust): ?>
         <div class="panel_s">
           <div class="panel-body">
             <h5 class="tw-font-semibold tw-mb-3">Actions</h5>
 
-            <?php
-              // Approve+Reject are a package (one condition gates both), Delete
-              // is independent - split the row evenly across however many of
-              // these three buttons actually apply, so they share one row
-              // without leaving an empty gap when Delete isn't available.
-              $row1_count = ($can_approve_reject ? 2 : 0) + ($can_delete_loan ? 1 : 0);
-              $row1_col   = $row1_count === 3 ? 'col-xs-4' : ($row1_count === 2 ? 'col-xs-6' : 'col-xs-12');
-            ?>
-            <?php if ($can_approve_reject || $can_delete_loan): ?>
+            <?php if ($can_approve_reject): ?>
             <div class="row tw-mb-2">
-              <?php if ($can_approve_reject): ?>
-              <div class="<?php echo $row1_col; ?>">
+              <div class="col-xs-6">
                 <button class="btn btn-success btn-block" data-toggle="modal" data-target="#approveModal">
                   <i class="fa fa-check tw-mr-1"></i><?php echo _l('hr_loan_approve'); ?>
                 </button>
               </div>
-              <div class="<?php echo $row1_col; ?>">
+              <div class="col-xs-6">
                 <button class="btn btn-danger btn-block" data-toggle="modal" data-target="#rejectModal">
                   <i class="fa fa-times tw-mr-1"></i><?php echo _l('hr_loan_reject'); ?>
                 </button>
               </div>
+            </div>
+            <?php endif; ?>
+
+            <?php
+              // Adjust and Delete are each independent - split evenly across
+              // however many of these two apply, in their own row (kept
+              // separate from Approve/Reject above so neither row's button
+              // labels get squeezed).
+              $row2_count = ($can_adjust ? 1 : 0) + ($can_delete_loan ? 1 : 0);
+              $row2_col   = $row2_count === 2 ? 'col-xs-6' : 'col-xs-12';
+            ?>
+            <?php if ($can_adjust || $can_delete_loan): ?>
+            <div class="row tw-mb-2">
+              <?php if ($can_adjust): ?>
+              <div class="<?php echo $row2_col; ?>">
+                <button class="btn btn-default btn-block" data-toggle="modal" data-target="#adjustModal">
+                  <i class="fa fa-sliders tw-mr-1"></i>Adjust
+                </button>
+              </div>
               <?php endif; ?>
               <?php if ($can_delete_loan): ?>
-              <div class="<?php echo $row1_col; ?>">
+              <div class="<?php echo $row2_col; ?>">
                 <a href="<?php echo admin_url('hr_module/loans/delete/'.$loan->id); ?>" class="btn btn-danger btn-block _delete">
                   <i class="fa fa-trash tw-mr-1"></i>Delete
                 </a>
@@ -540,6 +578,61 @@ if (!isset($can_manage_deductions)) $can_manage_deductions = staff_can('edit', '
     <?php echo form_close(); ?>
   </div></div>
 </div>
+
+<?php if ($can_adjust): ?>
+<!-- Adjust Amount Modal -->
+<div class="modal fade" id="adjustModal" tabindex="-1">
+  <div class="modal-dialog"><div class="modal-content">
+    <div class="modal-header"><button class="close" data-dismiss="modal"><span>&times;</span></button>
+      <h4 class="modal-title">Adjust Loan Amount</h4></div>
+    <?php echo form_open(admin_url('hr_module/loans/adjust/'.$loan->id)); ?>
+    <div class="modal-body">
+      <p class="text-muted tw-text-sm">
+        Use this when less is actually being disbursed than was requested
+        (e.g. requested <?php echo number_format($loan->amount, 2); ?>, but
+        only a smaller amount can be given). The installment/term below is
+        recalculated for the new amount, and the change is recorded in the
+        Amount Adjustment History below.
+      </p>
+      <div class="form-group"><label>New Amount <span class="text-danger">*</span></label>
+        <input type="number" step="0.01" min="0.01" name="new_amount" id="adjust_amount" class="form-control"
+               value="<?php echo $loan->amount; ?>" required>
+      </div>
+      <div class="row">
+        <div class="col-md-6">
+          <div class="form-group select-placeholder">
+            <label>New Monthly Installment <span class="text-danger">*</span></label>
+            <div class="input-group">
+              <span class="input-group-addon"><?php echo get_option('currency_symbol') ?: 'BDT'; ?></span>
+              <select name="monthly_installment" id="adjust_installment" class="selectpicker" data-width="100%" data-size="8" required disabled>
+                <option value="">Enter amount first</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="form-group">
+            <label><?php echo _l('hr_loan_repayment_months'); ?></label>
+            <div class="input-group">
+              <input type="number" name="repayment_months" id="adjust_months" class="form-control" readonly value="<?php echo $loan->repayment_months; ?>">
+              <span class="input-group-addon">mo</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="text-muted tw-text-sm" id="adjustCalcSummary" style="display:none"></p>
+      <div class="form-group"><label>Reason</label>
+        <textarea name="reason" class="form-control" rows="2" placeholder="Optional note, e.g. budget constraints..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+      <button type="submit" class="btn btn-primary"><i class="fa fa-sliders tw-mr-1"></i>Save Adjustment</button>
+    </div>
+    <?php echo form_close(); ?>
+  </div></div>
+</div>
+<?php endif; ?>
 <?php init_tail(); ?>
 <script>
 $(function () {
@@ -575,5 +668,96 @@ $(function () {
         toggleSkip();
         $('#deductModal').modal('show');
     });
+
+    // Adjust modal - installment dropdown built the same way as the Apply
+    // form's (views/loans/apply.php), but seeded with the loan's current
+    // monthly installment as the initial default instead of a ~12-month guess.
+    var ADJUST_STEP = 500;
+    var ADJUST_MAX_INSTALLMENT_OPTIONS = 200;
+    var $adjustAmount      = $('#adjust_amount');
+    var $adjustMonths      = $('#adjust_months');
+    var $adjustInstallment = $('#adjust_installment');
+    var $adjustSummary     = $('#adjustCalcSummary');
+    var adjustInitialInstallment = <?php echo (float) $loan->monthly_installment; ?>;
+
+    function adjustFmt(n) { return parseFloat(n).toFixed(2); }
+
+    function updateAdjustSummary(amount, months, install) {
+        var lastInstallment = amount - (months - 1) * install;
+        $adjustSummary.html(
+            '<i class="fa fa-calculator tw-mr-1"></i>' +
+            '<strong>' + adjustFmt(install) + '</strong> &times; <strong>' + months + ' months</strong>' +
+            (lastInstallment < install
+                ? ' (last month: <strong>' + adjustFmt(lastInstallment) + '</strong>)'
+                : '')
+        ).show();
+    }
+
+    function updateAdjustMonths() {
+        var amount  = parseFloat($adjustAmount.val()) || 0;
+        var install = parseFloat($adjustInstallment.val()) || 0;
+        if (amount > 0 && install > 0) {
+            var months = Math.ceil(amount / install);
+            $adjustMonths.val(months);
+            updateAdjustSummary(amount, months, install);
+        } else {
+            $adjustMonths.val('');
+            $adjustSummary.hide();
+        }
+    }
+
+    function rebuildAdjustInstallmentOptions() {
+        var amount  = parseFloat($adjustAmount.val()) || 0;
+        var prevVal = parseFloat($adjustInstallment.val()) || adjustInitialInstallment;
+        $adjustInstallment.empty();
+
+        if (amount <= 0) {
+            $adjustInstallment.append($('<option></option>').val('').text('Enter amount first'));
+            $adjustInstallment.prop('disabled', true);
+            $adjustInstallment.selectpicker('refresh');
+            $adjustMonths.val('');
+            $adjustSummary.hide();
+            return;
+        }
+
+        var top = Math.ceil(amount / ADJUST_STEP) * ADJUST_STEP;
+        var effectiveStep = ADJUST_STEP;
+        if (top / ADJUST_STEP > ADJUST_MAX_INSTALLMENT_OPTIONS) {
+            effectiveStep = Math.ceil((top / ADJUST_MAX_INSTALLMENT_OPTIONS) / ADJUST_STEP) * ADJUST_STEP;
+        }
+        var steps = [];
+        for (var v = effectiveStep; v <= top; v += effectiveStep) steps.push(v);
+
+        // Keep the previous selection if it's still a valid step, otherwise default
+        // to whichever step lands closest to a ~12 month repayment period.
+        var defaultVal = -1;
+        for (var i = 0; i < steps.length; i++) {
+            if (steps[i] === prevVal) { defaultVal = prevVal; break; }
+        }
+        if (defaultVal === -1) {
+            var target = amount / 12;
+            defaultVal = steps[0];
+            for (var j = 0; j < steps.length; j++) {
+                if (Math.abs(steps[j] - target) < Math.abs(defaultVal - target)) defaultVal = steps[j];
+            }
+        }
+
+        $adjustInstallment.prop('disabled', false);
+        for (var k = 0; k < steps.length; k++) {
+            var opt = $('<option></option>').val(steps[k]).text(adjustFmt(steps[k]));
+            if (steps[k] === defaultVal) opt.prop('selected', true);
+            $adjustInstallment.append(opt);
+        }
+        $adjustInstallment.selectpicker('refresh');
+        updateAdjustMonths();
+    }
+
+    var adjustRebuildTimer = null;
+    $adjustAmount.on('input', function () {
+        clearTimeout(adjustRebuildTimer);
+        adjustRebuildTimer = setTimeout(rebuildAdjustInstallmentOptions, 250);
+    });
+    $adjustInstallment.on('change changed.bs.select', updateAdjustMonths);
+    $('#adjustModal').on('show.bs.modal', rebuildAdjustInstallmentOptions);
 });
 </script>

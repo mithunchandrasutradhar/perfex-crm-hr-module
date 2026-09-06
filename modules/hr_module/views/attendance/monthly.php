@@ -63,18 +63,43 @@ $status_labels = ['present'=>'P','late'=>'L','absent'=>'A','half_day'=>'H'];
     <!-- Summary cards -->
     <div class="row tw-mb-4">
       <?php
+      // Leave has no standard Bootstrap semantic name like the others
+      // (success/warning/danger/info/primary are already taken) - 'hex' is a
+      // direct color for that one card instead, using Bootstrap's own purple
+      // tone so it still reads as part of the same family.
       $cards = [
         ['label'=>'Present',  'val'=>$summary['present'],  'color'=>'success', 'icon'=>'fa-check-circle'],
         ['label'=>'Late',     'val'=>$summary['late'],     'color'=>'warning', 'icon'=>'fa-clock'],
         ['label'=>'Absent',   'val'=>$summary['absent'],   'color'=>'danger',  'icon'=>'fa-times-circle'],
         ['label'=>'Half Day', 'val'=>$summary['half_day'], 'color'=>'info',    'icon'=>'fa-adjust'],
-        ['label'=>'Work Hrs', 'val'=>$summary['total_hours'].'h', 'color'=>'primary', 'icon'=>'fa-hourglass-half'],
+        ['label'=>'Leave',    'val'=>count($leave_map),    'color'=>null, 'hex'=>'#6f42c1', 'icon'=>'fa-circle-minus', 'border'=>false],
+        // 'badge' wraps the icon in an actual colored circle - Present/Late/
+        // Absent/Half Day/Leave's icon glyphs are already circular shapes on
+        // their own (fa-check-circle etc.), but there's no round Font Awesome
+        // glyph for "hours worked", so this is the only way to give this one
+        // the same circular look as the rest instead of a bare icon. A literal
+        // hex (not var(--bs-primary), unlike this card's border below) - this
+        // theme's Bootstrap 3 base doesn't define that as a real CSS custom
+        // property, so a badge background using it renders empty/transparent,
+        // leaving the white icon on top invisible against the white card.
+        ['label'=>'Work Hrs', 'val'=>$summary['total_hours'].'h', 'color'=>'primary', 'icon'=>'fa-hourglass-half', 'badge'=>true, 'badge_hex'=>'#2196F3'],
       ];
-      foreach ($cards as $c): ?>
+      foreach ($cards as $c):
+        $border_color = $c['color'] ? 'var(--bs-'.$c['color'].')' : $c['hex'];
+        $icon_class   = $c['color'] ? 'text-'.$c['color'] : '';
+        $icon_style   = $c['color'] ? '' : 'color:'.$c['hex'];
+        $has_border   = !isset($c['border']) || $c['border'];
+      ?>
       <div class="col-md-2 col-sm-4">
-        <div class="panel_s" style="border-top:3px solid var(--bs-<?php echo $c['color']; ?>)">
-          <div class="panel-body tw-text-center tw-py-3">
-            <i class="fa <?php echo $c['icon']; ?> fa-2x text-<?php echo $c['color']; ?> tw-mb-1"></i>
+        <div class="panel_s"<?php echo $has_border ? ' style="border-top:3px solid '.$border_color.'"' : ''; ?>>
+          <div class="panel-body tw-text-center tw-py-3" style="min-height:110px">
+            <?php if (!empty($c['badge'])): ?>
+            <span style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:50%;background:<?php echo $c['badge_hex'] ?? $border_color; ?>;margin-bottom:4px">
+              <i class="fa <?php echo $c['icon']; ?>" style="color:#fff;font-size:1.15rem"></i>
+            </span>
+            <?php else: ?>
+            <i class="fa <?php echo $c['icon']; ?> fa-2x <?php echo $icon_class; ?> tw-mb-1" style="<?php echo $icon_style; ?>"></i>
+            <?php endif; ?>
             <div class="tw-text-xl tw-font-bold"><?php echo $c['val']; ?></div>
             <div class="tw-text-xs text-muted"><?php echo $c['label']; ?></div>
           </div>
@@ -109,12 +134,15 @@ $status_labels = ['present'=>'P','late'=>'L','absent'=>'A','half_day'=>'H'];
             $dow        = (int) date('w', mktime(0,0,0,$month,$day,$year));
             $is_weekend = in_array($dow, $weekly_off);
             $holiday    = $holiday_map[$date_str] ?? null;
+            $on_leave   = $leave_map[$date_str] ?? null;
             $bg = '#f8fafc'; $color = '#94a3b8'; $label = '';
             if ($rec) {
                 $bg    = $status_colors[$rec->status] ?? '#94a3b8';
                 $color = '#fff';
                 $label = $status_labels[$rec->status] ?? '?';
                 if ($rec->in_time) $label .= '<br><span style="font-size:0.6rem">'.substr($rec->in_time,0,5).'</span>';
+            } elseif ($on_leave) {
+                $bg = '#e9d5ff'; $color = '#6b21a8'; $label = 'LV';
             } elseif ($holiday) {
                 $bg = '#c7d2fe'; $color = '#3730a3'; $label = 'H';
             } elseif ($is_weekend) {
@@ -141,6 +169,9 @@ $status_labels = ['present'=>'P','late'=>'L','absent'=>'A','half_day'=>'H'];
           </span>
           <span style="display:inline-flex;align-items:center;gap:4px;font-size:0.75rem">
             <span style="width:12px;height:12px;background:#c7d2fe;border-radius:3px;display:inline-block"></span> Holiday
+          </span>
+          <span style="display:inline-flex;align-items:center;gap:4px;font-size:0.75rem">
+            <span style="width:12px;height:12px;background:#e9d5ff;border-radius:3px;display:inline-block"></span> Leave
           </span>
         </div>
       </div>

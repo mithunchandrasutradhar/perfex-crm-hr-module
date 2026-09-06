@@ -6,11 +6,46 @@ class Loans_model extends App_Model
     private $table         = 'hr_loans';
     private $repay_table   = 'hr_loan_repayments';
     private $deduct_table  = 'hr_loan_deduction_requests';
+    private $adjust_table  = 'hr_loan_adjustments';
 
     public function __construct()
     {
         parent::__construct();
         $this->_ensure_deduction_table();
+        $this->_ensure_adjustment_schema();
+    }
+
+    // Lazily adds what the amount-adjustment feature needs, the same
+    // self-contained way _ensure_deduction_table() below already does - no
+    // install.php/HR_MODULE_SCHEMA_VERSION change, works immediately on an
+    // already-installed site.
+    private function _ensure_adjustment_schema()
+    {
+        // Preserves what the employee originally asked for, independent of
+        // `amount` itself later being adjusted down (or up) - set once in
+        // apply(), never touched again.
+        $col = $this->db->query("SHOW COLUMNS FROM `" . db_prefix() . $this->table . "` LIKE 'requested_amount'")->num_rows();
+        if ($col === 0) {
+            $this->db->query("ALTER TABLE `" . db_prefix() . $this->table . "` ADD COLUMN `requested_amount` DECIMAL(15,2) DEFAULT NULL AFTER `amount`");
+        }
+
+        if (!$this->db->table_exists(db_prefix() . $this->adjust_table)) {
+            $this->db->query("CREATE TABLE IF NOT EXISTS `" . db_prefix() . $this->adjust_table . "` (
+                `id`                           INT UNSIGNED NOT NULL AUTO_INCREMENT,
+                `loan_id`                      INT UNSIGNED NOT NULL,
+                `previous_amount`              DECIMAL(15,2) NOT NULL,
+                `new_amount`                   DECIMAL(15,2) NOT NULL,
+                `previous_monthly_installment` DECIMAL(15,2) NOT NULL,
+                `new_monthly_installment`      DECIMAL(15,2) NOT NULL,
+                `previous_repayment_months`    INT NOT NULL,
+                `new_repayment_months`         INT NOT NULL,
+                `reason`                       TEXT DEFAULT NULL,
+                `adjusted_by`                  INT UNSIGNED DEFAULT NULL,
+                `created_at`                   DATETIME NOT NULL,
+                PRIMARY KEY (`id`),
+                KEY `loan_id` (`loan_id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8");
+        }
     }
 
     private function _ensure_deduction_table()
@@ -105,27 +140,41 @@ class Loans_model extends App_Model
             ->get()->result();
     }
 
-    public function apply($data)
+    // Shared by apply() and adjust_amount() - either a custom monthly
+    // installment is given (months derived by ceiling division), or a term in
+    // months is given (installment derived by plain division). Capped at 360
+    // months (30 years, already far beyond any realistic employee loan term)
+    // since repayment_months is a plain int column that a huge amount against
+    // a tiny installment (or a huge value typed directly into months) must
+    // not be allowed to overflow.
+    private function _calc_installment($amount, $custom_installment, $months)
     {
-        $amount  = (float) $data['amount'];
-        $custom  = isset($data['monthly_installment']) ? (float) $data['monthly_installment'] : 0;
-
+        $custom = (float) $custom_installment;
         if ($custom > 0 && $custom <= $amount) {
             $install = round($custom, 2);
             $months  = (int) ceil($amount / $install);
         } else {
-            $months  = max(1, (int) $data['repayment_months']);
+            $months  = max(1, (int) $months);
             $install = round($amount / $months, 2);
         }
-        // repayment_months is a plain int column - a huge amount against a tiny
-        // installment (or a huge value typed directly into the months field)
-        // must not be allowed to overflow it. 360 months (30 years) is already
-        // far beyond any realistic employee loan term.
-        $months = min($months, 360);
+        return ['installment' => $install, 'months' => min($months, 360)];
+    }
+
+    public function apply($data)
+    {
+        $amount = (float) $data['amount'];
+        $calc   = $this->_calc_installment(
+            $amount,
+            $data['monthly_installment'] ?? 0,
+            $data['repayment_months'] ?? 1
+        );
+        $install = $calc['installment'];
+        $months  = $calc['months'];
 
         $record = [
             'employee_id'         => (int) $data['employee_id'],
             'amount'              => $amount,
+            'requested_amount'    => $amount,
             'reason'              => $data['reason'] ?? null,
             'repayment_months'    => $months,
             'monthly_installment' => $install,
@@ -146,6 +195,78 @@ class Loans_model extends App_Model
         }
         return $id ? ['success' => true, 'id' => $id, 'message' => _l('hr_loan_applied_msg')]
                    : ['success' => false, 'message' => _l('hr_error_saving')];
+    }
+
+    // Only safe to change the principal before any repayment exists at all -
+    // once one is recorded (status becomes 'active'), reconciling an amount
+    // change against already-recorded repayments/synced payroll deductions is
+    // a much harder problem this does not attempt to solve.
+    public function can_adjust($loan)
+    {
+        return $loan
+            && in_array($loan->status, ['pending', 'approved'], true)
+            && (float) $loan->total_repaid === 0.0;
+    }
+
+    // Re-derives monthly_installment/repayment_months for the new amount
+    // using the exact same dual-mode calculation apply() uses, and records
+    // a full before/after snapshot so "requested 50,000, only given 30,000"
+    // stays visible after the fact.
+    public function adjust_amount($loan_id, $new_amount, $custom_installment, $months, $reason = null)
+    {
+        $loan = $this->get($loan_id);
+        if (!$this->can_adjust($loan)) {
+            return ['success' => false, 'message' => 'This loan can no longer be adjusted.'];
+        }
+        $new_amount = (float) $new_amount;
+        if ($new_amount <= 0) {
+            return ['success' => false, 'message' => 'Enter a valid amount.'];
+        }
+
+        $calc = $this->_calc_installment($new_amount, $custom_installment, $months ?: $loan->repayment_months);
+
+        $this->db->where('id', $loan_id)->update(db_prefix() . $this->table, [
+            'amount'              => $new_amount,
+            'monthly_installment' => $calc['installment'],
+            'repayment_months'    => $calc['months'],
+            'outstanding'         => $new_amount,
+            'updated_at'          => date('Y-m-d H:i:s'),
+        ]);
+
+        $this->db->insert(db_prefix() . $this->adjust_table, [
+            'loan_id'                      => $loan_id,
+            'previous_amount'              => $loan->amount,
+            'new_amount'                   => $new_amount,
+            'previous_monthly_installment' => $loan->monthly_installment,
+            'new_monthly_installment'      => $calc['installment'],
+            'previous_repayment_months'    => $loan->repayment_months,
+            'new_repayment_months'         => $calc['months'],
+            'reason'                       => $reason ?: null,
+            'adjusted_by'                  => get_staff_user_id(),
+            'created_at'                   => date('Y-m-d H:i:s'),
+        ]);
+
+        // If a draft payroll for the current period already exists for this
+        // employee, its stored loan_deduction/net_salary would otherwise stay
+        // frozen at the pre-adjustment installment until something else
+        // happens to trigger a resync - same call approve_deduction() above
+        // already makes for the same reason.
+        $this->load->model('hr_module/Payroll_model');
+        $this->Payroll_model->sync_loan_deduction_for_period($loan->employee_id, (int) date('n'), (int) date('Y'));
+
+        log_activity('HR Loan Amount Adjusted [ID: ' . $loan_id . ', ' . $loan->amount . ' -> ' . $new_amount . ']');
+        return ['success' => true];
+    }
+
+    public function get_adjustments($loan_id)
+    {
+        return $this->db
+            ->select('a.*, CONCAT(s.firstname," ",s.lastname) as adjusted_by_name', false)
+            ->from(db_prefix() . $this->adjust_table . ' a')
+            ->join(db_prefix() . 'staff s', 's.staffid = a.adjusted_by', 'left')
+            ->where('a.loan_id', $loan_id)
+            ->order_by('a.created_at DESC')
+            ->get()->result();
     }
 
     public function approve($id, $disbursement_date = null)
