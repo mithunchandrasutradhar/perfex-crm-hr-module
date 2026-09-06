@@ -438,34 +438,21 @@ if (!isset($adjustments)) $adjustments = [];
         </div>
       </div>
       <?php
-        // Deduction amount is chosen in steps of 500, same as the loan application's
-        // installment - the last step is always the exact outstanding balance so the
-        // loan can still be paid off in full even when that isn't a clean multiple of 500.
+        // Deduction amount must be a multiple of 500, same rule as the loan
+        // application's amount/installment - the one exception is the exact
+        // outstanding balance, so the loan can still be paid off in full even
+        // when that isn't itself a clean multiple of 500.
         $deduct_default = $cur_req && !$cur_req->is_skip
             ? (float) $cur_req->amount
             : ((float) $loan->monthly_installment + (float) $loan->carry_forward_amount);
         $deduct_outstanding = (float) $loan->outstanding;
-        $deduct_step  = 500;
-        $deduct_steps = [];
-        for ($v = $deduct_step; $v < $deduct_outstanding; $v += $deduct_step) { $deduct_steps[] = round($v, 2); }
-        $deduct_steps[] = round($deduct_outstanding, 2);
-        if ($deduct_default > 0) {
-            $has_default = false;
-            foreach ($deduct_steps as $s) { if (abs($s - $deduct_default) < 0.01) { $has_default = true; break; } }
-            if (!$has_default) { $deduct_steps[] = round($deduct_default, 2); sort($deduct_steps); }
-        }
       ?>
-      <div class="form-group select-placeholder" id="amountGroup">
+      <div class="form-group" id="amountGroup">
         <label>Deduction Amount <span class="text-danger">*</span></label>
         <div class="input-group">
           <span class="input-group-addon"><?php echo get_option('currency_symbol') ?: 'BDT'; ?></span>
-          <select name="amount" id="deductAmount" class="selectpicker" data-width="100%">
-            <?php foreach ($deduct_steps as $s): ?>
-            <option value="<?php echo $s; ?>" <?php echo (abs($s - $deduct_default) < 0.01) ? 'selected' : ''; ?>>
-              <?php echo number_format($s, 2); ?><?php echo (abs($s - $deduct_outstanding) < 0.01) ? ' (full payoff)' : ''; ?>
-            </option>
-            <?php endforeach; ?>
-          </select>
+          <input type="number" step="500" min="500" name="amount" id="deductAmount" class="form-control"
+                 value="<?php echo round($deduct_default, 2); ?>">
         </div>
         <p class="help-block tw-text-xs">
           Default installment: <strong><?php echo number_format($loan->monthly_installment, 2); ?></strong>
@@ -473,6 +460,7 @@ if (!isset($adjustments)) $adjustments = [];
           + <strong><?php echo number_format($loan->carry_forward_amount, 2); ?></strong> carried over from a skipped month
           <?php endif; ?>
           &nbsp;&middot;&nbsp; Outstanding: <strong><?php echo number_format($loan->outstanding, 2); ?></strong>
+          &nbsp;&middot;&nbsp; Must be a multiple of 500, or exactly the outstanding balance for a full payoff.
         </p>
       </div>
       <div class="form-group" id="carryOptionGroup" style="display:none">
@@ -550,12 +538,28 @@ if (!isset($adjustments)) $adjustments = [];
     <div class="modal-header"><button class="close" data-dismiss="modal"><span>&times;</span></button>
       <h4 class="modal-title">Record Manual Repayment</h4></div>
     <?php echo form_open(admin_url('hr_module/loans/add_repayment/'.$loan->id)); ?>
+    <?php
+      // Same rule as the Deduction Request modal's Amount field above: must be
+      // a multiple of 500, with one exception - the exact outstanding balance,
+      // so the loan can still be paid off in full even when that isn't a clean
+      // multiple of 500.
+      $repay_default     = (float) $loan->monthly_installment;
+      $repay_outstanding = (float) $loan->outstanding;
+    ?>
     <div class="modal-body">
       <div class="row">
         <div class="col-md-6">
           <div class="form-group"><label>Amount <span class="text-danger">*</span></label>
-            <input type="number" step="0.01" min="0.01" max="<?php echo $loan->outstanding; ?>"
-                   name="amount" class="form-control" value="<?php echo $loan->monthly_installment; ?>" required>
+            <div class="input-group">
+              <span class="input-group-addon"><?php echo get_option('currency_symbol') ?: 'BDT'; ?></span>
+              <input type="number" step="500" min="500" max="<?php echo $repay_outstanding; ?>"
+                     name="amount" id="repayAmount" class="form-control"
+                     value="<?php echo round($repay_default, 2); ?>" required>
+            </div>
+            <p class="help-block tw-text-xs">
+              Must be a multiple of 500, or exactly the outstanding balance
+              (<strong><?php echo number_format($repay_outstanding, 2); ?></strong>) for a full payoff.
+            </p>
           </div>
         </div>
         <div class="col-md-6">
@@ -595,18 +599,20 @@ if (!isset($adjustments)) $adjustments = [];
         Amount Adjustment History below.
       </p>
       <div class="form-group"><label>New Amount <span class="text-danger">*</span></label>
-        <input type="number" step="0.01" min="0.01" name="new_amount" id="adjust_amount" class="form-control"
-               value="<?php echo $loan->amount; ?>" required>
+        <div class="input-group">
+          <span class="input-group-addon"><?php echo get_option('currency_symbol') ?: 'BDT'; ?></span>
+          <input type="number" step="500" min="500" name="new_amount" id="adjust_amount" class="form-control"
+                 value="<?php echo $loan->amount; ?>" required>
+        </div>
       </div>
       <div class="row">
         <div class="col-md-6">
-          <div class="form-group select-placeholder">
+          <div class="form-group">
             <label>New Monthly Installment <span class="text-danger">*</span></label>
             <div class="input-group">
               <span class="input-group-addon"><?php echo get_option('currency_symbol') ?: 'BDT'; ?></span>
-              <select name="monthly_installment" id="adjust_installment" class="selectpicker" data-width="100%" data-size="8" required disabled>
-                <option value="">Enter amount first</option>
-              </select>
+              <input type="number" step="500" min="500" name="monthly_installment" id="adjust_installment"
+                     class="form-control" value="<?php echo $loan->monthly_installment; ?>" required>
             </div>
           </div>
         </div>
@@ -637,6 +643,14 @@ if (!isset($adjustments)) $adjustments = [];
 <script>
 $(function () {
     var totalDue = <?php echo (float) $loan->monthly_installment + (float) $loan->carry_forward_amount; ?>;
+    var loanOutstanding = <?php echo (float) $loan->outstanding; ?>;
+
+    // Shared by the Deduction Request and Manual Repayment amount fields -
+    // must be a multiple of 500, unless it's exactly the outstanding balance
+    // (a full payoff doesn't have to land on a round step).
+    function isValidStepAmount(v) {
+        return v > 0 && (Math.abs(Math.round(v / 500) * 500 - v) < 0.01 || Math.abs(v - loanOutstanding) < 0.01);
+    }
 
     function toggleSkip() {
         var skip   = $('#skipCheck').is(':checked');
@@ -650,8 +664,25 @@ $(function () {
         if (showCarry) $('#carryShortfallAmount').text(shortfall.toFixed(2));
     }
     $('#skipCheck').on('change', toggleSkip);
-    $('#deductAmount').on('change changed.bs.select', toggleSkip);
+    $('#deductAmount').on('input change', toggleSkip);
     toggleSkip();
+
+    $('#deductModal form').on('submit', function (e) {
+        var skip   = $('#skipCheck').is(':checked');
+        var amount = parseFloat($('#deductAmount').val()) || 0;
+        if (!skip && !isValidStepAmount(amount)) {
+            alert('Deduction amount must be a multiple of 500, or exactly the outstanding balance (' + loanOutstanding.toFixed(2) + ') for a full payoff.');
+            e.preventDefault(); return;
+        }
+    });
+
+    $('#repayModal form').on('submit', function (e) {
+        var amount = parseFloat($('#repayAmount').val()) || 0;
+        if (!isValidStepAmount(amount)) {
+            alert('Repayment amount must be a multiple of 500, or exactly the outstanding balance (' + loanOutstanding.toFixed(2) + ') for a full payoff.');
+            e.preventDefault(); return;
+        }
+    });
 
     // Editing a pending request from the history table (any month, not just the current
     // one) - point the shared modal at that month/year and restore its skip/carry choice.
@@ -669,18 +700,19 @@ $(function () {
         $('#deductModal').modal('show');
     });
 
-    // Adjust modal - installment dropdown built the same way as the Apply
-    // form's (views/loans/apply.php), but seeded with the loan's current
-    // monthly installment as the initial default instead of a ~12-month guess.
+    // Adjust modal - amount and installment must both be a multiple of 500,
+    // typed directly (same rule as the Apply form's Loan Amount/Installment).
     var ADJUST_STEP = 500;
-    var ADJUST_MAX_INSTALLMENT_OPTIONS = 200;
     var $adjustAmount      = $('#adjust_amount');
     var $adjustMonths      = $('#adjust_months');
     var $adjustInstallment = $('#adjust_installment');
     var $adjustSummary     = $('#adjustCalcSummary');
-    var adjustInitialInstallment = <?php echo (float) $loan->monthly_installment; ?>;
 
     function adjustFmt(n) { return parseFloat(n).toFixed(2); }
+
+    function isAdjustStepValid(v) {
+        return v > 0 && Math.abs(Math.round(v / ADJUST_STEP) * ADJUST_STEP - v) < 0.01;
+    }
 
     function updateAdjustSummary(amount, months, install) {
         var lastInstallment = amount - (months - 1) * install;
@@ -706,58 +738,22 @@ $(function () {
         }
     }
 
-    function rebuildAdjustInstallmentOptions() {
+    $adjustAmount.on('input', updateAdjustMonths);
+    $adjustInstallment.on('input', updateAdjustMonths);
+    updateAdjustMonths();
+
+    $('#adjustModal form').on('submit', function (e) {
         var amount  = parseFloat($adjustAmount.val()) || 0;
-        var prevVal = parseFloat($adjustInstallment.val()) || adjustInitialInstallment;
-        $adjustInstallment.empty();
+        var install = parseFloat($adjustInstallment.val()) || 0;
 
-        if (amount <= 0) {
-            $adjustInstallment.append($('<option></option>').val('').text('Enter amount first'));
-            $adjustInstallment.prop('disabled', true);
-            $adjustInstallment.selectpicker('refresh');
-            $adjustMonths.val('');
-            $adjustSummary.hide();
-            return;
+        if (!isAdjustStepValid(amount)) {
+            alert('New amount must be a multiple of ' + ADJUST_STEP + ' (e.g. 500, 1000, 1500 ...).');
+            e.preventDefault(); return;
         }
-
-        var top = Math.ceil(amount / ADJUST_STEP) * ADJUST_STEP;
-        var effectiveStep = ADJUST_STEP;
-        if (top / ADJUST_STEP > ADJUST_MAX_INSTALLMENT_OPTIONS) {
-            effectiveStep = Math.ceil((top / ADJUST_MAX_INSTALLMENT_OPTIONS) / ADJUST_STEP) * ADJUST_STEP;
+        if (!isAdjustStepValid(install)) {
+            alert('New monthly installment must be a multiple of ' + ADJUST_STEP + ' (e.g. 500, 1000, 1500 ...).');
+            e.preventDefault(); return;
         }
-        var steps = [];
-        for (var v = effectiveStep; v <= top; v += effectiveStep) steps.push(v);
-
-        // Keep the previous selection if it's still a valid step, otherwise default
-        // to whichever step lands closest to a ~12 month repayment period.
-        var defaultVal = -1;
-        for (var i = 0; i < steps.length; i++) {
-            if (steps[i] === prevVal) { defaultVal = prevVal; break; }
-        }
-        if (defaultVal === -1) {
-            var target = amount / 12;
-            defaultVal = steps[0];
-            for (var j = 0; j < steps.length; j++) {
-                if (Math.abs(steps[j] - target) < Math.abs(defaultVal - target)) defaultVal = steps[j];
-            }
-        }
-
-        $adjustInstallment.prop('disabled', false);
-        for (var k = 0; k < steps.length; k++) {
-            var opt = $('<option></option>').val(steps[k]).text(adjustFmt(steps[k]));
-            if (steps[k] === defaultVal) opt.prop('selected', true);
-            $adjustInstallment.append(opt);
-        }
-        $adjustInstallment.selectpicker('refresh');
-        updateAdjustMonths();
-    }
-
-    var adjustRebuildTimer = null;
-    $adjustAmount.on('input', function () {
-        clearTimeout(adjustRebuildTimer);
-        adjustRebuildTimer = setTimeout(rebuildAdjustInstallmentOptions, 250);
     });
-    $adjustInstallment.on('change changed.bs.select', updateAdjustMonths);
-    $('#adjustModal').on('show.bs.modal', rebuildAdjustInstallmentOptions);
 });
 </script>

@@ -355,14 +355,11 @@ class Loans extends AdminController
     public function deduction_requests()
     {
         if (staff_cant('view', 'hr_loans')) access_denied('hr_loans');
-        $filters = [];
-        foreach (['status','pay_month','pay_year','employee_id'] as $k) {
-            $v = $this->input->get($k);
-            if ($v !== null && $v !== '') $filters[$k] = $v;
+        if ($this->input->is_ajax_request()) {
+            $this->app->get_table_data(module_views_path('hr_module', 'loans/deduction_requests_table'));
+            return;
         }
-        $data['title']    = 'Loan Deduction Requests';
-        $data['requests'] = $this->Loans_model->get_deduction_requests($filters);
-        $data['filters']  = $filters;
+        $data['title'] = 'Loan Deduction Requests';
         $this->load->view('hr_module/loans/deduction_requests', $data);
     }
 

@@ -140,6 +140,19 @@ class Loans_model extends App_Model
             ->get()->result();
     }
 
+    // Loan amount, monthly installment, deduction amount and manual repayment
+    // amount must all land on a clean 500-unit step (500, 1000, 1500, ...) -
+    // $exact, when given, is an extra allowed value even if it isn't itself a
+    // multiple of 500 (the outstanding balance, so a loan can always still be
+    // paid off in full).
+    private function _valid_step_amount($amount, $exact = null)
+    {
+        $amount = (float) $amount;
+        if ($amount <= 0) return false;
+        if ($exact !== null && abs($amount - (float) $exact) < 0.01) return true;
+        return abs(round($amount / 500) * 500 - $amount) < 0.01;
+    }
+
     // Shared by apply() and adjust_amount() - either a custom monthly
     // installment is given (months derived by ceiling division), or a term in
     // months is given (installment derived by plain division). Capped at 360
@@ -163,9 +176,16 @@ class Loans_model extends App_Model
     public function apply($data)
     {
         $amount = (float) $data['amount'];
+        if (!$this->_valid_step_amount($amount)) {
+            return ['success' => false, 'message' => 'Loan amount must be a multiple of 500.'];
+        }
+        $custom_installment = $data['monthly_installment'] ?? 0;
+        if ((float) $custom_installment > 0 && !$this->_valid_step_amount($custom_installment)) {
+            return ['success' => false, 'message' => 'Monthly installment must be a multiple of 500.'];
+        }
         $calc   = $this->_calc_installment(
             $amount,
-            $data['monthly_installment'] ?? 0,
+            $custom_installment,
             $data['repayment_months'] ?? 1
         );
         $install = $calc['installment'];
@@ -219,8 +239,11 @@ class Loans_model extends App_Model
             return ['success' => false, 'message' => 'This loan can no longer be adjusted.'];
         }
         $new_amount = (float) $new_amount;
-        if ($new_amount <= 0) {
-            return ['success' => false, 'message' => 'Enter a valid amount.'];
+        if (!$this->_valid_step_amount($new_amount)) {
+            return ['success' => false, 'message' => 'Amount must be a multiple of 500.'];
+        }
+        if ((float) $custom_installment > 0 && !$this->_valid_step_amount($custom_installment)) {
+            return ['success' => false, 'message' => 'Monthly installment must be a multiple of 500.'];
         }
 
         $calc = $this->_calc_installment($new_amount, $custom_installment, $months ?: $loan->repayment_months);
@@ -307,6 +330,9 @@ class Loans_model extends App_Model
         if (!$loan || !in_array($loan->status, ['approved', 'active'])) {
             return ['success' => false, 'message' => 'Loan is not in a repayable state.'];
         }
+        if (!$this->_valid_step_amount($amount, $loan->outstanding)) {
+            return ['success' => false, 'message' => 'Amount must be a multiple of 500, or exactly the outstanding balance for a full payoff.'];
+        }
         $amount      = min((float) $amount, (float) $loan->outstanding);
         $new_out     = max(0, (float) $loan->outstanding - $amount);
         $new_repaid  = (float) $loan->total_repaid + $amount;
@@ -377,6 +403,9 @@ class Loans_model extends App_Model
             }
             $amount = round(min((float) $loan->monthly_installment, (float) $loan->outstanding), 2);
         } else {
+            if (!$this->_valid_step_amount($amount, $loan->outstanding)) {
+                return ['success' => false, 'message' => 'Amount must be a multiple of 500, or exactly the outstanding balance for a full payoff.'];
+            }
             $amount = round(min((float) $amount, (float) $loan->outstanding), 2);
             if ($amount <= 0) {
                 return ['success' => false, 'message' => 'Amount must be greater than zero.'];

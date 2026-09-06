@@ -54,23 +54,22 @@ if (!isset($default_max_loan_amount)) $default_max_loan_amount = 99999999.99;
                         <label><?php echo _l('hr_loan_amount'); ?> <span class="text-danger">*</span></label>
                         <div class="input-group">
                           <span class="input-group-addon"><?php echo get_option('currency_symbol') ?: 'BDT'; ?></span>
-                          <input type="number" step="0.01" min="1" name="amount" id="loan_amount"
-                                 class="form-control" required placeholder="0.00">
+                          <input type="number" step="500" min="500" name="amount" id="loan_amount"
+                                 class="form-control" required placeholder="500, 1000, 1500 ...">
                         </div>
                         <p id="maxLoanHint" class="help-block tw-text-xs tw-mb-0"></p>
                       </div>
                     </div>
                     <div class="col-md-4">
-                      <div class="form-group select-placeholder">
+                      <div class="form-group">
                         <label>
                           <?php echo _l('hr_loan_monthly_installment'); ?>
                           <span class="text-danger">*</span>
                         </label>
                         <div class="input-group">
                           <span class="input-group-addon"><?php echo get_option('currency_symbol') ?: 'BDT'; ?></span>
-                          <select name="monthly_installment" id="loan_installment" class="selectpicker" data-width="100%" required disabled>
-                            <option value="">Enter amount first</option>
-                          </select>
+                          <input type="number" step="500" min="500" name="monthly_installment" id="loan_installment"
+                                 class="form-control" required placeholder="500, 1000, 1500 ...">
                         </div>
                       </div>
                     </div>
@@ -87,7 +86,7 @@ if (!isset($default_max_loan_amount)) $default_max_loan_amount = 99999999.99;
                   </div>
                   <div id="calcHint" class="text-muted" style="font-size:11px;margin-top:8px">
                     <i class="fa fa-info-circle"></i>
-                    Installment is chosen in steps of <?php echo number_format(500, 0); ?> — the repayment period is calculated from it automatically.
+                    Amount and installment must both be a multiple of <?php echo number_format(500, 0); ?> — the repayment period is calculated automatically.
                   </div>
                   <div id="calcSummary" class="alert alert-info tw-mt-3 tw-mb-0 tw-py-2 tw-px-3" style="display:none;font-size:13px"></div>
                 </div>
@@ -166,13 +165,6 @@ $(function () {
     updateMaxLoanHint();
 
     var STEP = 500;
-    // A fixed 500-unit step turns into thousands of <option> elements once the
-    // amount gets large (e.g. 2,000 options at a 1,000,000 loan) - rebuilding
-    // that many via selectpicker's refresh() on every keystroke is what freezes
-    // the tab. Capping the option count and widening the step to compensate
-    // keeps the dropdown responsive at any amount, while still only ever
-    // offering clean round numbers.
-    var MAX_INSTALLMENT_OPTIONS = 200;
     var $amount      = $('#loan_amount');
     var $months      = $('#loan_months');
     var $installment = $('#loan_installment');
@@ -180,8 +172,12 @@ $(function () {
 
     function fmt(n) { return parseFloat(n).toFixed(2); }
 
+    // Amount and installment must both land on a clean multiple of STEP.
+    function isStepValid(v) {
+        return v > 0 && Math.abs(Math.round(v / STEP) * STEP - v) < 0.01;
+    }
+
     function updateSummary(amount, months, install) {
-        var total = months * install;
         var lastInstallment = amount - (months - 1) * install;
         $summary.html(
             '<i class="fa fa-calculator tw-mr-1"></i>' +
@@ -205,77 +201,20 @@ $(function () {
         }
     }
 
-    // Installment is always a multiple of STEP - options are rebuilt whenever the
-    // amount changes, and the repayment period is derived from whichever is picked.
-    function rebuildInstallmentOptions() {
-        var amount  = parseFloat($amount.val()) || 0;
-        var prevVal = parseFloat($installment.val()) || 0;
-        $installment.empty();
-
-        if (amount <= 0) {
-            $installment.append($('<option></option>').val('').text('Enter amount first'));
-            $installment.prop('disabled', true);
-            $installment.selectpicker('refresh');
-            $months.val('');
-            $summary.hide();
-            return;
-        }
-
-        var top = Math.ceil(amount / STEP) * STEP;
-        // Keep the option count bounded: widen the step to the next clean
-        // multiple of STEP once a plain 500-unit granularity would produce more
-        // than MAX_INSTALLMENT_OPTIONS choices.
-        var effectiveStep = STEP;
-        if (top / STEP > MAX_INSTALLMENT_OPTIONS) {
-            effectiveStep = Math.ceil((top / MAX_INSTALLMENT_OPTIONS) / STEP) * STEP;
-        }
-        var steps = [];
-        for (var v = effectiveStep; v <= top; v += effectiveStep) steps.push(v);
-
-        // Keep the previous selection if it's still a valid step, otherwise default
-        // to whichever step lands closest to a ~12 month repayment period.
-        var defaultVal = -1;
-        for (var i = 0; i < steps.length; i++) {
-            if (steps[i] === prevVal) { defaultVal = prevVal; break; }
-        }
-        if (defaultVal === -1) {
-            var target = amount / 12;
-            defaultVal = steps[0];
-            for (var j = 0; j < steps.length; j++) {
-                if (Math.abs(steps[j] - target) < Math.abs(defaultVal - target)) defaultVal = steps[j];
-            }
-        }
-
-        $installment.prop('disabled', false);
-        for (var k = 0; k < steps.length; k++) {
-            var opt = $('<option></option>').val(steps[k]).text(fmt(steps[k]));
-            if (steps[k] === defaultVal) opt.prop('selected', true);
-            $installment.append(opt);
-        }
-        $installment.selectpicker('refresh');
-        updateMonths();
-    }
-
-    // Debounced so a full dropdown rebuild only runs once typing pauses,
-    // instead of once per keystroke while the amount is being entered.
-    var rebuildTimer = null;
-    $amount.on('input', function () {
-        clearTimeout(rebuildTimer);
-        rebuildTimer = setTimeout(rebuildInstallmentOptions, 250);
-    });
-    $installment.on('change changed.bs.select', updateMonths);
+    $amount.on('input', updateMonths);
+    $installment.on('input', updateMonths);
 
     // Client-side validation before submit
     $('#loanForm').on('submit', function (e) {
         var amount  = parseFloat($amount.val()) || 0;
         var install = parseFloat($installment.val()) || 0;
 
-        if (amount <= 0) {
-            alert('Enter a loan amount.');
+        if (!isStepValid(amount)) {
+            alert('Loan amount must be a multiple of ' + STEP + ' (e.g. 500, 1000, 1500 ...).');
             e.preventDefault(); return;
         }
-        if (install <= 0) {
-            alert('Select a monthly installment.');
+        if (!isStepValid(install)) {
+            alert('Monthly installment must be a multiple of ' + STEP + ' (e.g. 500, 1000, 1500 ...).');
             e.preventDefault(); return;
         }
         var capacity = currentCapacity();
