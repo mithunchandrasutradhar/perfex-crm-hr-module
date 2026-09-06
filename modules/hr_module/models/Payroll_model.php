@@ -412,6 +412,7 @@ class Payroll_model extends App_Model
             'tax'              => $live_totals['tax'],
             'loan_deduction'   => $loan_deduction,
             'net_salary'       => $live_totals['net'],
+            'approved_by'      => get_staff_user_id(),
             'updated_at'       => date('Y-m-d H:i:s'),
         ]);
         log_activity('HR Payroll Marked Paid [ID: ' . $id . ', Employee ID: ' . $row->employee_id . ', Period: ' . $row->pay_month . '/' . $row->pay_year . ']');
@@ -438,6 +439,7 @@ class Payroll_model extends App_Model
             'status'         => 'draft',
             'payment_method' => null,
             'payment_date'   => null,
+            'approved_by'    => null,
             'updated_at'     => date('Y-m-d H:i:s'),
         ]);
         log_activity('HR Payroll Reverted To Draft [ID: ' . $id . ', Employee ID: ' . $row->employee_id . ', Period: ' . $row->pay_month . '/' . $row->pay_year . ']');

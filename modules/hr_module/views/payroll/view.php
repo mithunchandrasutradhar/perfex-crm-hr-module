@@ -149,6 +149,9 @@ $status_badge = ['draft'=>'default','paid'=>'success'];
               <?php if ($payroll->payment_date): ?>
               <tr><td>Paid On</td><td><?php echo date('d M Y', strtotime($payroll->payment_date)); ?></td></tr>
               <tr><td>Method</td><td><?php echo ucfirst(str_replace('_',' ',$payroll->payment_method)); ?></td></tr>
+              <?php if ($payroll->approved_by_name): ?>
+              <tr><td>Marked Paid By</td><td><?php echo htmlspecialchars($payroll->approved_by_name); ?></td></tr>
+              <?php endif; ?>
               <?php endif; ?>
               <?php if ($payroll->notes): ?>
               <tr><td colspan="2"><em class="text-muted"><?php echo nl2br(htmlspecialchars($payroll->notes)); ?></em></td></tr>
