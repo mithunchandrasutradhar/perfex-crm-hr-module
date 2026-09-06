@@ -28,6 +28,12 @@ if (!is_admin() && !staff_can('view', 'hr_attendance')) {
 
 $rows = $CI->Attendance_model->get_for_table($filters);
 
+hr_module_apply_datatable_order($rows, [
+    0 => 'employee_name', 1 => 'department_name', 2 => 'attendance_date',
+    3 => 'in_time', 4 => 'out_time', 5 => 'working_hours', 6 => 'status',
+    7 => 'source', 8 => null,
+]);
+
 // The DataTable's own pagination - rows here are built manually (below)
 // instead of through the generic data_tables_init() helper, so start/length
 // have to be applied by hand after the filtered set is fetched.
@@ -61,6 +67,10 @@ foreach ($rows as $r) {
     if (!empty($r->verify_mode)) {
         $icon = $verify_icon[$r->verify_mode] ?? 'fa-fingerprint text-info';
         $source_icon = '<i class="fa ' . $icon . '" title="' . htmlspecialchars($r->verify_mode) . '"></i> ' . htmlspecialchars($r->verify_mode);
+    } elseif ($r->source === 'auto') {
+        // hr_module_auto_mark_absent() (hr_module.php) - no punch recorded by
+        // the time the employee's shift/office hours ended for the day.
+        $source_icon = '<i class="fa fa-triangle-exclamation text-warning" title="Auto-marked absent"></i> Auto';
     } elseif ($r->source !== 'manual') {
         $source_icon = '<i class="fa fa-fingerprint text-info" title="Device"></i>';
     } else {

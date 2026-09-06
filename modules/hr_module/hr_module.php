@@ -240,6 +240,48 @@ function hr_module_personal_controller_labels()
 // Zkteco, Reports, etc.) are deliberately left out of this list - those
 // already correctly access_denied() such a user via their own existing
 // permission checks, unaffected by this.
+// Shared by every hr_module hand-rolled table.php AJAX handler (Leave,
+// Attendance, Payroll, Loans, Overduty, Performance, Shifts, Training,
+// Helpdesk, Contracts, Policies) - none of them read DataTables' own
+// order[] request param today, so clicking a column header to sort
+// silently does nothing on every one of these lists; each just stays in
+// whatever fixed order its model query used. Must be called on the raw
+// model row objects/arrays BEFORE they're formatted into HTML $row cells
+// and BEFORE the start/length pagination slice, or it has nothing
+// meaningful left to sort. $column_map maps each visible column's 0-based
+// index (matching the header labels array passed to render_datatable())
+// to either the raw field name to sort by, a callable(object): mixed for
+// a composite value (e.g. first_name+last_name), or null for a column
+// with no single stable backing field (row-options, a progress bar, a
+// live-computed figure) - clicking that header is then a no-op, same as
+// any genuinely non-sortable DataTables column.
+function hr_module_apply_datatable_order(&$rows, array $column_map)
+{
+    $CI = &get_instance();
+    $order = $CI->input->post('order');
+    if (!isset($order[0]['column'])) {
+        return;
+    }
+    $column_index = (int) $order[0]['column'];
+    $direction    = ((($order[0]['dir'] ?? 'asc') === 'desc') ? -1 : 1);
+    if (!array_key_exists($column_index, $column_map) || $column_map[$column_index] === null) {
+        return;
+    }
+    $spec      = $column_map[$column_index];
+    $get_value = is_callable($spec)
+        ? $spec
+        : function ($row) use ($spec) { return is_object($row) ? ($row->$spec ?? null) : ($row[$spec] ?? null); };
+    usort($rows, function ($a, $b) use ($get_value, $direction) {
+        $av = $get_value($a);
+        $bv = $get_value($b);
+        if ($av === $bv) return 0;
+        if (is_numeric($av) && is_numeric($bv)) {
+            return (($av < $bv) ? -1 : 1) * $direction;
+        }
+        return strcasecmp((string) $av, (string) $bv) * $direction;
+    });
+}
+
 function hr_module_require_employee_profile()
 {
     $CI = &get_instance();
@@ -632,4 +674,76 @@ function hr_module_cron_tasks()
 
     // Day-before holiday reminder to all employees (see send_holiday_reminder())
     $CI->Hr_module_model->send_holiday_reminder();
+
+    // Auto-mark absent for anyone with no punch once their day has clearly ended
+    hr_module_auto_mark_absent();
+}
+
+// For every active employee, marks yesterday and today absent if: nothing
+// already accounts for that day (no attendance row at all - punched,
+// manually entered, or already auto-marked), it isn't a weekly-off day or a
+// holiday, they're not on approved leave that day, AND their shift for that
+// day (or the default office hours, if unassigned) has actually finished by
+// now. Checking both yesterday and today on every run (this runs every cron
+// tick, same as the rest of hr_module_cron_tasks() above) is what correctly
+// handles an overnight shift (e.g. "Night", 1:00 AM-9:00 AM): its end_time
+// is earlier than its start_time, so it's treated as finishing the morning
+// AFTER the shift date, and only gets evaluated (and thus possibly marked
+// absent) once that next morning's cutoff has actually passed - a plain day
+// shift instead finishes the same day it started, same as the default
+// office hours case.
+function hr_module_auto_mark_absent()
+{
+    $CI = &get_instance();
+    $CI->load->model('hr_module/Employees_model');
+    $CI->load->model('hr_module/Attendance_model');
+    $CI->load->model('hr_module/Shifts_model');
+    $CI->load->model('hr_module/Holidays_model');
+    $CI->load->model('hr_module/Leave_model');
+    if (!isset($CI->Hr_module_model)) {
+        $CI->load->model('hr_module/Hr_module_model');
+    }
+
+    $now         = time();
+    $today       = date('Y-m-d', $now);
+    $yesterday   = date('Y-m-d', $now - 86400);
+    $weekly_off  = $CI->Holidays_model->get_weekly_off_days();
+    $holidays    = $CI->Holidays_model->get_holiday_names_in_range($yesterday, $today);
+    $default_end = $CI->Hr_module_model->get_setting('office_end_time', '18:00');
+    $employees   = $CI->Employees_model->get_all(['status' => 'active']);
+
+    foreach ([$yesterday, $today] as $check_date) {
+        if (in_array((int) date('w', strtotime($check_date)), $weekly_off, true)) continue;
+        if (isset($holidays[$check_date])) continue;
+
+        $on_leave = array_column(
+            $CI->Leave_model->get_approved_leave_days_in_range($check_date, $check_date),
+            'employee_id'
+        );
+
+        foreach ($employees as $emp) {
+            if (in_array($emp->id, $on_leave)) continue;
+            if ($CI->Attendance_model->record_exists($emp->id, $check_date)) continue;
+
+            $shift = $CI->Shifts_model->get_employee_shift_for_date($emp->id, $check_date);
+            if ($shift && $shift->start_time && $shift->end_time) {
+                $crosses_midnight = strtotime($shift->end_time) <= strtotime($shift->start_time);
+                $cutoff_date = $crosses_midnight ? date('Y-m-d', strtotime($check_date) + 86400) : $check_date;
+                $cutoff = strtotime($cutoff_date . ' ' . $shift->end_time);
+            } else {
+                $cutoff = strtotime($check_date . ' ' . $default_end);
+            }
+            if ($now < $cutoff) continue;
+
+            $CI->Attendance_model->add([
+                'employee_id'     => $emp->id,
+                'attendance_date' => $check_date,
+                'in_time'         => null,
+                'out_time'        => null,
+                'status'          => 'absent',
+                'source'          => 'auto',
+                'notes'           => 'Automatically marked absent - no punch recorded.',
+            ]);
+        }
+    }
 }

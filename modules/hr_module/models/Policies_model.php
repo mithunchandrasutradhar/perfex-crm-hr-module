@@ -85,6 +85,37 @@ class Policies_model extends App_Model
                 $this->db->query("UPDATE `{$table}` SET `department_ids` = `department_id` WHERE `department_id` IS NOT NULL");
             }
         }
+
+        // Upgrade: the date this policy is meant to take effect - defaults to
+        // the submission date (see Policies::_post_data() equivalents), but a
+        // submitter can set it earlier than that to represent a policy that's
+        // meant to apply retroactively - is_backdated() below flags that case
+        // for the approving admin to notice.
+        foreach ([$this->tbl, $this->tbl_revisions] as $table) {
+            $col = $this->db->query("SHOW COLUMNS FROM `{$table}` LIKE 'effective_date'")->num_rows();
+            if ($col === 0) {
+                $this->db->query("ALTER TABLE `{$table}` ADD COLUMN `effective_date` DATE DEFAULT NULL AFTER `created_at`");
+            }
+        }
+
+        // Upgrade: lets a published policy be retired (hidden from the
+        // employee-facing list) without deleting it or losing its history -
+        // only applies to the live hr_policies row, not revisions.
+        $col = $this->db->query("SHOW COLUMNS FROM `{$this->tbl}` LIKE 'active'")->num_rows();
+        if ($col === 0) {
+            $this->db->query("ALTER TABLE `{$this->tbl}` ADD COLUMN `active` TINYINT(1) NOT NULL DEFAULT 1 AFTER `status`");
+        }
+    }
+
+    // True when a policy/revision's chosen effective date is earlier than the
+    // day it was actually submitted - i.e. it's meant to apply retroactively.
+    // Used to show a "Backdated" warning wherever an admin reviews one.
+    public function is_backdated($effective_date, $created_at)
+    {
+        if (!$effective_date || !$created_at) {
+            return false;
+        }
+        return strtotime($effective_date) < strtotime(date('Y-m-d', strtotime($created_at)));
     }
 
     // Small, mostly-static lookup used to resolve department names in bulk without
@@ -186,6 +217,7 @@ class Policies_model extends App_Model
     {
         $this->db->select('p.*', false)->from($this->tbl . ' p')
             ->where('p.status', 'published')
+            ->where('p.active', 1)
             ->group_start()
                 ->where('p.type', 'public');
         if ($department_id) {
@@ -249,6 +281,22 @@ class Policies_model extends App_Model
         return ['success' => true];
     }
 
+    // Retires/restores a published policy without deleting it - an inactive
+    // policy simply drops out of get_visible_for_department() (the employee-
+    // facing list) while staying fully intact (and reachable by an admin/
+    // manager who still has the direct link) for the record.
+    public function toggle_active($id)
+    {
+        $policy = $this->get($id);
+        if (!$policy || $policy->status !== 'published') {
+            return ['success' => false, 'message' => 'Only a published policy can be activated/deactivated.'];
+        }
+        $new_active = $policy->active ? 0 : 1;
+        $this->db->where('id', $id)->update($this->tbl, ['active' => $new_active]);
+        log_activity('HR Policy ' . ($new_active ? 'Activated' : 'Deactivated') . ' [ID: ' . $id . ', Title: ' . $policy->title . ']');
+        return ['success' => true, 'active' => $new_active];
+    }
+
     public function delete($id)
     {
         $policy = $this->get($id);
@@ -295,6 +343,24 @@ class Policies_model extends App_Model
         return $this->_attach_department_names($rows);
     }
 
+    // Every past update to this policy that's already been reviewed (approved
+    // or rejected) - hr_policy_revisions rows are never deleted once created,
+    // so an approved one is exactly what the policy used to say right before
+    // this update replaced it, letting an admin see what changed and when.
+    public function get_reviewed_revisions($policy_id)
+    {
+        $this->db->select('r.*, CONCAT(sb.firstname," ",sb.lastname) as submitted_by_name,
+                CONCAT(rb.firstname," ",rb.lastname) as reviewed_by_name', false)
+            ->from($this->tbl_revisions . ' r')
+            ->join(db_prefix() . 'staff sb', 'sb.staffid = r.submitted_by', 'left')
+            ->join(db_prefix() . 'staff rb', 'rb.staffid = r.reviewed_by', 'left')
+            ->where('r.policy_id', $policy_id)
+            ->where_in('r.status', ['approved', 'rejected'])
+            ->order_by('r.created_at', 'DESC');
+        $rows = $this->db->get()->result();
+        return $this->_attach_department_names($rows);
+    }
+
     // Stages a proposed change to an existing published policy - the live hr_policies
     // row is left untouched until this is approved, so employees keep seeing the
     // previous content in the meantime.
@@ -332,6 +398,7 @@ class Policies_model extends App_Model
             'content_type'   => $revision->content_type,
             'content'        => $revision->content,
             'attachment'     => $revision->attachment,
+            'effective_date' => $revision->effective_date,
             'updated_at'     => date('Y-m-d H:i:s'),
         ]);
         $this->db->where('id', $id)->update($this->tbl_revisions, [

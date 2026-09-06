@@ -91,7 +91,7 @@
 <?php init_tail(); ?>
 <script>
 $(function(){
-    initDataTable('.table-hr-leave', window.location.href, [], [7, 'desc']);
+    initDataTable('.table-hr-leave', window.location.href, [], [], [], [7, 'desc']);
     function reload() {
         // #f-dept/#f-emp only exist in the DOM when $show_all_employees is
         // true (see the PHP condition above) - reading .val() on a selector

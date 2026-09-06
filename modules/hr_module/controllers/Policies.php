@@ -81,16 +81,25 @@ class Policies extends AdminController
         $data['own_department']  = $this->_own_department_id();
         $data['can_manage_own']  = $data['is_global'] || staff_can('create', 'hr_policies') || staff_can('edit', 'hr_policies');
         $data['departments']     = $this->Departments_model->get_active();
-
-        if ($data['is_global']) {
-            $data['pending']  = $this->Policies_model->get_pending();
-            $data['pending_revisions'] = $this->Policies_model->get_pending_revisions();
-        } else {
-            $data['pending']  = [];
-            $data['pending_revisions'] = [];
-        }
+        // Whether to show the "Pending Approval" panel at all - a global
+        // manager with nothing awaiting review shouldn't see an empty table.
+        $data['has_pending'] = $data['is_global'] && (
+            count($this->Policies_model->get_pending()) > 0
+            || count($this->Policies_model->get_pending_revisions()) > 0
+        );
 
         $this->load->view('hr_module/policies/index', $data);
+    }
+
+    // AJAX-only: backs the "Pending Approval" DataTable on the list page
+    // (new policies + update requests awaiting review) - split out from
+    // index() above so that table gets the same sortable/searchable/
+    // paginated default DataTables UI as every other list here, instead of
+    // the plain static table it used to be rendered as.
+    public function pending_table()
+    {
+        if (!$this->input->is_ajax_request()) show_404();
+        $this->app->get_table_data(module_views_path('hr_module', 'policies/pending_table'));
     }
 
     public function add()
@@ -124,6 +133,7 @@ class Policies extends AdminController
                 'type'           => $type,
                 'department_ids' => $department_ids ? implode(',', $department_ids) : null,
                 'created_by'     => get_staff_user_id(),
+                'effective_date' => $this->input->post('effective_date') ? to_sql_date($this->input->post('effective_date')) : date('Y-m-d'),
             ], $content_data);
 
             $id = $this->Policies_model->add($data);
@@ -186,6 +196,7 @@ class Policies extends AdminController
                 'title'          => $this->input->post('title', true),
                 'type'           => $type,
                 'department_ids' => $department_ids ? implode(',', $department_ids) : null,
+                'effective_date' => $this->input->post('effective_date') ? to_sql_date($this->input->post('effective_date')) : date('Y-m-d'),
             ], $content_data);
 
             $result = $this->Policies_model->submit_revision($id, $data);
@@ -221,7 +232,31 @@ class Policies extends AdminController
         $data['can_manage']  = $this->_can_manage_departments($policy->department_id_list);
         $data['is_admin_reviewer'] = $this->_is_policy_approver();
         $data['pending_revision'] = $this->Policies_model->get_pending_revision($id);
+        // History (past reviewed updates) exposes who-submitted-what and any
+        // rejection reasons - same audience as the Pending Update panel, not
+        // the general employee-facing view.
+        $data['revision_history'] = ($data['can_manage'] || $data['is_admin_reviewer'])
+            ? $this->Policies_model->get_reviewed_revisions($id)
+            : [];
         $this->load->view('hr_module/policies/view', $data);
+    }
+
+    // Retires/restores a published policy from the employee-facing list
+    // without deleting it - same authorization as editing it.
+    public function toggle_active($id)
+    {
+        $policy = $this->Policies_model->get($id);
+        if (!$policy) show_404();
+        if (staff_cant('edit', 'hr_policies') && !is_admin()) {
+            access_denied('hr_policies');
+        }
+        if (!$this->_can_manage_departments($policy->department_id_list)) {
+            access_denied('hr_policies');
+        }
+        $result = $this->Policies_model->toggle_active($id);
+        set_alert($result['success'] ? 'success' : 'danger',
+            $result['success'] ? ($result['active'] ? 'Policy activated.' : 'Policy deactivated.') : $result['message']);
+        redirect(admin_url('hr_module/policies/view/' . $id));
     }
 
     // Same _can_view_policy() authorization as view() above, proxied so

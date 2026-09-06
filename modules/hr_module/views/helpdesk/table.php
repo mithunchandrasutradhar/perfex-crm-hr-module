@@ -21,6 +21,14 @@ $search_value = $CI->input->post('search');
 if (!empty($search_value['value'])) $filters['search'] = trim($search_value['value']);
 
 $rows   = $CI->Helpdesk_model->get_for_table($filters);
+
+hr_module_apply_datatable_order($rows, [
+    0 => 'subject',
+    1 => function ($r) { return $r->is_anonymous ? '' : trim($r->first_name . ' ' . $r->last_name); },
+    2 => 'category', 3 => 'priority', 4 => 'reply_count', 5 => 'assigned_name',
+    6 => 'status', 7 => 'created_at',
+]);
+
 $sbadge = ['open' => 'danger', 'in_progress' => 'warning', 'resolved' => 'info', 'closed' => 'default'];
 $pbadge = ['low' => 'default', 'medium' => 'warning', 'high' => 'danger'];
 

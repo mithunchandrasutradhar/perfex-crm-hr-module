@@ -31,7 +31,39 @@ class Shifts extends AdminController
         $data['departments']      = $can_view_all ? $this->Departments_model->get_active() : [];
         $data['shift_types']      = $this->Shifts_model->get_active_types();
         $data['can_manage']       = is_admin() || staff_can('create', 'hr_shifts') || staff_can('edit', 'hr_shifts');
+        // Same condition table.php already uses per-row to decide whether to
+        // show the Approve link at all - the bulk-approve button/checkboxes
+        // are shown under that identical rule.
+        $data['can_approve']      = is_admin() || staff_can('approve', 'hr_shifts');
         $this->load->view('hr_module/shifts/index', $data);
+    }
+
+    // Approves several pending shift requests at once (default bulk-action
+    // UI on the list page) - reuses the exact same model call and
+    // notification approve() below does per row, just without the
+    // redirect/single-id response, so nothing about the single-row Approve
+    // action itself changes.
+    public function bulk_approve()
+    {
+        if (!$this->input->is_ajax_request()) show_404();
+        if (staff_cant('approve', 'hr_shifts') && !is_admin()) {
+            echo json_encode(['success' => false, 'message' => _l('hr_error_permission')]);
+            return;
+        }
+        $ids = (array) $this->input->post('ids');
+        $approved = 0;
+        foreach ($ids as $id) {
+            $id = (int) $id;
+            if (!$id) continue;
+            $result = $this->Shifts_model->approve($id);
+            if ($result['success']) {
+                $approved++;
+                if ($this->Hr_module_model->notifications_enabled('notify_shift')) {
+                    $this->_notify_status($id, 'approved');
+                }
+            }
+        }
+        echo json_encode(['success' => true, 'approved' => $approved]);
     }
 
     public function apply()

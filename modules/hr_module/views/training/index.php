@@ -46,7 +46,7 @@
 <?php init_tail(); ?>
 <script>
 $(function(){
-    initDataTable('.table-hr-training', window.location.href, [], [3,'desc']);
+    initDataTable('.table-hr-training', window.location.href, [], [], [], [3,'desc']);
     function reload(){
         var url = window.location.href.split('?')[0]
             + '?status='    + $('#f-status').val()

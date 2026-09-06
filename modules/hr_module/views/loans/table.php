@@ -22,6 +22,12 @@ if (!empty($search_value['value'])) $filters['search'] = trim($search_value['val
 
 $rows = $CI->Loans_model->get_for_table($filters);
 
+hr_module_apply_datatable_order($rows, [
+    0 => function ($r) { return $r->first_name . ' ' . $r->last_name; },
+    1 => 'department_name', 2 => 'amount', 3 => 'monthly_installment',
+    4 => 'outstanding', 5 => null, 6 => 'status', 7 => 'disbursement_date',
+]);
+
 // The DataTable's own pagination - rows here are built manually (below)
 // instead of through the generic data_tables_init() helper, so start/length
 // have to be applied by hand after the filtered set is fetched.

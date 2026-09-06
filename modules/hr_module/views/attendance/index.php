@@ -34,11 +34,11 @@ if (!isset($is_global))   $is_global   = is_admin() || staff_can('view', 'hr_att
             </select>
             <?php endif; ?>
             <div class="input-group date" style="width:150px">
-              <input type="text" id="f-from" class="form-control datepicker" autocomplete="off" placeholder="From date">
+              <input type="text" id="f-from" class="form-control datepicker" autocomplete="off" placeholder="From date" value="<?php echo _d(date('Y-m-d')); ?>">
               <div class="input-group-addon"><i class="fa-regular fa-calendar calendar-icon"></i></div>
             </div>
             <div class="input-group date" style="width:150px">
-              <input type="text" id="f-to" class="form-control datepicker" autocomplete="off" placeholder="To date">
+              <input type="text" id="f-to" class="form-control datepicker" autocomplete="off" placeholder="To date" value="<?php echo _d(date('Y-m-d')); ?>">
               <div class="input-group-addon"><i class="fa-regular fa-calendar calendar-icon"></i></div>
             </div>
             <select id="f-status" class="selectpicker" data-width="130px">
@@ -185,31 +185,10 @@ if (!isset($is_global))   $is_global   = is_admin() || staff_can('view', 'hr_att
 <?php init_tail(); ?>
 <script>
 $(function(){
-    initDataTable('.table-hr-attendance', window.location.href, [], [2, 'desc']);
-
-    function reload() {
-        // #f-dept/#f-emp only exist in the DOM for a global viewer (see the
-        // $is_global checks above) - reading .val() on a selector that
-        // matches nothing returns undefined, which string-concatenation
-        // below would otherwise turn into the literal text "undefined",
-        // sent as a real (non-empty) filter value and silently zeroing out
-        // every result for any restricted role, regardless of other filters.
-        var deptVal = $('#f-dept').length ? $('#f-dept').val() : '';
-        var empVal  = $('#f-emp').length  ? $('#f-emp').val()  : '';
-        var url = window.location.href.split('?')[0]
-            + '?department_id=' + encodeURIComponent(deptVal || '')
-            + '&employee_id=' + encodeURIComponent(empVal || '')
-            + '&status=' + encodeURIComponent($('#f-status').val() || '')
-            + '&from_date=' + encodeURIComponent($('#f-from').val() || '')
-            + '&to_date=' + encodeURIComponent($('#f-to').val() || '');
-        $('.table-hr-attendance').DataTable().ajax.url(url).load();
-    }
-    $('#f-dept, #f-emp, #f-status, #f-from, #f-to').on('change changed.bs.select', reload);
-
     // Pre-select the Employee filter when landing here with ?employee_id=
-    // in the URL (e.g. the dashboard's "My Attendance" quick action) - the
-    // table itself is already filtered server-side by the initial
-    // window.location.href load above, this just reflects it in the UI.
+    // in the URL (e.g. the dashboard's "My Attendance" quick action) - done
+    // before the initial load below so that load's own URL (built from these
+    // same fields) picks it up too, not just the dropdown's displayed state.
     (function(){
         var params = new URLSearchParams(window.location.search);
         var empId = params.get('employee_id');
@@ -217,6 +196,33 @@ $(function(){
             $('#f-emp').val(empId).selectpicker('refresh');
         }
     })();
+
+    // #f-dept/#f-emp only exist in the DOM for a global viewer (see the
+    // $is_global checks above) - reading .val() on a selector that matches
+    // nothing returns undefined, which string-concatenation below would
+    // otherwise turn into the literal text "undefined", sent as a real
+    // (non-empty) filter value and silently zeroing out every result for
+    // any restricted role, regardless of other filters.
+    function buildFilterUrl() {
+        var deptVal = $('#f-dept').length ? $('#f-dept').val() : '';
+        var empVal  = $('#f-emp').length  ? $('#f-emp').val()  : '';
+        return window.location.href.split('?')[0]
+            + '?department_id=' + encodeURIComponent(deptVal || '')
+            + '&employee_id=' + encodeURIComponent(empVal || '')
+            + '&status=' + encodeURIComponent($('#f-status').val() || '')
+            + '&from_date=' + encodeURIComponent($('#f-from').val() || '')
+            + '&to_date=' + encodeURIComponent($('#f-to').val() || '');
+    }
+
+    // #f-from/#f-to default to today's date (see the value= attribute
+    // above), so this initial load - same as every reload() below - already
+    // only shows today unless the user changes/clears those fields.
+    initDataTable('.table-hr-attendance', buildFilterUrl(), [], [], [], [2, 'desc']);
+
+    function reload() {
+        $('.table-hr-attendance').DataTable().ajax.url(buildFilterUrl()).load();
+    }
+    $('#f-dept, #f-emp, #f-status, #f-from, #f-to').on('change changed.bs.select', reload);
 
     // View Log
     var verifyIcon = {

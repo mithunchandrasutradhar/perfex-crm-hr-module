@@ -84,7 +84,7 @@
 <script>
 $(function(){
     var expiringSoonFilter = false;
-    initDataTable('.table-hr-contracts', window.location.href, [], [4,'desc']);
+    initDataTable('.table-hr-contracts', window.location.href, [], [], [], [4,'desc']);
 
     function reload(){
         var empVal  = $('#f-emp').length  ? $('#f-emp').val()  : '';

@@ -52,7 +52,7 @@
 <?php init_tail(); ?>
 <script>
 $(function(){
-    initDataTable('.table-hr-helpdesk', window.location.href, [], [7,'desc']);
+    initDataTable('.table-hr-helpdesk', window.location.href, [], [], [], [7,'desc']);
     function reload(){
         var deptVal = $('#f-dept').length ? $('#f-dept').val() : '';
         var url = window.location.href.split('?')[0]

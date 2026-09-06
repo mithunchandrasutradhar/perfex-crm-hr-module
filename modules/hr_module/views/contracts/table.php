@@ -22,6 +22,13 @@ if (!empty($search_value['value'])) $filters['search'] = trim($search_value['val
 
 $rows = $CI->Hr_contracts_model->get_for_table($filters);
 
+hr_module_apply_datatable_order($rows, [
+    0 => 'title',
+    1 => function ($r) { return $r->first_name . ' ' . $r->last_name; },
+    2 => 'department_name', 3 => 'contract_type', 4 => 'start_date',
+    5 => 'end_date', 6 => 'value', 7 => 'status', 8 => 'signed',
+]);
+
 // The DataTable's own pagination - rows here are built manually (below)
 // instead of through the generic data_tables_init() helper, so start/length
 // have to be applied by hand after the filtered set is fetched.

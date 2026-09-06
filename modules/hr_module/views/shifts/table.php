@@ -25,6 +25,13 @@ $search_value = $CI->input->post('search');
 if (!empty($search_value['value'])) $filters['search'] = trim($search_value['value']);
 
 $rows = $CI->Shifts_model->get_all($filters);
+
+// +1 on every index below: the bulk-approve checkbox is column 0 (see the
+// matching header cell in index.php's render_datatable() call).
+hr_module_apply_datatable_order($rows, [
+    1 => 'employee_name', 2 => 'department_name', 3 => 'shift_name',
+    4 => 'from_date', 5 => 'status', 6 => 'created_at',
+]);
 $can_manage_any   = is_admin() || staff_can('approve', 'hr_shifts') || staff_can('edit', 'hr_shifts');
 $can_approve      = is_admin() || staff_can('approve', 'hr_shifts');
 $can_soft_approve = is_admin() || staff_can('soft_approve', 'hr_shifts');
@@ -73,7 +80,14 @@ foreach ($rows as $r) {
     $status_cell = '<span class="label label-' . ($badge[$r->status] ?? 'default') . '">' . ucfirst($r->status) . '</span>';
     $date_range  = date('d M Y', strtotime($r->from_date)) . ($r->to_date !== $r->from_date ? ' - ' . date('d M Y', strtotime($r->to_date)) : '');
 
+    // Bulk-approve checkbox: only for a pending row the caller can actually
+    // approve - matches the single-row Approve link's own condition above.
+    $checkbox_cell = ($r->status === 'pending' && $can_approve)
+        ? '<div class="checkbox checkbox-primary"><input type="checkbox" class="hr-bulk-id" value="' . $r->id . '"><label></label></div>'
+        : '';
+
     $row = [
+        $checkbox_cell,
         $employee_cell,
         $r->department_name ? htmlspecialchars($r->department_name) : '-',
         htmlspecialchars($r->shift_name),

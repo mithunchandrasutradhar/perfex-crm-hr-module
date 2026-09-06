@@ -43,6 +43,15 @@ $existing_attachments = $editing ? $this->Policies_model->decode_attachments($po
                        value="<?php echo $editing ? htmlspecialchars($policy->title) : ''; ?>">
               </div>
 
+              <div class="form-group">
+                <label>Effective Date <i class="fa-solid fa-circle-info tw-text-neutral-400" data-toggle="tooltip" data-title="The date this policy is meant to take effect. Defaults to today - only set an earlier date if this policy is meant to apply retroactively." style="cursor:help;"></i></label>
+                <div class="input-group date">
+                  <input type="text" name="effective_date" class="form-control datepicker" autocomplete="off"
+                         value="<?php echo $editing && $policy->effective_date ? _d($policy->effective_date) : _d(date('Y-m-d')); ?>">
+                  <div class="input-group-addon"><i class="fa-regular fa-calendar calendar-icon"></i></div>
+                </div>
+              </div>
+
               <?php if ($is_global): ?>
               <div class="form-group">
                 <label>Visibility</label>
@@ -81,7 +90,12 @@ $existing_attachments = $editing ? $this->Policies_model->decode_attachments($po
               <p class="text-muted tw-text-sm">Provide text content, a PDF file, or both.</p>
 
               <div class="form-group">
-                <?= render_textarea('content', 'Text Content', $editing ? $policy->content : '', ['rows' => 12], [], '', 'tinymce'); ?>
+                <?php // "tinymce-manual" opts this one out of the app-wide init_editor()
+                      // call every admin page already makes for any plain ".tinymce"
+                      // textarea, so it can be initialized below instead with a Bangla
+                      // font option added to the font-family dropdown - the global
+                      // editor config (and every other textarea using it) is untouched. ?>
+                <?= render_textarea('content', 'Text Content', $editing ? $policy->content : '', ['rows' => 12], [], '', 'tinymce tinymce-manual'); ?>
               </div>
 
               <?php if (!empty($existing_attachments)): ?>
@@ -125,5 +139,43 @@ $(function(){
     }
     $('input[name="type"]').on('change', toggleDeptGroup);
     toggleDeptGroup();
+
+    // Same defaults init_editor() (main.js) already applies everywhere else
+    // (toolbar, plugins, height, etc.) - font_family_formats is TinyMCE's
+    // full dropdown list, which an override replaces rather than merges
+    // into, so the standard set is repeated here with a Bangla option
+    // appended, rather than losing the existing Latin fonts.
+    init_editor('#content', {
+        font_family_formats:
+            "Andale Mono=andale mono,times;" +
+            "Arial=arial,helvetica,sans-serif;" +
+            "Arial Black=arial black,avant garde;" +
+            "Book Antiqua=book antiqua,palatino;" +
+            "Comic Sans MS=comic sans ms,sans-serif;" +
+            "Courier New=courier new,courier;" +
+            "Georgia=georgia,palatino;" +
+            "Helvetica=helvetica;" +
+            "Impact=impact,chicago;" +
+            "Symbol=symbol;" +
+            "Tahoma=tahoma,arial,helvetica,sans-serif;" +
+            "Terminal=terminal,monaco;" +
+            "Times New Roman=times new roman,times;" +
+            "Trebuchet MS=trebuchet ms,geneva;" +
+            "Verdana=verdana,geneva;" +
+            "Webdings=webdings;" +
+            "Wingdings=wingdings,zapf dingbats;" +
+            "Bangla='Noto Sans Bengali',SolaimanLipi,Kalpurush,Nikosh,sans-serif;",
+        // The editor's text area is its own iframe - a font loaded on this
+        // parent page (or the view page's stylesheet) never reaches it, so
+        // without this the "Bangla" choice above silently falls back to
+        // whatever generic font the browser/OS substitutes, which usually
+        // doesn't match what actually renders once published. content_style
+        // is TinyMCE's own way to inject CSS straight into that iframe. The
+        // body rule matches policies/view.php's .policy-content default, so
+        // typing here already looks the same as the published result -
+        // Bengali script renders in this font, anything else (English words
+        // mixed in) falls through to Arial automatically.
+        content_style: "@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali&display=swap'); body { font-family: 'Noto Sans Bengali', Arial, sans-serif; }",
+    });
 });
 </script>

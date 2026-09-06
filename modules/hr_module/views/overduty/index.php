@@ -34,11 +34,17 @@
               <i class="fa-regular fa-plus tw-mr-1"></i><?php echo _l('hr_overtime_add'); ?>
             </a>
             <?php endif; ?>
+            <?php if (!empty($can_approve)): ?>
+            <a href="#" data-toggle="modal" data-target="#hrOverdutyBulkApproveModal" class="hide hr-bulk-approve-btn btn btn-default btn-sm">
+              <i class="fa fa-check-double tw-mr-1"></i><?php echo _l('hr_overtime_bulk_approve'); ?>
+            </a>
+            <?php endif; ?>
           </div>
         </div>
         <div class="panel_s">
           <div class="panel-body panel-table-full">
             <?php render_datatable([
+              '<div class="checkbox checkbox-primary mass_select_all_wrap"><input type="checkbox" id="mass_select_all" data-to-table="hr-overduty"><label></label></div>',
               _l('hr_employee'), _l('hr_department'),
               _l('hr_overtime_date'), _l('hr_overtime_day_type'),
               _l('hr_status'),
@@ -49,10 +55,30 @@
     </div>
   </div>
 </div>
+
+<?php if (!empty($can_approve)): ?>
+<div class="modal fade bulk_actions" id="hrOverdutyBulkApproveModal" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal">&times;</button>
+        <h4 class="modal-title"><?php echo _l('hr_overtime_bulk_approve'); ?></h4>
+      </div>
+      <div class="modal-body">
+        <p><?php echo _l('hr_overtime_bulk_approve_confirm'); ?></p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default" data-dismiss="modal"><?php echo _l('hr_cancel'); ?></button>
+        <a href="#" class="btn btn-primary hr-overduty-bulk-approve-confirm"><?php echo _l('hr_overtime_approve'); ?></a>
+      </div>
+    </div>
+  </div>
+</div>
+<?php endif; ?>
 <?php init_tail(); ?>
 <script>
 $(function(){
-    initDataTable('.table-hr-overduty', window.location.href, [], [2,'desc']);
+    initDataTable('.table-hr-overduty', window.location.href, [], [], [], [2,'desc']);
     function reload(){
         var deptVal = $('#f-dept').length ? $('#f-dept').val() : '';
         var url = window.location.href.split('?')[0]
@@ -76,6 +102,60 @@ $(function(){
     function csrf_pair() {
         return '<?php echo $this->security->get_csrf_token_name(); ?>=<?php echo $this->security->get_csrf_hash(); ?>';
     }
+
+    // Every DataTables redraw (sorting, paging, a filter dropdown changing,
+    // reload() above) rebuilds the table body from scratch, including every
+    // .hr-bulk-id checkbox - the browser has no memory a given row used to
+    // be checked, so a plain :checked DOM query loses the selection (and the
+    // Bulk Approve button) the moment any of that happens. hrOverdutySelected
+    // tracks the chosen ids independently of the DOM instead, and 'draw.dt'
+    // (fired on every redraw, for any reason) re-applies it to whichever
+    // matching checkboxes are on the page afterwards.
+    var hrOverdutySelected = {};
+    function hrOverdutySyncBtn() {
+        $('.hr-bulk-approve-btn').toggleClass('hide', $.isEmptyObject(hrOverdutySelected));
+    }
+    $(document).on('change', '.hr-bulk-id', function(){
+        var id = $(this).val();
+        if ($(this).prop('checked')) hrOverdutySelected[id] = true; else delete hrOverdutySelected[id];
+        hrOverdutySyncBtn();
+    });
+    // #mass_select_all's own core-provided handler (main.js) sets each row
+    // checkbox's checked state directly via .prop(), which does not fire a
+    // 'change' event on its own - this second, independent handler on the
+    // same element keeps hrOverdutySelected in sync with whatever core just did.
+    $(document).on('change', '#mass_select_all[data-to-table="hr-overduty"]', function(){
+        var checked = $(this).prop('checked');
+        $('.table-hr-overduty .hr-bulk-id').each(function(){
+            var id = $(this).val();
+            if (checked) hrOverdutySelected[id] = true; else delete hrOverdutySelected[id];
+        });
+        hrOverdutySyncBtn();
+    });
+    $('.table-hr-overduty').on('draw.dt', function(){
+        $('.table-hr-overduty .hr-bulk-id').each(function(){
+            if (hrOverdutySelected[$(this).val()]) $(this).prop('checked', true);
+        });
+    });
+    $(document).on('click', '.hr-overduty-bulk-approve-confirm', function(e){
+        e.preventDefault();
+        var ids = Object.keys(hrOverdutySelected);
+        if (!ids.length) return;
+        var params = csrf_pair();
+        ids.forEach(function(id){ params += '&ids[]=' + encodeURIComponent(id); });
+        var $btn = $(this).addClass('disabled');
+        $.post('<?php echo admin_url('hr_module/overduty/bulk_approve'); ?>', params, function(r){
+            $('#hrOverdutyBulkApproveModal').modal('hide');
+            if (r.success) {
+                alert_float('success', '<?php echo _l('hr_overtime_approve'); ?>');
+                hrOverdutySelected = {};
+                $('.table-hr-overduty').DataTable().ajax.reload(null, false);
+                $('.hr-bulk-approve-btn').addClass('hide');
+            } else {
+                alert_float('danger', r.message);
+            }
+        }, 'json').always(function(){ $btn.removeClass('disabled'); });
+    });
 
     // Soft Approve / Soft Reject: informational-only pre-approval, independent
     // of the real Approve/Reject above and never blocks it (mirrors the

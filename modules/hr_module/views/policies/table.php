@@ -49,6 +49,11 @@ if (!empty($search_value['value'])) {
     }));
 }
 
+// +1 on Content/Published below: Status is now its own column at index 3.
+hr_module_apply_datatable_order($rows, [
+    0 => 'title', 1 => 'type', 2 => null, 3 => 'active', 4 => null, 5 => 'published_at',
+]);
+
 // Same department-scoping rule as Policies::_can_manage_departments() - kept in
 // sync manually since this file is included standalone, not via the controller.
 $can_manage_any = $is_global || staff_can('create', 'hr_policies') || staff_can('edit', 'hr_policies');
@@ -74,6 +79,9 @@ foreach ($rows as $p) {
     $atts       = $CI->Policies_model->decode_attachments($p->attachment);
 
     $title_cell = '<a href="' . $view_url . '">' . htmlspecialchars($p->title) . '</a>';
+    if ($CI->Policies_model->is_backdated($p->effective_date, $p->created_at)) {
+        $title_cell .= ' <span class="label label-warning" title="Effective date is earlier than the submission date"><i class="fa fa-triangle-exclamation tw-mr-1"></i>Backdated</span>';
+    }
     $options    = ['<a href="' . $view_url . '">' . _l('hr_view') . '</a>'];
     if ($can_manage) {
         $options[] = '<a href="' . admin_url('hr_module/policies/edit/' . $p->id) . '">' . _l('hr_edit') . '</a>';
@@ -87,6 +95,10 @@ foreach ($rows as $p) {
 
     $visibility_cell = $p->type === 'public' ? 'All Employees' : ($p->department_names ? htmlspecialchars($p->department_names) : '-');
 
+    $status_cell = (isset($p->active) && !$p->active)
+        ? '<span class="label label-default">Inactive</span>'
+        : '<span class="label label-success">Published</span>';
+
     $content_cell = [];
     if (!empty($atts)) {
         $content_cell[] = '<i class="fa fa-file-pdf tw-mr-1"></i>PDF' . (count($atts) > 1 ? ' (' . count($atts) . ')' : '');
@@ -99,6 +111,7 @@ foreach ($rows as $p) {
         $title_cell,
         $type_cell,
         $visibility_cell,
+        $status_cell,
         implode(' + ', $content_cell) ?: '-',
         $p->published_at ? date('d M Y', strtotime($p->published_at)) : '-',
     ];

@@ -121,7 +121,7 @@ $(function(){
     // Sort column index 2 = Pay Period (shifted from 3 now that Basic Salary/
     // item columns were inserted before it - keeps the same "most recent period
     // first" default sort).
-    initDataTable('.table-hr-payroll', window.location.href, [], [2,'desc']);
+    initDataTable('.table-hr-payroll', window.location.href, [], [], [], [2,'desc']);
     function reload() {
         var deptVal = $('#f-dept').length ? $('#f-dept').val() : '';
         var url = window.location.href.split('?')[0]

@@ -31,6 +31,15 @@ if (!empty($search_value['value'])) $filters['search'] = trim($search_value['val
 
 $rows = $CI->Overduty_model->get_for_table($filters);
 
+// +1 on every index below: the bulk-approve checkbox is column 0 (see the
+// matching header cell in index.php's render_datatable() call).
+hr_module_apply_datatable_order($rows, [
+    1 => function ($r) { return $r->first_name . ' ' . $r->last_name; },
+    2 => 'department_name', 3 => 'first_date', 4 => 'day_types', 5 => 'status',
+]);
+
+$can_bulk_approve = is_admin() || staff_can('edit', 'hr_overtime');
+
 // The DataTable's own pagination - rows here are built manually (below)
 // instead of through the generic data_tables_init() helper, so start/length
 // have to be applied by hand after the filtered set is fetched.
@@ -98,7 +107,14 @@ foreach ($rows as $r) {
             . '</form>';
     }
 
+    // Bulk-approve checkbox: only for a pending row the caller can actually
+    // approve - matches the single-row Approve link's own condition above.
+    $checkbox_cell = ($r->status === 'pending' && $can_bulk_approve)
+        ? '<div class="checkbox checkbox-primary"><input type="checkbox" class="hr-bulk-id" value="' . $r->id . '"><label></label></div>'
+        : '';
+
     $row = [
+        $checkbox_cell,
         $employee_cell,
         $r->department_name ? htmlspecialchars($r->department_name) : '-',
         $date_cell,

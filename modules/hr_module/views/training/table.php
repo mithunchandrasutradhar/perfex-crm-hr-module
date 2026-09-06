@@ -31,6 +31,13 @@ if (!empty($search_value['value'])) $filters['search'] = trim($search_value['val
 
 $rows = $CI->Training_model->get_for_table($filters);
 
+hr_module_apply_datatable_order($rows, [
+    0 => 'title',
+    1 => function ($r) { return $r->instructor_name ?: ($r->trainer ?: ''); },
+    2 => 'venue', 3 => 'start_date', 4 => 'end_date', 5 => 'cost',
+    6 => null, 7 => 'status',
+]);
+
 // The DataTable's own pagination - rows here are built manually (below)
 // instead of through the generic data_tables_init() helper, so start/length
 // have to be applied by hand after the filtered set is fetched.

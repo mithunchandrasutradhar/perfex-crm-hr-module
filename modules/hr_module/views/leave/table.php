@@ -26,6 +26,11 @@ if (!empty($search_value['value'])) $filters['search'] = trim($search_value['val
 
 $rows = $CI->Leave_model->get_request(null, $filters);
 
+hr_module_apply_datatable_order($rows, [
+    0 => 'id', 1 => 'employee_name', 2 => 'leave_type_name', 3 => 'from_date',
+    4 => 'to_date', 5 => 'total_days', 6 => 'status', 7 => 'created_at',
+]);
+
 // Fetch each request's day-type composition in one batched query (not per-row) so the
 // list can show "Half Day (Before Lunch)" etc. instead of a bare total.
 $total_filtered = count($rows);

@@ -28,6 +28,23 @@ if (!empty($search_value['value'])) $filters['search'] = trim($search_value['val
 
 $rows = $CI->Payroll_model->get_for_table($filters);
 
+// One column per active payroll item sits between Basic Salary and Overtime
+// (see $item_cells in the row-building loop below) - its width varies by
+// install, so those indices, plus the live-computed Overtime/Shift/Gross/Loan
+// Deduction/Net figures (not stored columns, so nothing stable to sort by),
+// are simply left out of the map (null) - clicking those headers is then a
+// no-op, same as any other non-sortable DataTables column.
+$item_count = count($payroll_items);
+$tail       = 4 + $item_count;
+hr_module_apply_datatable_order($rows, [
+    0 => function ($r) { return $r->first_name . ' ' . $r->last_name; },
+    1 => 'department_name',
+    2 => function ($r) { return sprintf('%04d-%02d', $r->pay_year, $r->pay_month); },
+    3 => 'basic_salary',
+    $tail + 5 => 'status',
+    $tail + 6 => 'payment_date',
+]);
+
 // The DataTable's own pagination - rows here are built manually (below)
 // instead of through the generic data_tables_init() helper, so start/length
 // have to be applied by hand after the filtered set is fetched.

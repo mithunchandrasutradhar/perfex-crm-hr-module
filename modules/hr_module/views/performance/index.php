@@ -75,7 +75,7 @@ $own_emp_id_for_report = $own_report_only ? hr_get_own_employee_id() : 0;
 <?php init_tail(); ?>
 <script>
 $(function(){
-    initDataTable('.table-hr-performance', window.location.href, [], [6,'desc']);
+    initDataTable('.table-hr-performance', window.location.href, [], [], [], [6,'desc']);
     function reload(){
         var deptVal = $('#f-dept').length ? $('#f-dept').val() : '';
         var url = window.location.href.split('?')[0]

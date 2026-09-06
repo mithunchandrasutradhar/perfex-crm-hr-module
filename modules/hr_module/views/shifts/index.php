@@ -32,11 +32,17 @@
               <i class="fa-regular fa-plus tw-mr-1"></i><?php echo _l('hr_shift_add_request'); ?>
             </a>
             <?php endif; ?>
+            <?php if (!empty($can_approve)): ?>
+            <a href="#" data-toggle="modal" data-target="#hrShiftBulkApproveModal" class="hide hr-bulk-approve-btn btn btn-default btn-sm">
+              <i class="fa fa-check-double tw-mr-1"></i><?php echo _l('hr_shift_bulk_approve'); ?>
+            </a>
+            <?php endif; ?>
           </div>
         </div>
         <div class="panel_s">
           <div class="panel-body panel-table-full">
             <?php render_datatable([
+              '<div class="checkbox checkbox-primary mass_select_all_wrap"><input type="checkbox" id="mass_select_all" data-to-table="hr-shifts"><label></label></div>',
               _l('hr_shift_employee'), _l('hr_department'), _l('hr_shift_type'),
               _l('hr_shift_date_range'), _l('hr_status'), 'Submitted',
             ], 'hr-shifts'); ?>
@@ -46,6 +52,26 @@
     </div>
   </div>
 </div>
+
+<?php if (!empty($can_approve)): ?>
+<div class="modal fade bulk_actions" id="hrShiftBulkApproveModal" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal">&times;</button>
+        <h4 class="modal-title"><?php echo _l('hr_shift_bulk_approve'); ?></h4>
+      </div>
+      <div class="modal-body">
+        <p><?php echo _l('hr_shift_bulk_approve_confirm'); ?></p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default" data-dismiss="modal"><?php echo _l('hr_cancel'); ?></button>
+        <a href="#" class="btn btn-primary hr-shift-bulk-approve-confirm"><?php echo _l('hr_shift_approve'); ?></a>
+      </div>
+    </div>
+  </div>
+</div>
+<?php endif; ?>
 
 <div class="modal fade" id="rejectShiftModal" tabindex="-1">
   <div class="modal-dialog modal-sm">
@@ -71,7 +97,7 @@
 <?php init_tail(); ?>
 <script>
 $(function(){
-    initDataTable('.table-hr-shifts', window.location.href, [], [5,'desc']);
+    initDataTable('.table-hr-shifts', window.location.href, [], [], [], [5,'desc']);
     function reload() {
         var deptVal = $('#f-dept').length ? $('#f-dept').val() : '';
         var url = window.location.href.split('?')[0]
@@ -85,6 +111,60 @@ $(function(){
     function csrf_pair() {
         return '<?php echo $this->security->get_csrf_token_name(); ?>=<?php echo $this->security->get_csrf_hash(); ?>';
     }
+
+    // Every DataTables redraw (sorting, paging, a filter dropdown changing,
+    // reload() above) rebuilds the table body from scratch, including every
+    // .hr-bulk-id checkbox - the browser has no memory a given row used to
+    // be checked, so a plain :checked DOM query loses the selection (and the
+    // Bulk Approve button) the moment any of that happens. hrShiftSelected
+    // tracks the chosen ids independently of the DOM instead, and 'draw.dt'
+    // (fired on every redraw, for any reason) re-applies it to whichever
+    // matching checkboxes are on the page afterwards.
+    var hrShiftSelected = {};
+    function hrShiftSyncBtn() {
+        $('.hr-bulk-approve-btn').toggleClass('hide', $.isEmptyObject(hrShiftSelected));
+    }
+    $(document).on('change', '.hr-bulk-id', function(){
+        var id = $(this).val();
+        if ($(this).prop('checked')) hrShiftSelected[id] = true; else delete hrShiftSelected[id];
+        hrShiftSyncBtn();
+    });
+    // #mass_select_all's own core-provided handler (main.js) sets each row
+    // checkbox's checked state directly via .prop(), which does not fire a
+    // 'change' event on its own - this second, independent handler on the
+    // same element keeps hrShiftSelected in sync with whatever core just did.
+    $(document).on('change', '#mass_select_all[data-to-table="hr-shifts"]', function(){
+        var checked = $(this).prop('checked');
+        $('.table-hr-shifts .hr-bulk-id').each(function(){
+            var id = $(this).val();
+            if (checked) hrShiftSelected[id] = true; else delete hrShiftSelected[id];
+        });
+        hrShiftSyncBtn();
+    });
+    $('.table-hr-shifts').on('draw.dt', function(){
+        $('.table-hr-shifts .hr-bulk-id').each(function(){
+            if (hrShiftSelected[$(this).val()]) $(this).prop('checked', true);
+        });
+    });
+    $(document).on('click', '.hr-shift-bulk-approve-confirm', function(e){
+        e.preventDefault();
+        var ids = Object.keys(hrShiftSelected);
+        if (!ids.length) return;
+        var params = csrf_pair();
+        ids.forEach(function(id){ params += '&ids[]=' + encodeURIComponent(id); });
+        var $btn = $(this).addClass('disabled');
+        $.post('<?php echo admin_url('hr_module/shifts/bulk_approve'); ?>', params, function(r){
+            $('#hrShiftBulkApproveModal').modal('hide');
+            if (r.success) {
+                alert_float('success', '<?php echo _l('hr_shift_approved_msg'); ?>');
+                hrShiftSelected = {};
+                $('.table-hr-shifts').DataTable().ajax.reload(null, false);
+                $('.hr-bulk-approve-btn').addClass('hide');
+            } else {
+                alert_float('danger', r.message);
+            }
+        }, 'json').always(function(){ $btn.removeClass('disabled'); });
+    });
 
     // Approve (quick action, straight from the list)
     $(document).on('click', '.hr-shift-approve', function(e){
