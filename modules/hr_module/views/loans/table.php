@@ -60,7 +60,7 @@ foreach ($rows as $r) {
     $employee_cell = '<a href="' . $view_url . '">' . htmlspecialchars($r->first_name . ' ' . $r->last_name) . '</a><br><small class="text-muted">' . $r->employee_code . '</small>';
     $options = [];
     $options[] = '<a href="' . $view_url . '">' . _l('hr_view') . '</a>';
-    if (staff_can('delete', 'hr_loans') && !in_array($r->status, ['active', 'closed'])) {
+    if (staff_can('delete', 'hr_loans') && !in_array($r->status, ['approved', 'active', 'closed'])) {
         $options[] = '<a href="' . admin_url('hr_module/loans/delete/' . $r->id) . '" class="_delete text-danger">' . _l('hr_delete') . '</a>';
     }
     $employee_cell .= '<div class="row-options">' . implode(' | ', $options) . '</div>';

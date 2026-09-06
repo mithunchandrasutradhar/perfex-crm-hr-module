@@ -197,14 +197,14 @@ class Loans_model extends App_Model
                    : ['success' => false, 'message' => _l('hr_error_saving')];
     }
 
-    // Only safe to change the principal before any repayment exists at all -
-    // once one is recorded (status becomes 'active'), reconciling an amount
-    // change against already-recorded repayments/synced payroll deductions is
-    // a much harder problem this does not attempt to solve.
+    // Only adjustable while still pending review - once approved the amount
+    // is considered locked in, and once a repayment exists (status 'active')
+    // reconciling an amount change against already-recorded repayments/synced
+    // payroll deductions is a much harder problem this does not attempt to solve.
     public function can_adjust($loan)
     {
         return $loan
-            && in_array($loan->status, ['pending', 'approved'], true)
+            && $loan->status === 'pending'
             && (float) $loan->total_repaid === 0.0;
     }
 
@@ -333,8 +333,8 @@ class Loans_model extends App_Model
     public function delete($id)
     {
         $loan = $this->db->where('id', $id)->get(db_prefix() . $this->table)->row();
-        if ($loan && in_array($loan->status, ['active', 'closed'])) {
-            return ['success' => false, 'message' => 'Active or closed loans cannot be deleted.'];
+        if ($loan && in_array($loan->status, ['approved', 'active', 'closed'])) {
+            return ['success' => false, 'message' => 'Approved, active or closed loans cannot be deleted.'];
         }
         $this->db->where('loan_id', $id)->delete(db_prefix() . $this->repay_table);
         $this->db->where('loan_id', $id)->delete(db_prefix() . $this->deduct_table);

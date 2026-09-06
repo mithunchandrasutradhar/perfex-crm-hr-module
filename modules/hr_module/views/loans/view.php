@@ -329,7 +329,7 @@ if (!isset($adjustments)) $adjustments = [];
           $can_approve_reject = $loan->status === 'pending' && staff_can('edit','hr_loans');
           $can_repay          = in_array($loan->status, ['approved','active']) && staff_can('edit','hr_loans');
           $can_view_deductions = staff_can('view','hr_loans');
-          $can_delete_loan    = !in_array($loan->status, ['active','closed']) && staff_can('delete','hr_loans');
+          $can_delete_loan    = !in_array($loan->status, ['approved','active','closed']) && staff_can('delete','hr_loans');
         ?>
         <?php if ($can_approve_reject || $can_repay || $can_view_deductions || $can_delete_loan || $can_adjust): ?>
         <div class="panel_s">
