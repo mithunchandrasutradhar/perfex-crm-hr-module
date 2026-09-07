@@ -18,6 +18,14 @@
               </option>
               <?php endforeach; ?>
             </select>
+            <select id="f-type" class="selectpicker" data-width="160px">
+              <option value=""><?php echo _l('hr_all') . ' ' . _l('hr_leave_type'); ?></option>
+              <?php foreach ($leave_types as $t): ?>
+              <option value="<?php echo $t->id; ?>" <?php if ($leave_type_id == $t->id) echo 'selected'; ?>>
+                <?php echo htmlspecialchars($t->name); ?>
+              </option>
+              <?php endforeach; ?>
+            </select>
             <select id="f-year" class="selectpicker" data-width="90px">
               <?php for ($y = date('Y'); $y >= date('Y') - 3; $y--): ?>
               <option value="<?php echo $y; ?>" <?php if ($year == $y) echo 'selected'; ?>><?php echo $y; ?></option>
@@ -51,10 +59,11 @@ $(function(){
     function tableUrl() {
         return window.location.href.split('?')[0]
             + '?dept_id=' + $('#f-dept').val()
-            + '&year=' + $('#f-year').val();
+            + '&year=' + $('#f-year').val()
+            + '&leave_type_id=' + $('#f-type').val();
     }
     initDataTable('.table-hr-leave-balances', tableUrl(), [], [0, 'asc']);
-    $('#f-dept, #f-year').on('change changed.bs.select', function(){
+    $('#f-dept, #f-year, #f-type').on('change changed.bs.select', function(){
         $('.table-hr-leave-balances').DataTable().ajax.url(tableUrl()).load();
     });
 });

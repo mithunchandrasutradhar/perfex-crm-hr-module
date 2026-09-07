@@ -496,7 +496,7 @@ class Leave_model extends App_Model
         return $this->db->get()->result();
     }
 
-    public function get_all_balances($year = null, $dept_id = null, $search = null)
+    public function get_all_balances($year = null, $dept_id = null, $search = null, $leave_type_id = null)
     {
         if (!$year) $year = date('Y');
         $this->db->select('b.*, lt.name as leave_type_name, lt.hours_per_day,
@@ -508,6 +508,7 @@ class Leave_model extends App_Model
             ->join(db_prefix() . 'departments d', 'd.departmentid = e.department_id', 'left')
             ->where('b.year', $year);
         if ($dept_id) $this->db->where('e.department_id', $dept_id);
+        if ($leave_type_id) $this->db->where('b.leave_type_id', $leave_type_id);
         if (!empty($search)) {
             $this->db->group_start()
                 ->like('CONCAT(e.first_name," ",e.last_name)', $search)

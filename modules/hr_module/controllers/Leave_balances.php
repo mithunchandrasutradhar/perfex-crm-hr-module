@@ -18,13 +18,16 @@ class Leave_balances extends AdminController
         if ($this->input->is_ajax_request()) {
             $this->app->get_table_data(module_views_path('hr_module', 'leave_balances/table'));
         }
-        $year    = $this->input->get('year') ?: date('Y');
-        $dept_id = $this->input->get('dept_id');
+        $year          = $this->input->get('year') ?: date('Y');
+        $dept_id       = $this->input->get('dept_id');
+        $leave_type_id = $this->input->get('leave_type_id');
 
-        $data['title']       = _l('hr_leave_balances_list');
-        $data['year']        = $year;
-        $data['dept_id']     = $dept_id;
-        $data['departments'] = $this->Departments_model->get_active();
+        $data['title']         = _l('hr_leave_balances_list');
+        $data['year']          = $year;
+        $data['dept_id']       = $dept_id;
+        $data['leave_type_id'] = $leave_type_id;
+        $data['departments']   = $this->Departments_model->get_active();
+        $data['leave_types']   = $this->Leave_model->get_active_types();
         $this->load->view('hr_module/leave_balances/index', $data);
     }
 

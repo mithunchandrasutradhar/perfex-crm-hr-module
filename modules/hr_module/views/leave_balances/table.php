@@ -4,8 +4,9 @@ defined('BASEPATH') or exit('No direct script access allowed');
 $CI = &get_instance();
 $CI->load->model('hr_module/Leave_model');
 
-$year    = $CI->input->get('year') ?: date('Y');
-$dept_id = $CI->input->get('dept_id');
+$year          = $CI->input->get('year') ?: date('Y');
+$dept_id       = $CI->input->get('dept_id');
+$leave_type_id = $CI->input->get('leave_type_id');
 
 // The DataTable's own search box - rows here are built manually (below)
 // instead of through the generic data_tables_init() helper, so its
@@ -13,7 +14,7 @@ $dept_id = $CI->input->get('dept_id');
 $search_value = $CI->input->post('search');
 $search       = !empty($search_value['value']) ? trim($search_value['value']) : null;
 
-$rows = $CI->Leave_model->get_all_balances($year, $dept_id, $search);
+$rows = $CI->Leave_model->get_all_balances($year, $dept_id, $search, $leave_type_id);
 
 // The DataTable's own pagination - rows here are built manually (below)
 // instead of through the generic data_tables_init() helper, so start/length
