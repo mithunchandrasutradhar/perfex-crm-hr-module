@@ -14,6 +14,7 @@ $att_labels = [
 ];
 $att = $employee_id ? ($hr_stats['attendance_today'] ?? null) : null;
 $att_info = $att ? ($att_labels[$att] ?? ['label' => ucfirst($att), 'class' => 'tw-text-neutral-800']) : null;
+$att_in_time = $hr_stats['attendance_today_in_time'] ?? null;
 ?>
 <div class="widget" id="widget-<?php echo create_widget_id(); ?>"
     data-name="HR Today's Attendance">
@@ -36,6 +37,9 @@ $att_info = $att ? ($att_labels[$att] ?? ['label' => ucfirst($att), 'class' => '
             <div class="tw-text-center tw-py-2">
                 <div class="tw-text-2xl tw-font-bold <?php echo $att_info ? $att_info['class'] : 'tw-text-neutral-400'; ?>">
                     <?php echo $att_info ? $att_info['label'] : 'Not Marked'; ?>
+                    <?php if ($att_in_time): ?>
+                    <span class="tw-text-xs tw-font-normal tw-text-neutral-500">(<?php echo date('h:i A', strtotime($att_in_time)); ?>)</span>
+                    <?php endif; ?>
                 </div>
                 <div class="tw-text-xs tw-text-neutral-500 tw-mt-1"><?php echo date('l, d M Y'); ?></div>
             </div>

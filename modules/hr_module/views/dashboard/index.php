@@ -84,6 +84,9 @@ $task_status_colors = [
                         <div class="tw-text-xs tw-text-neutral-500 tw-uppercase tw-tracking-wide">Today's Attendance</div>
                         <div class="tw-text-xl tw-font-bold tw-text-neutral-800">
                             <?php echo $att ? $att['label'] : 'Not Marked'; ?>
+                            <?php if (!empty($stats['attendance_today_in_time'])): ?>
+                            <span class="tw-text-xs tw-font-normal text-muted">(<?php echo date('h:i A', strtotime($stats['attendance_today_in_time'])); ?>)</span>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </div>

@@ -427,7 +427,8 @@ class Hr_module_model extends App_Model
         $att = $this->db->where('employee_id', $employee_id)
             ->where('attendance_date', $today)
             ->get(db_prefix() . 'hr_attendance')->row();
-        $stats['attendance_today'] = $att ? $att->status : null;
+        $stats['attendance_today']         = $att ? $att->status : null;
+        $stats['attendance_today_in_time'] = $att ? $att->in_time : null;
 
         // Leave balance — Casual Leave remaining days this year (dashboard widget
         // shows only this one leave type, not a combined total across all types)

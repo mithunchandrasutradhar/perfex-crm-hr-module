@@ -742,6 +742,9 @@ function hr_module_cron_tasks()
 
     // Auto-mark absent for anyone with no punch once their day has clearly ended
     hr_module_auto_mark_absent();
+
+    // Auto-generate this month's payroll once Settings > "Payroll Generation Day" arrives
+    hr_module_auto_generate_payroll();
 }
 
 // For every active employee, marks yesterday and today absent if: nothing
@@ -810,5 +813,65 @@ function hr_module_auto_mark_absent()
                 'notes'           => 'Automatically marked absent - no punch recorded.',
             ]);
         }
+    }
+}
+
+// Auto-generates the current month's payroll once Settings > "Payroll
+// Generation Day" has arrived, for every active employee who doesn't already
+// have one for this period. Runs every cron tick (same as
+// hr_module_auto_mark_absent() above) - safe to do because it reuses the
+// exact same Payroll_model::generate() the manual Payroll > Generate form
+// calls, and that already refuses to regenerate an employee/month/year
+// combination that exists, so this is a no-op for the rest of the month once
+// each employee's payroll has been created once.
+//
+// A generation day beyond what the current month actually has (e.g. 30 or 31
+// in February) is capped to the month's real last day, so it still fires
+// instead of never matching that month at all.
+function hr_module_auto_generate_payroll()
+{
+    $CI = &get_instance();
+    if (!isset($CI->Hr_module_model)) {
+        $CI->load->model('hr_module/Hr_module_model');
+    }
+    $gen_day = (int) $CI->Hr_module_model->get_setting('payroll_generation_day', 25);
+    if ($gen_day < 1) return;
+
+    $effective_day = min($gen_day, (int) date('t'));
+    if ((int) date('j') < $effective_day) return;
+
+    $year  = (int) date('Y');
+    $month = (int) date('n');
+
+    $CI->load->model('hr_module/Payroll_model');
+    $CI->load->model('hr_module/Employees_model');
+    $employees = $CI->Employees_model->get_all(['status' => 'active']);
+
+    $success = $skipped = 0;
+    foreach ($employees as $emp) {
+        $r = $CI->Payroll_model->generate($emp->id, $month, $year, ['notes' => 'Auto-generated']);
+        if ($r['success']) $success++; else $skipped++;
+    }
+
+    // Only the first cron tick that actually creates something for this
+    // period sends a notification - every later tick this month just finds
+    // everyone already generated (success stays 0) and stays silent.
+    if ($success > 0 && $CI->Hr_module_model->notifications_enabled('notify_payroll')) {
+        $CI->load->model('hr_module/Email_templates_model');
+        $period = date('F', mktime(0, 0, 0, $month, 1)) . ' ' . $year;
+        $placeholders = [
+            '{period}'        => $period,
+            '{success_count}' => $success,
+            '{skipped_count}' => $skipped,
+        ];
+        $tpl  = $CI->Email_templates_model->render('payroll_generated', $placeholders);
+        $link = admin_url('hr_module/payroll');
+        $CI->Hr_module_model->send_notification_email($tpl->subject, $tpl->body, $link);
+        $CI->Hr_module_model->notify_by_permission(
+            'view', 'hr_payroll',
+            'not_hr_payroll_generated',
+            'hr_module/payroll',
+            [$period]
+        );
     }
 }
