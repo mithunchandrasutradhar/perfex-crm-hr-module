@@ -243,6 +243,7 @@ All settings live in the generic key/value `hr_settings` table and are read via 
 | `working_days_per_week` (1–7), `working_hours_per_day` (1–24) | Baseline working schedule |
 | `office_start_time`, `office_end_time` | Baseline office hours |
 | `late_threshold_minutes` (0–120) | Grace period before a punch is flagged "late" |
+| `night_shift_grace_hours` (0–24, default 4) | How long past a night-shift's scheduled end time a punch is still treated as closing out yesterday's shift instead of starting a new day — see `Attendance_model::resolve_attendance_date_for_punch()` |
 | `default_overtime_rate` (1–5), `overtime_holiday_rate` (1–5) | OT pay multipliers (normal day / holiday-or-weekly-off) |
 | `overtime_day_divisor` (1–31) | Divides monthly salary into a daily rate for OT amount calculation |
 | `shift_allowance_evening_amount`, `shift_allowance_night_amount` | Per-shift allowance amounts |

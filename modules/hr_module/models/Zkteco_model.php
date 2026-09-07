@@ -178,7 +178,10 @@ class Zkteco_model extends App_Model
             $ts = $now + $line_num;
             $line_num++;
 
-            $date = date('Y-m-d', $ts);
+            // Usually just today's calendar date - but a night-shift employee's
+            // closing punch after midnight gets redirected back to yesterday's
+            // still-open row instead of starting a spurious new day.
+            $date = $this->Attendance_model->resolve_attendance_date_for_punch($employee_id, $ts);
             $groups[$employee_id . '|' . $date][] = [
                 'employee_id'  => $employee_id,
                 'date'         => $date,
@@ -232,21 +235,19 @@ class Zkteco_model extends App_Model
                     continue;
                 }
 
-                if ($p['time'] > $existing->in_time) {
-                    $new_out = $existing->out_time ? max($existing->out_time, $p['time']) : $p['time'];
-                    if ($new_out !== $existing->out_time) {
-                        $resolved = $this->Attendance_model->resolve_status_and_hours($employee_id, $date, $existing->in_time, $new_out);
-                        // This punch is now the latest for the day (it just
-                        // became out_time), so its verify method is what the
-                        // Attendance list's Source column should show.
-                        $this->db->where('id', $existing->id)->update(db_prefix() . 'hr_attendance', [
-                            'out_time'      => $new_out,
-                            'working_hours' => $resolved['working_hours'],
-                            'verify_mode'   => $verify_label,
-                        ]);
-                        $existing->out_time = $new_out;
-                        $saved++;
-                    }
+                $new_out = $this->Attendance_model->resolve_new_out_time($employee_id, $date, $existing->in_time, $existing->out_time, $p['time']);
+                if ($new_out !== $existing->out_time) {
+                    $resolved = $this->Attendance_model->resolve_status_and_hours($employee_id, $date, $existing->in_time, $new_out);
+                    // This punch is now the latest for the day (it just
+                    // became out_time), so its verify method is what the
+                    // Attendance list's Source column should show.
+                    $this->db->where('id', $existing->id)->update(db_prefix() . 'hr_attendance', [
+                        'out_time'      => $new_out,
+                        'working_hours' => $resolved['working_hours'],
+                        'verify_mode'   => $verify_label,
+                    ]);
+                    $existing->out_time = $new_out;
+                    $saved++;
                 }
             }
         }
@@ -298,7 +299,10 @@ class Zkteco_model extends App_Model
             $ts = $now + $line_num;
             $line_num++;
 
-            $date = date('Y-m-d', $ts);
+            // Usually just today's calendar date - but a night-shift employee's
+            // closing punch after midnight gets redirected back to yesterday's
+            // still-open row instead of starting a spurious new day.
+            $date = $this->Attendance_model->resolve_attendance_date_for_punch($employee_id, $ts);
             $groups[$employee_id . '|' . $date][] = [
                 'employee_id'  => $employee_id,
                 'date'         => $date,
@@ -350,18 +354,16 @@ class Zkteco_model extends App_Model
                     continue;
                 }
 
-                if ($p['time'] > $existing->in_time) {
-                    $new_out = $existing->out_time ? max($existing->out_time, $p['time']) : $p['time'];
-                    if ($new_out !== $existing->out_time) {
-                        $resolved = $this->Attendance_model->resolve_status_and_hours($employee_id, $date, $existing->in_time, $new_out);
-                        $this->db->where('id', $existing->id)->update(db_prefix() . 'hr_attendance', [
-                            'out_time'      => $new_out,
-                            'working_hours' => $resolved['working_hours'],
-                            'verify_mode'   => $verify_label,
-                        ]);
-                        $existing->out_time = $new_out;
-                        $saved++;
-                    }
+                $new_out = $this->Attendance_model->resolve_new_out_time($employee_id, $date, $existing->in_time, $existing->out_time, $p['time']);
+                if ($new_out !== $existing->out_time) {
+                    $resolved = $this->Attendance_model->resolve_status_and_hours($employee_id, $date, $existing->in_time, $new_out);
+                    $this->db->where('id', $existing->id)->update(db_prefix() . 'hr_attendance', [
+                        'out_time'      => $new_out,
+                        'working_hours' => $resolved['working_hours'],
+                        'verify_mode'   => $verify_label,
+                    ]);
+                    $existing->out_time = $new_out;
+                    $saved++;
                 }
             }
         }

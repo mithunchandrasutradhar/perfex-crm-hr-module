@@ -7,10 +7,18 @@ $CI->load->model('hr_module/Whatsapp_templates_model');
 $can_edit = staff_can('edit', 'hr_settings') || is_admin();
 $rows     = $CI->Whatsapp_templates_model->get_all();
 
+// The DataTable's own pagination - rows here are built manually (below)
+// instead of through the generic data_tables_init() helper, so start/length
+// have to be applied by hand after the full set is fetched.
+$total_filtered = count($rows);
+$dt_start  = (int) $CI->input->post('start');
+$dt_length = (int) $CI->input->post('length');
+if ($dt_length > 0) $rows = array_slice($rows, $dt_start, $dt_length);
+
 $output = [
     'draw'                 => intval($CI->input->post('draw')),
-    'iTotalRecords'        => count($rows),
-    'iTotalDisplayRecords' => count($rows),
+    'iTotalRecords'        => $total_filtered,
+    'iTotalDisplayRecords' => $total_filtered,
     'aaData'               => [],
 ];
 

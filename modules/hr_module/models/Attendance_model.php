@@ -258,6 +258,83 @@ class Attendance_model extends App_Model
         return $this->db->get($this->table)->row();
     }
 
+    // An "overnight" shift is one whose end time is earlier in the clock than
+    // its start time (e.g. 18:00 -> 02:00) - it's expected to close out sometime
+    // after midnight on the day following $date. Shared by both the punch-date
+    // redirection below and the out_time comparison in Zkteco_model, so both
+    // agree on which days need overnight-safe handling.
+    public function is_night_shift_day($employee_id, $date)
+    {
+        $CI = &get_instance();
+        $CI->load->model('hr_module/Shifts_model');
+        $shift = $CI->Shifts_model->get_employee_shift_for_date($employee_id, $date);
+        return $shift && $shift->start_time && $shift->end_time && $shift->end_time < $shift->start_time;
+    }
+
+    // A punch is normally filed under its own calendar date, which breaks for
+    // a night-shift employee (e.g. 18:00 -> 02:00): their closing punch lands
+    // on the NEXT calendar day and would otherwise be wrongly treated as a
+    // fresh day's first punch instead of yesterday's out_time. Redirects such
+    // a punch back to yesterday's attendance_date only when yesterday's row
+    // is already open (has an in_time) - this never invents a "yesterday"
+    // record out of nowhere, and non-shift/day-shift employees are completely
+    // unaffected since their shift (or lack of one) never has end < start.
+    public function resolve_attendance_date_for_punch($employee_id, $ts)
+    {
+        $today     = date('Y-m-d', $ts);
+        $yesterday = date('Y-m-d', strtotime('-1 day', $ts));
+        $time      = date('H:i:s', $ts);
+
+        if (!$this->is_night_shift_day($employee_id, $yesterday)) {
+            return $today;
+        }
+
+        $CI = &get_instance();
+        $CI->load->model('hr_module/Shifts_model');
+        $shift = $CI->Shifts_model->get_employee_shift_for_date($employee_id, $yesterday);
+
+        $CI->load->model('hr_module/Hr_module_model');
+        $grace_hours  = (float) $CI->Hr_module_model->get_setting('night_shift_grace_hours', '4');
+        $grace_cutoff = date('H:i:s', strtotime($shift->end_time) + $grace_hours * 3600);
+        if ($time > $grace_cutoff) {
+            return $today;
+        }
+
+        $existing = $this->db
+            ->where('employee_id', $employee_id)
+            ->where('attendance_date', $yesterday)
+            ->get($this->table)->row();
+
+        return $existing ? $yesterday : $today;
+    }
+
+    // Decides what a night-shift day's out_time should become once $punch_time
+    // arrives. Once a day is known to be an overnight shift (see
+    // is_night_shift_day()), its punches after midnight have a SMALLER raw
+    // HH:MM:SS value than the evening in_time despite being chronologically
+    // later (e.g. 00:30 following an 18:35 in_time) - plain string comparison
+    // (used below for every other, non-overnight day) would read that
+    // backwards and silently stop updating out_time past midnight. Compares
+    // elapsed seconds since in_time instead, wrapping a negative gap by +24h -
+    // the same tolerance _calc_hours() already assumes for the hours figure.
+    // Returns $current_out_time unchanged when $punch_time isn't actually later.
+    public function resolve_new_out_time($employee_id, $date, $in_time, $current_out_time, $punch_time)
+    {
+        if (!$this->is_night_shift_day($employee_id, $date)) {
+            if ($punch_time <= $in_time) return $current_out_time;
+            return $current_out_time ? max($current_out_time, $punch_time) : $punch_time;
+        }
+
+        $elapsed = function ($t) use ($in_time) {
+            $diff = strtotime($t) - strtotime($in_time);
+            return $diff < 0 ? $diff + 86400 : $diff;
+        };
+        $punch_elapsed = $elapsed($punch_time);
+        if ($punch_elapsed <= 0) return $current_out_time;
+        if ($current_out_time && $elapsed($current_out_time) >= $punch_elapsed) return $current_out_time;
+        return $punch_time;
+    }
+
     // Shared shift-aware status/hours resolution - used by manual entry/import
     // above and by Zkteco_model::sync() so device-synced punches get the same
     // shift-based late/hours calculation instead of a separate, divergent path.

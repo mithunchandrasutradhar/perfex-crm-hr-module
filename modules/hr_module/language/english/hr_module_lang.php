@@ -629,6 +629,7 @@ $lang['hr_settings_working_hours']         = 'Working Hours Per Day';
 $lang['hr_settings_office_start_time']     = 'Office Start Time';
 $lang['hr_settings_office_end_time']       = 'Office End Time';
 $lang['hr_settings_late_threshold']        = 'Late Threshold (minutes)';
+$lang['hr_settings_night_shift_grace']     = 'Night Shift Grace Period (hours)';
 $lang['hr_settings_overtime_rate']         = 'Weekend Overduty Rate';
 $lang['hr_settings_overtime_holiday_rate'] = 'Holiday Overduty Rate';
 $lang['hr_settings_overtime_day_divisor']      = 'Overduty Day Divisor';

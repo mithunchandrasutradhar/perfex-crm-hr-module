@@ -162,6 +162,14 @@ $can_edit = staff_can('edit', 'hr_settings') || is_admin();
                                 </div>
                                 <div class="col-md-3 col-sm-6">
                                     <div class="form-group">
+                                        <label><?php echo _l('hr_settings_night_shift_grace'); ?></label>
+                                        <input type="number" name="night_shift_grace_hours" class="form-control" min="0" max="24"
+                                            value="<?php echo isset($settings['night_shift_grace_hours']) ? (int)$settings['night_shift_grace_hours'] : 4; ?>"
+                                            <?php echo !$can_edit ? 'readonly' : ''; ?>>
+                                    </div>
+                                </div>
+                                <div class="col-md-3 col-sm-6">
+                                    <div class="form-group">
                                         <label><?php echo _l('hr_settings_overtime_rate'); ?></label>
                                         <input type="number" name="default_overtime_rate" class="form-control" step="0.1" min="1" max="5"
                                             value="<?php echo isset($settings['default_overtime_rate']) ? $settings['default_overtime_rate'] : '1.5'; ?>"
