@@ -23,9 +23,9 @@
             <hr class="-tw-mx-3 tw-mt-2 tw-mb-4">
 
             <div class="tw-text-center tw-py-2">
-                <div class="tw-text-2xl tw-font-bold text-success"><?php echo $hr_stats['leave_balance_remaining']; ?></div>
+                <div class="tw-text-2xl tw-font-bold text-success"><?php echo hr_format_day_duration($hr_stats['leave_balance_remaining'], $hr_stats['leave_hours_per_day'] ?? 8); ?></div>
                 <div class="tw-text-xs tw-text-neutral-500 tw-mt-1">Casual Leave days remaining</div>
-                <div class="tw-text-xs tw-text-neutral-400 tw-mt-1"><?php echo $hr_stats['leave_days_used']; ?> used this year</div>
+                <div class="tw-text-xs tw-text-neutral-400 tw-mt-1"><?php echo hr_format_day_duration($hr_stats['leave_days_used'], $hr_stats['leave_hours_per_day'] ?? 8); ?> used this year</div>
             </div>
         </div>
     </div>

@@ -95,7 +95,7 @@ foreach ($rows as $r) {
         date('D, d M Y', strtotime($r->attendance_date)),
         $r->in_time  ? date('h:i A', strtotime($r->in_time))  : '-',
         $r->out_time ? date('h:i A', strtotime($r->out_time)) : '-',
-        $r->working_hours ? $r->working_hours . ' h' : '-',
+        $r->working_hours ? hr_format_hours($r->working_hours) : '-',
         $status_badge,
         $source_icon,
         $log_btn,

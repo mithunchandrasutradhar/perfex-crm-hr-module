@@ -431,7 +431,7 @@ class Hr_module_model extends App_Model
 
         // Leave balance — Casual Leave remaining days this year (dashboard widget
         // shows only this one leave type, not a combined total across all types)
-        $this->db->select('SUM(b.allocated_days + b.carry_forward_days - b.used_days) as remaining', false)
+        $this->db->select('SUM(b.allocated_days + b.carry_forward_days - b.used_days) as remaining, MAX(lt.hours_per_day) as hours_per_day', false)
             ->from(db_prefix() . 'hr_leave_balances b')
             ->join(db_prefix() . 'hr_leave_types lt', 'lt.id = b.leave_type_id', 'left')
             ->where('b.employee_id', $employee_id)
@@ -439,6 +439,7 @@ class Hr_module_model extends App_Model
             ->where('lt.name', 'Casual Leave');
         $bal = $this->db->get()->row();
         $stats['leave_balance_remaining'] = ($bal && $bal->remaining !== null) ? (float) $bal->remaining : 0;
+        $stats['leave_hours_per_day']     = ($bal && $bal->hours_per_day) ? (float) $bal->hours_per_day : 8.0;
 
         // Used Casual Leave days this year
         $this->db->select('SUM(b.used_days) as used', false)

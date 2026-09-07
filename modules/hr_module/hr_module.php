@@ -255,6 +255,71 @@ function hr_module_personal_controller_labels()
 // with no single stable backing field (row-options, a progress bar, a
 // live-computed figure) - clicking that header is then a no-op, same as
 // any genuinely non-sortable DataTables column.
+// Formats a decimal-hours value (e.g. 8.92, as stored in hr_attendance.working_hours
+// or computed from an hourly-leave time range) as "Xh Ym" instead of a bare decimal -
+// 0.92 * 60 rounds to the nearest minute, so 8.92 -> "8h 55m", not the easily-misread
+// "8.92" (which looks like "92 minutes" at a glance).
+function hr_format_hours($decimal_hours)
+{
+    $total_minutes = (int) round(((float) $decimal_hours) * 60);
+    $h = intdiv($total_minutes, 60);
+    $m = $total_minutes % 60;
+    return $h . 'h ' . $m . 'm';
+}
+
+// Shared "X days Y hours Z min" assembly for already-resolved integer parts.
+// Minutes is always printed in short form ("min") once shown; the hours+minutes
+// pair is dropped entirely (leaving just the day count) only when BOTH are
+// zero - e.g. "12 days 0 hours 0 minutes" -> "12 days", but "12 days 6 hours 0
+// min" keeps the explicit 0 minutes since hours is non-zero.
+function hr_format_dhm($days, $hours, $minutes)
+{
+    if ($hours == 0 && $minutes == 0) {
+        return $days . ' ' . ($days == 1 ? 'day' : 'days');
+    }
+    $parts = [];
+    if ($days > 0) $parts[] = $days . ' ' . ($days == 1 ? 'day' : 'days');
+    $parts[] = $hours . ' ' . ($hours == 1 ? 'hour' : 'hours');
+    $parts[] = $minutes . ' min';
+    return implode(' ', $parts);
+}
+
+// Formats a decimal number of leave days (a request total or a balance figure -
+// always already rounded to 2 decimals in the database) as "X days Y hours Z
+// min", converting the fractional-day remainder using the leave type's own
+// hours_per_day (default 8.0 if not given).
+function hr_format_day_duration($decimal_days, $hours_per_day = null)
+{
+    $hpd = ($hours_per_day !== null && (float) $hours_per_day > 0) ? (float) $hours_per_day : 8.0;
+    $decimal_days = (float) $decimal_days;
+    $days = (int) floor($decimal_days + 1e-9);
+    $frac = max(0, $decimal_days - $days);
+
+    $minutes_per_day = (int) round($hpd * 60);
+    $total_minutes   = (int) round($frac * $hpd * 60);
+    if ($total_minutes >= $minutes_per_day) {
+        $days          += intdiv($total_minutes, $minutes_per_day);
+        $total_minutes %= $minutes_per_day;
+    }
+    $hours   = intdiv($total_minutes, 60);
+    $minutes = $total_minutes % 60;
+    return hr_format_dhm($days, $hours, $minutes);
+}
+
+// Formats an exact whole number of minutes (e.g. a single hourly-leave entry's
+// picked start/end time, before that gets rounded into a day-fraction) as "X
+// hours Y min" - used instead of hr_format_day_duration() wherever the precise
+// minutes are already known, since round-tripping through a rounded day-fraction
+// (hours / hours_per_day, then back) can drift by a couple of minutes (e.g. an
+// exact 1-hour pick could otherwise come back as "1 hour 2 minutes").
+function hr_format_minutes_duration($total_minutes)
+{
+    $total_minutes = max(0, (int) round($total_minutes));
+    $hours   = intdiv($total_minutes, 60);
+    $minutes = $total_minutes % 60;
+    return hr_format_dhm(0, $hours, $minutes);
+}
+
 function hr_module_apply_datatable_order(&$rows, array $column_map)
 {
     $CI = &get_instance();

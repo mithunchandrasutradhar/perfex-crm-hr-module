@@ -36,12 +36,12 @@ foreach ($rows as $b) {
     $pct       = $total > 0 ? min(100, round($b->used_days / $total * 100)) : 0;
     $color     = $pct >= 90 ? 'danger' : ($pct >= 60 ? 'warning' : 'success');
 
-    $allocated_cell = $total;
+    $allocated_cell = hr_format_day_duration($total, $b->hours_per_day);
     if ($b->carry_forward_days > 0) {
-        $allocated_cell .= ' <small class="text-muted">(+' . $b->carry_forward_days . ' CF)</small>';
+        $allocated_cell .= ' <small class="text-muted">(+' . hr_format_day_duration($b->carry_forward_days, $b->hours_per_day) . ' CF)</small>';
     }
 
-    $remaining_cell = '<strong class="text-' . $color . '">' . $remaining . '</strong>'
+    $remaining_cell = '<strong class="text-' . $color . '">' . hr_format_day_duration($remaining, $b->hours_per_day) . '</strong>'
         . '<div class="progress tw-my-0 progress-bar-mini">'
         . '<div class="progress-bar progress-bar-' . $color . ' no-percent-text not-dynamic" role="progressbar"'
         . ' aria-valuenow="' . $pct . '" aria-valuemin="0" aria-valuemax="100"'
@@ -55,7 +55,7 @@ foreach ($rows as $b) {
         htmlspecialchars($b->department_name ?? '-'),
         htmlspecialchars($b->leave_type_name),
         $allocated_cell,
-        $b->used_days,
+        hr_format_day_duration($b->used_days, $b->hours_per_day),
         $remaining_cell,
     ];
     $output['aaData'][] = $row;

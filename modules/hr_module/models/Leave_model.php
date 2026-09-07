@@ -125,7 +125,7 @@ class Leave_model extends App_Model
 
     public function get_request($id = null, $filters = [])
     {
-        $this->db->select('r.*, lt.name as leave_type_name,
+        $this->db->select('r.*, lt.name as leave_type_name, lt.hours_per_day,
             CONCAT(e.first_name," ",e.last_name) as employee_name, e.employee_code, e.email as employee_email,
             e.staff_id as employee_staff_id,
             d.name as department_name, ds.name as designation_name,
@@ -499,7 +499,7 @@ class Leave_model extends App_Model
     public function get_all_balances($year = null, $dept_id = null, $search = null)
     {
         if (!$year) $year = date('Y');
-        $this->db->select('b.*, lt.name as leave_type_name,
+        $this->db->select('b.*, lt.name as leave_type_name, lt.hours_per_day,
             CONCAT(e.first_name," ",e.last_name) as employee_name, e.employee_code,
             d.name as department_name', false)
             ->from($this->tbl_balances . ' b')

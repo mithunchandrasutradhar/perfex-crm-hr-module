@@ -92,7 +92,7 @@ foreach ($rows as $r) {
     // For a single-day request, show exactly which half/type it is. For multi-day
     // requests, only call out the non-obvious types (half/hourly) - "Full" alone
     // on every day isn't worth repeating.
-    $days_cell = $r->total_days;
+    $days_cell = hr_format_day_duration($r->total_days, $r->hours_per_day);
     if (count($types) === 1) {
         $days_cell .= '<br><small class="text-muted">' . htmlspecialchars(hr_leave_day_type_label($types[0])) . '</small>';
     } else {

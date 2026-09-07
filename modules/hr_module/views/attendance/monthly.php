@@ -82,7 +82,7 @@ $status_labels = ['present'=>'P','late'=>'L','absent'=>'A','half_day'=>'H'];
         // theme's Bootstrap 3 base doesn't define that as a real CSS custom
         // property, so a badge background using it renders empty/transparent,
         // leaving the white icon on top invisible against the white card.
-        ['label'=>'Work Hrs', 'val'=>$summary['total_hours'].'h', 'color'=>'primary', 'icon'=>'fa-hourglass-half', 'badge'=>true, 'badge_hex'=>'#2196F3'],
+        ['label'=>'Work Hrs', 'val'=>hr_format_hours($summary['total_hours']), 'color'=>'primary', 'icon'=>'fa-hourglass-half', 'badge'=>true, 'badge_hex'=>'#2196F3'],
       ];
       foreach ($cards as $c):
         $border_color = $c['color'] ? 'var(--bs-'.$c['color'].')' : $c['hex'];

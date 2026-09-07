@@ -2,7 +2,7 @@
 /** @var object      $request */
 /** @var array       $days    */
 /** @var object|null $balance */
-if (!isset($request)) $request = (object)['id'=>0,'status'=>'pending','leave_type_name'=>'','employee_name'=>'','employee_code'=>'','from_date'=>null,'to_date'=>null,'total_days'=>0,'is_half_day'=>0,'reason'=>'','rejection_reason'=>null,'attachment'=>null,'created_at'=>null,'approved_by'=>null,'approved_by_name'=>'','approved_at'=>null,'cancellation_status'=>null,'cancellation_reason'=>null,'cancellation_requested_at'=>null,'soft_status'=>null,'soft_approved_by'=>null,'soft_approved_by_name'=>'','soft_approved_at'=>null];
+if (!isset($request)) $request = (object)['id'=>0,'status'=>'pending','leave_type_name'=>'','hours_per_day'=>8,'employee_name'=>'','employee_code'=>'','from_date'=>null,'to_date'=>null,'total_days'=>0,'is_half_day'=>0,'reason'=>'','rejection_reason'=>null,'attachment'=>null,'created_at'=>null,'approved_by'=>null,'approved_by_name'=>'','approved_at'=>null,'cancellation_status'=>null,'cancellation_reason'=>null,'cancellation_requested_at'=>null,'soft_status'=>null,'soft_approved_by'=>null,'soft_approved_by_name'=>'','soft_approved_at'=>null];
 if (!isset($days)) $days = [];
 if (!isset($balance)) $balance = null;
 $r = $request;
@@ -44,7 +44,7 @@ $badge = '<span class="label ' . ($badge_map[$r->status] ?? 'label-default') . '
                 </td></tr>
               <tr><th><?php echo _l('hr_leave_days'); ?></th>
                 <td>
-                  <strong><?php echo $r->total_days; ?></strong>
+                  <strong><?php echo hr_format_day_duration($r->total_days, $r->hours_per_day); ?></strong>
                   <?php if (count($days) === 1): ?>
                   <span class="text-muted">(<?php echo htmlspecialchars(hr_leave_day_type_label($days[0]->day_type)); ?>)</span>
                   <?php endif; ?>
@@ -91,7 +91,13 @@ $badge = '<span class="label ' . ($badge_map[$r->status] ?? 'label-default') . '
                     <br><span class="text-muted tw-text-sm"><i class="fa fa-info-circle tw-mr-1"></i><?php echo htmlspecialchars($d->note); ?><?php if ($d->day_type === 'bridge') echo ' — ' . _l('hr_leave_bridge_hint'); ?></span>
                     <?php endif; ?>
                   </td>
-                  <td><?php echo $d->day_value; ?></td>
+                  <td><?php
+                    if ($d->day_type === 'hourly' && $d->hour_start && $d->hour_end) {
+                        echo hr_format_minutes_duration((strtotime($d->hour_end) - strtotime($d->hour_start)) / 60);
+                    } else {
+                        echo $d->day_value;
+                    }
+                  ?></td>
                 </tr>
                 <?php endforeach; ?>
               </tbody>
@@ -101,9 +107,9 @@ $badge = '<span class="label ' . ($badge_map[$r->status] ?? 'label-default') . '
             <?php if ($balance): ?>
             <div class="alert alert-info tw-mt-2">
               <strong><?php echo _l('hr_leave_balance'); ?>:</strong>
-              <?php echo _l('hr_leave_allocated'); ?>: <?php echo $balance->allocated_days + $balance->carry_forward_days; ?> |
-              <?php echo _l('hr_leave_used'); ?>: <?php echo $balance->used_days; ?> |
-              <?php echo _l('hr_leave_remaining'); ?>: <strong><?php echo ($balance->allocated_days + $balance->carry_forward_days - $balance->used_days); ?></strong>
+              <?php echo _l('hr_leave_allocated'); ?>: <?php echo hr_format_day_duration($balance->allocated_days + $balance->carry_forward_days, $r->hours_per_day); ?> |
+              <?php echo _l('hr_leave_used'); ?>: <?php echo hr_format_day_duration($balance->used_days, $r->hours_per_day); ?> |
+              <?php echo _l('hr_leave_remaining'); ?>: <strong><?php echo hr_format_day_duration($balance->allocated_days + $balance->carry_forward_days - $balance->used_days, $r->hours_per_day); ?></strong>
             </div>
             <?php endif; ?>
           </div>

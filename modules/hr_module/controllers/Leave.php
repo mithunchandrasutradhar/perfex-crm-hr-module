@@ -121,7 +121,7 @@ class Leave extends AdminController
                         '{designation}'   => $req->designation_name ?: '-',
                         '{leave_type}'    => $req->leave_type_name ?? '',
                         '{leave_dates}'   => $this->_leave_dates_plain($req_days),
-                        '{total_days}'    => $req->total_days,
+                        '{total_days}'    => hr_format_day_duration($req->total_days, $req->hours_per_day),
                         '{reason}'        => $req->reason ?: '-',
                     ];
                     $tpl  = $this->Email_templates_model->render('leave_apply', $placeholders);
@@ -270,7 +270,7 @@ class Leave extends AdminController
             '{designation}'   => $req->designation_name ?: '-',
             '{leave_type}'    => $req->leave_type_name ?? '',
             '{leave_dates}'   => $this->_leave_dates_plain($req_days),
-            '{total_days}'    => $req->total_days,
+            '{total_days}'    => hr_format_day_duration($req->total_days, $req->hours_per_day),
             '{notes}'         => $notes ?: '-',
         ];
         $tpl  = $this->Email_templates_model->render('leave_approved', $placeholders);
@@ -298,7 +298,7 @@ class Leave extends AdminController
             '{designation}'   => $req->designation_name ?: '-',
             '{leave_type}'    => $req->leave_type_name ?? '',
             '{leave_dates}'   => $this->_leave_dates_plain($req_days),
-            '{total_days}'    => $req->total_days,
+            '{total_days}'    => hr_format_day_duration($req->total_days, $req->hours_per_day),
         ];
         $tpl  = $this->Email_templates_model->render('leave_announcement', $placeholders);
 
@@ -452,7 +452,7 @@ class Leave extends AdminController
             '{designation}'   => $req->designation_name ?: '-',
             '{leave_type}'    => $req->leave_type_name ?? '',
             '{leave_dates}'   => $this->_leave_dates_plain($req_days),
-            '{total_days}'    => $req->total_days,
+            '{total_days}'    => hr_format_day_duration($req->total_days, $req->hours_per_day),
             '{reason}'        => $reason ?: '-',
         ];
         $tpl  = $this->Email_templates_model->render('leave_cancellation_request', $placeholders);
@@ -484,7 +484,7 @@ class Leave extends AdminController
             '{designation}'   => $req->designation_name ?: '-',
             '{leave_type}'    => $req->leave_type_name ?? '',
             '{leave_dates}'   => $this->_leave_dates_plain($req_days),
-            '{total_days}'    => $req->total_days,
+            '{total_days}'    => hr_format_day_duration($req->total_days, $req->hours_per_day),
         ];
         $tpl  = $this->Email_templates_model->render($template_key, $placeholders);
         $link = admin_url('hr_module/leave/view/' . $id);

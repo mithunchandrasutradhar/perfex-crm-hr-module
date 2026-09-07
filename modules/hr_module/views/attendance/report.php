@@ -81,7 +81,7 @@ foreach ($records as $r) {
             <div class="text-muted">Half Day</div>
           </div></div></div>
           <div class="col-md-2 col-sm-4"><div class="panel_s"><div class="panel-body tw-text-center">
-            <div class="tw-text-2xl tw-font-bold text-primary"><?php echo number_format($totals['hours'],1); ?>h</div>
+            <div class="tw-text-2xl tw-font-bold text-primary"><?php echo hr_format_hours($totals['hours']); ?></div>
             <div class="text-muted">Total Hours</div>
           </div></div></div>
           <div class="col-md-2 col-sm-4"><div class="panel_s"><div class="panel-body tw-text-center">
@@ -111,7 +111,7 @@ foreach ($records as $r) {
                     <td><?php echo date('D d M Y', strtotime($r->attendance_date)); ?></td>
                     <td><?php echo $r->in_time  ? substr($r->in_time, 0, 5)  : '-'; ?></td>
                     <td><?php echo $r->out_time ? substr($r->out_time, 0, 5) : '-'; ?></td>
-                    <td><?php echo $r->working_hours ? $r->working_hours.'h' : '-'; ?></td>
+                    <td><?php echo $r->working_hours ? hr_format_hours($r->working_hours) : '-'; ?></td>
                     <td><span class="label label-<?php echo $status_badge[$r->status] ?? 'default'; ?>">
                       <?php echo ucfirst(str_replace('_',' ',$r->status)); ?></span></td>
                     <td><?php echo ucfirst($r->source); ?></td>

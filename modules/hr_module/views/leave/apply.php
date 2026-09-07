@@ -71,7 +71,7 @@ if (!isset($employee_genders_json)) $employee_genders_json = '{}';
                   <label><?php echo _l('hr_leave_balance'); ?></label>
                   <div class="form-control-static">
                     <strong id="balance-remaining">—</strong>
-                    <span class="text-muted tw-text-sm"> days remaining</span>
+                    <span class="text-muted tw-text-sm"> remaining</span>
                   </div>
                 </div>
               </div>
@@ -108,15 +108,16 @@ if (!isset($employee_genders_json)) $employee_genders_json = '{}';
 
             <!-- Daily mode: day-by-day builder for normal leave types -->
             <div id="daily-mode-section">
-              <div class="tw-flex tw-items-center tw-justify-between tw-mb-2">
-                <label class="tw-mb-0"><?php echo _l('hr_leave_days_breakdown'); ?> <span class="text-danger">*</span></label>
+              <label class="tw-mb-2"><?php echo _l('hr_leave_days_breakdown'); ?> <span class="text-danger">*</span></label>
+
+              <div id="day-rows"></div>
+              <p id="no-days-msg" class="text-muted tw-text-sm"><?php echo _l('hr_leave_no_days_added'); ?></p>
+
+              <div class="tw-mb-3">
                 <button type="button" class="btn btn-primary btn-sm" id="btn-add-day">
                   <i class="fa-regular fa-plus tw-mr-1"></i><?php echo _l('hr_leave_add_day'); ?>
                 </button>
               </div>
-
-              <div id="day-rows"></div>
-              <p id="no-days-msg" class="text-muted tw-text-sm"><?php echo _l('hr_leave_no_days_added'); ?></p>
 
               <div id="bridge-info" class="alert alert-info tw-py-2 tw-text-sm" style="display:none"></div>
 
@@ -247,6 +248,51 @@ if (!isset($employee_genders_json)) $employee_genders_json = '{}';
         return 0;
     }
 
+    // Shared "X days Y hours Z min" assembly for already-resolved integer parts -
+    // mirrors hr_format_dhm() server-side exactly. Minutes is always printed in
+    // short form ("min") once shown; the hours+minutes pair is dropped entirely
+    // (leaving just the day count) only when BOTH are zero.
+    function formatDhm(days, hours, minutes) {
+        if (hours === 0 && minutes === 0) {
+            return days + (days === 1 ? ' day' : ' days');
+        }
+        var parts = [];
+        if (days > 0) parts.push(days + (days === 1 ? ' day' : ' days'));
+        parts.push(hours + (hours === 1 ? ' hour' : ' hours'));
+        parts.push(minutes + ' min');
+        return parts.join(' ');
+    }
+
+    // Formats a decimal number of days as "X days Y hours Z min", using the
+    // selected leave type's own hoursPerDay to convert the fractional-day
+    // remainder - mirrors hr_format_day_duration() server-side exactly, so the
+    // live preview here matches what the submitted page shows. Only for values
+    // that are ALREADY a rounded day-fraction (e.g. the running total, which
+    // sums per-row day-fractions the same way the server does) - never use this
+    // for a single row's own precise minutes, see formatMinutesDuration() below.
+    function formatDayDuration(decimalDays, hoursPerDay) {
+        var hpd = (hoursPerDay && hoursPerDay > 0) ? hoursPerDay : 8;
+        var days = Math.floor(decimalDays + 1e-9);
+        var frac = Math.max(0, decimalDays - days);
+        var minutesPerDay = Math.round(hpd * 60);
+        var totalMinutes  = Math.round(frac * hpd * 60);
+        if (totalMinutes >= minutesPerDay) {
+            days += Math.floor(totalMinutes / minutesPerDay);
+            totalMinutes = totalMinutes % minutesPerDay;
+        }
+        return formatDhm(days, Math.floor(totalMinutes / 60), totalMinutes % 60);
+    }
+
+    // Formats an exact whole number of minutes (e.g. this row's own picked
+    // start/end time) as "X hours Y min" - used instead of formatDayDuration()
+    // for a single hourly row, since round-tripping through its rounded
+    // day-fraction (hours / hoursPerDay, then back) can drift by a couple of
+    // minutes (e.g. an exact 1-hour pick could otherwise show as "1 hour 2 min").
+    function formatMinutesDuration(totalMinutes) {
+        totalMinutes = Math.max(0, Math.round(totalMinutes));
+        return formatDhm(0, Math.floor(totalMinutes / 60), totalMinutes % 60);
+    }
+
     function refreshRow($row) {
         var type = $row.find('select.day-type').val();
         $row.find('.day-detail-half').toggle(type === 'half');
@@ -264,7 +310,16 @@ if (!isset($employee_genders_json)) $employee_genders_json = '{}';
         $row.find('.day-warning').toggle(notes.length > 0).html(notes.join(' '));
 
         var value = computeRowValue($row);
-        $row.find('.day-value').text(parseFloat(value.toFixed(2)));
+        if (type === 'hourly') {
+            var startMin = parseTimeToMinutes($row.find('.day-hour-start').val());
+            var endMin   = parseTimeToMinutes($row.find('.day-hour-end').val());
+            $row.find('.day-value').text(
+                (startMin !== null && endMin !== null && endMin > startMin)
+                    ? formatMinutesDuration(endMin - startMin) : '-'
+            );
+        } else {
+            $row.find('.day-value').text(parseFloat(value.toFixed(2)));
+        }
         refreshTotal();
     }
 
@@ -308,14 +363,37 @@ if (!isset($employee_genders_json)) $employee_genders_json = '{}';
     }
 
     function refreshTotal() {
-        var total = 0;
+        var meta = selectedLeaveTypeMeta();
+        var hpd  = meta.hoursPerDay || 8;
+
+        // Built from each row's EXACT minutes, not the rounded per-row
+        // day-fraction computeRowValue() returns - so a clean 1-hour pick shows
+        // as "1 hour 0 min" in the total too, instead of drifting the way
+        // summing already-rounded day-fractions would (e.g. 0.13 day converted
+        // back into hours).
+        var totalMinutes = 0;
         $('#day-rows .leave-day-row').each(function(){
-            total += computeRowValue($(this));
+            var $row = $(this);
+            var type = $row.find('select.day-type').val();
+            if (type === 'full') {
+                totalMinutes += hpd * 60;
+            } else if (type === 'half') {
+                if (meta.allowHalf) totalMinutes += hpd * 30;
+            } else if (type === 'hourly') {
+                var startMin = parseTimeToMinutes($row.find('.day-hour-start').val());
+                var endMin   = parseTimeToMinutes($row.find('.day-hour-end').val());
+                if (startMin !== null && endMin !== null && endMin > startMin) {
+                    totalMinutes += (endMin - startMin);
+                }
+            }
         });
         var bridges = computeBridgeDays();
-        total += bridges.length;
-        total = Math.round(total * 100) / 100;
-        $('#total-days').text(total + ' <?php echo _l('hr_days'); ?>');
+        totalMinutes += bridges.length * hpd * 60;
+
+        var minutesPerDay = Math.round(hpd * 60);
+        var wholeDays  = Math.floor(totalMinutes / minutesPerDay);
+        var remMinutes = Math.round(totalMinutes % minutesPerDay);
+        $('#total-days').text(formatDhm(wholeDays, Math.floor(remMinutes / 60), remMinutes % 60));
         $('#no-days-msg').toggle($('#day-rows .leave-day-row').length === 0);
 
         if (bridges.length > 0) {
@@ -351,7 +429,7 @@ if (!isset($employee_genders_json)) $employee_genders_json = '{}';
             +           '</select>'
             +         '</div>'
             +       '</div>'
-            +       '<div class="col-sm-4">'
+            +       '<div class="col-sm-6">'
             +         '<div class="day-detail-half" style="display:none">'
             +           '<label class="tw-text-xs"><?php echo _l('hr_leave_half_day'); ?></label>'
             +           '<div class="select-placeholder">'
@@ -374,12 +452,10 @@ if (!isset($employee_genders_json)) $employee_genders_json = '{}';
             +           '</div>'
             +         '</div>'
             +       '</div>'
-            +       '<div class="col-sm-1 tw-flex tw-items-end tw-mb-2">'
-            +         '<span class="label label-info day-value">1.0</span>'
-            +       '</div>'
-            +       '<div class="col-sm-1 tw-flex tw-items-end tw-mb-2">'
-            +         '<button type="button" class="btn btn-danger btn-xs remove-day"><i class="fa fa-times"></i></button>'
-            +       '</div>'
+            +     '</div>'
+            +     '<div class="tw-flex tw-items-center tw-justify-between tw-mt-2">'
+            +       '<span class="label label-info day-value">1.0</span>'
+            +       '<button type="button" class="btn btn-danger btn-xs remove-day"><i class="fa fa-times"></i></button>'
             +     '</div>'
             +     '<div class="day-warning text-muted tw-text-xs" style="display:none"></div>'
             +   '</div>'
@@ -428,7 +504,7 @@ if (!isset($employee_genders_json)) $employee_genders_json = '{}';
 
     function renderBalance(rem) {
         rem = parseFloat(rem) || 0;
-        $('#balance-remaining').text(rem);
+        $('#balance-remaining').text(formatDayDuration(rem, selectedLeaveTypeMeta().hoursPerDay));
         $('#balance-remaining').closest('.form-control-static')
             .removeClass('text-success text-danger')
             .addClass(rem <= 0 ? 'text-danger' : 'text-success');
