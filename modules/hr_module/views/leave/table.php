@@ -9,6 +9,14 @@ foreach (['status', 'leave_type_id', 'employee_id', 'department_id', 'on_date'] 
     $v = $CI->input->get($key);
     if ($v !== null && $v !== '') $filters[$key] = $v;
 }
+// from_date/to_date (the list page's own Date Range filter) arrive in the
+// site display format (same datepicker convention as Shifts/Overduty's own
+// date filters), so they need converting to SQL format - unlike on_date
+// above, which the dashboard link already sends as a plain Y-m-d value.
+foreach (['from_date', 'to_date'] as $key) {
+    $v = $CI->input->get($key);
+    if ($v !== null && $v !== '') $filters[$key] = to_sql_date($v);
+}
 
 if (!is_admin() && !staff_can('view', 'hr_leave')) {
     if (staff_can('view_department', 'hr_leave')) {
@@ -111,7 +119,7 @@ foreach ($rows as $r) {
         _d($r->to_date),
         $days_cell,
         $badge,
-        _d($r->created_at),
+        date('d M Y', strtotime($r->created_at)),
     ];
     $row['DT_RowClass'] = 'has-row-options';
     $output['aaData'][] = $row;

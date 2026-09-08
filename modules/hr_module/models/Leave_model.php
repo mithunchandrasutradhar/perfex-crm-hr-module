@@ -159,6 +159,12 @@ class Leave_model extends App_Model
             $this->db->where('r.from_date <=', $filters['on_date']);
             $this->db->where('r.to_date >=', $filters['on_date']);
         }
+        // Date range filter (list page's own From/To) - matches any request
+        // whose own [from_date,to_date] range overlaps the requested window at
+        // all, regardless of status - same overlap test already used for the
+        // Shifts/Overduty lists' equivalent date filters.
+        if (!empty($filters['from_date'])) $this->db->where('r.to_date >=', $filters['from_date']);
+        if (!empty($filters['to_date']))   $this->db->where('r.from_date <=', $filters['to_date']);
         if (!empty($filters['search'])) {
             $this->db->group_start()
                 ->like('CONCAT(e.first_name," ",e.last_name)', $filters['search'])

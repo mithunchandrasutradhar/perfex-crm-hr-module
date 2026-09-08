@@ -7,26 +7,8 @@
         <div class="tw-mb-2 tw-flex tw-flex-wrap tw-items-center tw-justify-between tw-gap-2">
           <h4 class="tw-font-semibold tw-text-lg tw-text-neutral-700"><?php echo _l('hr_leave_list'); ?></h4>
           <div class="tw-flex tw-flex-wrap tw-gap-2">
-            <select id="f-status" class="selectpicker" data-width="140px">
-              <option value=""><?php echo _l('hr_all'); ?> Status</option>
-              <option value="pending"><?php echo _l('hr_leave_status_pending'); ?></option>
-              <option value="approved"><?php echo _l('hr_leave_status_approved'); ?></option>
-              <option value="rejected"><?php echo _l('hr_leave_status_rejected'); ?></option>
-              <option value="cancelled"><?php echo _l('hr_leave_status_cancelled'); ?></option>
-            </select>
-            <select id="f-type" class="selectpicker" data-width="160px">
-              <option value=""><?php echo _l('hr_all') . ' ' . _l('hr_leave_type'); ?></option>
-              <?php foreach ($leave_types as $t): ?>
-              <option value="<?php echo $t->id; ?>"><?php echo htmlspecialchars($t->name); ?></option>
-              <?php endforeach; ?>
-            </select>
+          <div class="tw-flex tw-flex-wrap tw-gap-2">
             <?php if (!empty($show_all_employees)): ?>
-            <select id="f-dept" class="selectpicker" data-width="200px">
-              <option value=""><?php echo _l('hr_all') . ' Dept'; ?></option>
-              <?php foreach ($departments as $d): ?>
-              <option value="<?php echo $d->id; ?>"><?php echo htmlspecialchars($d->name); ?></option>
-              <?php endforeach; ?>
-            </select>
             <select id="f-emp" class="selectpicker" data-width="200px" data-live-search="true"
                     data-none-selected-text="<?php echo _l('hr_employee'); ?>">
               <option value=""><?php echo _l('hr_all') . ' Employees'; ?></option>
@@ -34,7 +16,43 @@
               <option value="<?php echo $id; ?>"><?php echo htmlspecialchars($name); ?></option>
               <?php endforeach; ?>
             </select>
+            <select id="f-dept" class="selectpicker" data-width="200px">
+              <option value=""><?php echo _l('hr_all') . ' Dept'; ?></option>
+              <?php foreach ($departments as $d): ?>
+              <option value="<?php echo $d->id; ?>"><?php echo htmlspecialchars($d->name); ?></option>
+              <?php endforeach; ?>
+            </select>
             <?php endif; ?>
+            <select id="f-type" class="selectpicker" data-width="160px">
+              <option value=""><?php echo _l('hr_all') . ' ' . _l('hr_leave_type'); ?></option>
+              <?php foreach ($leave_types as $t): ?>
+              <option value="<?php echo $t->id; ?>"><?php echo htmlspecialchars($t->name); ?></option>
+              <?php endforeach; ?>
+            </select>
+            <select id="f-status" class="selectpicker" data-width="140px">
+              <option value=""><?php echo _l('hr_all'); ?> Status</option>
+              <option value="pending"><?php echo _l('hr_leave_status_pending'); ?></option>
+              <option value="approved"><?php echo _l('hr_leave_status_approved'); ?></option>
+              <option value="rejected"><?php echo _l('hr_leave_status_rejected'); ?></option>
+              <option value="cancelled"><?php echo _l('hr_leave_status_cancelled'); ?></option>
+            </select>
+            <div class="input-group date" style="width:150px">
+              <input type="text" id="f-from" class="form-control datepicker" autocomplete="off" placeholder="From date">
+              <div class="input-group-addon"><i class="fa-regular fa-calendar calendar-icon"></i></div>
+            </div>
+            <div class="input-group date" style="width:150px">
+              <input type="text" id="f-to" class="form-control datepicker" autocomplete="off" placeholder="To date">
+              <div class="input-group-addon"><i class="fa-regular fa-calendar calendar-icon"></i></div>
+            </div>
+          </div>
+          <!-- Action buttons kept in their own flex group so they wrap onto
+               the next line together instead of splitting mid-group (e.g.
+               Reset staying on the filter row while Apply/Leave Types/Leave
+               Balances wrap alone) at narrower/laptop widths. -->
+          <div class="tw-flex tw-flex-wrap tw-gap-2">
+            <button type="button" id="btn-reset-filters" class="btn btn-default btn-sm" title="Reset filters">
+              <i class="fa fa-rotate-left tw-mr-1"></i><?php echo _l('hr_reset_filters'); ?>
+            </button>
             <?php if (staff_can('create', 'hr_leave')): ?>
             <a href="<?php echo admin_url('hr_module/leave/apply'); ?>" class="btn btn-primary">
               <i class="fa-regular fa-plus tw-mr-1"></i><?php echo _l('hr_leave_add'); ?>
@@ -49,13 +67,14 @@
             </a>
             <?php endif; ?>
           </div>
+          </div>
         </div>
         <div class="panel_s">
           <div class="panel-body panel-table-full">
             <?php render_datatable([
               '#', _l('hr_employee'), _l('hr_leave_type'),
               _l('hr_from_date'), _l('hr_to_date'), _l('hr_leave_days'),
-              _l('hr_status'), _l('hr_created_at'),
+              _l('hr_status'), 'Submitted',
             ], 'hr-leave'); ?>
           </div>
         </div>
@@ -105,10 +124,25 @@ $(function(){
             + '?status=' + encodeURIComponent($('#f-status').val() || '')
             + '&leave_type_id=' + encodeURIComponent($('#f-type').val() || '')
             + '&department_id=' + encodeURIComponent(deptVal || '')
-            + '&employee_id=' + encodeURIComponent(empVal || '');
+            + '&employee_id=' + encodeURIComponent(empVal || '')
+            + '&from_date=' + encodeURIComponent($('#f-from').val() || '')
+            + '&to_date=' + encodeURIComponent($('#f-to').val() || '');
         $('.table-hr-leave').DataTable().ajax.url(url).load();
     }
-    $('#f-status, #f-type, #f-dept, #f-emp').on('change changed.bs.select', reload);
+    $('#f-status, #f-type, #f-dept, #f-emp, #f-from, #f-to').on('change changed.bs.select', reload);
+
+    // Reset every filter to blank/"All" in one click, instead of clearing
+    // each dropdown/date by hand - a single reload() at the end picks up all
+    // of them at once (same pattern as the Shifts/Attendance lists' Reset).
+    $('#btn-reset-filters').on('click', function(){
+        $('#f-status').val('').selectpicker('refresh');
+        $('#f-type').val('').selectpicker('refresh');
+        if ($('#f-dept').length) $('#f-dept').val('').selectpicker('refresh');
+        if ($('#f-emp').length)  $('#f-emp').val('').selectpicker('refresh');
+        $('#f-from').val('');
+        $('#f-to').val('');
+        reload();
+    });
 
     // Pre-select the Employee/Status filters when landing here with
     // ?employee_id=/?status= in the URL (e.g. the dashboard's "My Leaves" or
