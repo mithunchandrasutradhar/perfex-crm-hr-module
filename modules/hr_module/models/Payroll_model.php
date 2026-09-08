@@ -7,6 +7,46 @@ class Payroll_model extends App_Model
     private $items_table   = 'hr_payroll_items';
     private $details_table = 'hr_payroll_details';
 
+    public function __construct()
+    {
+        parent::__construct();
+        $this->_ensure_unique_period();
+    }
+
+    // Closes a real race: two near-simultaneous generate() calls (e.g. the
+    // payroll auto-generation cron and a manual "Generate" click, or two
+    // overlapping cron ticks) could both pass already_generated()'s
+    // check-then-insert gap and both create a payroll row for the same
+    // employee/month/year. A database-level uniqueness constraint is the only
+    // way to actually close that window - generate()'s existing
+    // `if (!$pid) return [...]` already handles a failed insert gracefully,
+    // so adding this constraint alone is enough, no other change needed.
+    // Skipped (and logged) if duplicate rows already exist from before this
+    // fix, since the ALTER TABLE would otherwise fail outright - those
+    // pre-existing duplicates need a one-off manual cleanup first.
+    private function _ensure_unique_period()
+    {
+        if (!$this->db->table_exists(db_prefix() . $this->table)) return;
+        $exists = $this->db->query(
+            "SHOW INDEX FROM `" . db_prefix() . $this->table . "` WHERE Key_name = 'employee_period_unique'"
+        )->num_rows();
+        if ($exists) return;
+
+        $dupes = $this->db->query(
+            "SELECT 1 FROM `" . db_prefix() . $this->table . "`
+             GROUP BY employee_id, pay_month, pay_year HAVING COUNT(*) > 1 LIMIT 1"
+        )->num_rows();
+        if ($dupes) {
+            log_message('error', 'HR Payroll: duplicate employee/period rows already exist - skipping unique index migration until they are manually resolved.');
+            return;
+        }
+
+        $this->db->query(
+            "ALTER TABLE `" . db_prefix() . $this->table . "`
+             ADD UNIQUE KEY `employee_period_unique` (`employee_id`,`pay_month`,`pay_year`)"
+        );
+    }
+
     // ─── Payroll Items (templates) ───────────────────────────────────────────
 
     public function get_items($only_active = false)
@@ -363,6 +403,15 @@ class Payroll_model extends App_Model
             return ['success' => false, 'message' => 'Only draft payroll can be marked as paid.'];
         }
 
+        // Wrapped in a transaction, with the final update below made an atomic
+        // compare-and-swap (still 'draft' at that exact moment) - closes the
+        // race where two near-simultaneous mark_paid() calls for the same
+        // payroll (double-click, or two admins) could both pass the check
+        // above and both record the loan repayment, applying it twice. If the
+        // swap loses the race, everything this call did (loan repayments,
+        // shift-detail replacement) is rolled back instead of left half-applied.
+        $this->db->trans_start();
+
         // The loan deduction is only actually applied to the loan's outstanding balance
         // now, at the moment of payment - not at generation. Recompute fresh in case any
         // deduction/skip request got approved after this payroll was generated.
@@ -383,12 +432,50 @@ class Payroll_model extends App_Model
         $live_overtime   = $this->calculate_live_overtime($row->employee_id, $row->pay_month, $row->pay_year);
         $overtime_amount = $live_overtime['amount'];
         $overtime_days   = $live_overtime['days'];
+
+        // Purely informational - the live figure above is still what's actually
+        // paid (unchanged). If a rate/salary setting changed between an
+        // overtime request's approval and this payment, the amount actually
+        // paid can differ from what was shown as "approved" on that request -
+        // this note just records both figures on the payroll so the
+        // discrepancy isn't silently invisible, without changing what gets paid.
+        $approved_overtime_total = 0.0;
+        if ($this->db->table_exists(db_prefix() . 'hr_overtime')) {
+            $period_from = sprintf('%04d-%02d-01', $row->pay_year, $row->pay_month);
+            $sum_row = $this->db
+                ->select_sum('total_amount')
+                ->where('employee_id', $row->employee_id)
+                ->where('status', 'approved')
+                ->where('overtime_date >=', $period_from)
+                ->where('overtime_date <=', date('Y-m-t', strtotime($period_from)))
+                ->get(db_prefix() . 'hr_overtime')->row();
+            $approved_overtime_total = $sum_row ? (float) $sum_row->total_amount : 0.0;
+        }
+        $overtime_note = null;
+        if (round($approved_overtime_total, 2) !== round($overtime_amount, 2)) {
+            $overtime_note = 'Note: overtime recomputed at payment (' . number_format($overtime_amount, 2)
+                . ') differs from the approved total (' . number_format($approved_overtime_total, 2) . ').';
+        }
+
         $shift_allowance = $this->calculate_live_shift_allowance($row->employee_id, $row->pay_month, $row->pay_year);
         // calculate_live_gross_net() reads loan_deduction off the row it's given -
         // use the just-recomputed figure above, not $row's original (possibly
         // stale) stored value.
         $row->loan_deduction = $loan_deduction;
         $live_totals         = $this->calculate_live_gross_net($row, $overtime_amount, $shift_allowance);
+
+        // A negative net salary means deductions/loan repayments/tax add up to
+        // more than this employee actually earned this period - that's a
+        // configuration problem (e.g. too many active loan deductions stacked
+        // in one period) that needs fixing before this payroll is finalized,
+        // not something to silently clamp to 0 and lock in. The transaction
+        // wrapping this method rolls back the loan repayments already
+        // recorded above instead of leaving them applied against a payroll
+        // that never actually gets marked paid.
+        if ($live_totals['net'] < 0) {
+            $this->db->trans_rollback();
+            return ['success' => false, 'message' => 'Net salary would be negative (' . number_format($live_totals['net'], 2) . ') - review this employee\'s deductions and loan repayments for this period before marking paid.'];
+        }
 
         // Replace the stored shift-allowance detail rows with the finalized ones,
         // so the itemized Earnings breakdown (payroll view/slip) matches what
@@ -401,7 +488,7 @@ class Payroll_model extends App_Model
             $this->db->insert_batch(db_prefix() . $this->details_table, $shift_details);
         }
 
-        $this->db->where('id', $id)->update(db_prefix() . $this->table, [
+        $this->db->where('id', $id)->where('status', 'draft')->update(db_prefix() . $this->table, [
             'status'           => 'paid',
             'payment_method'   => $method,
             'payment_date'     => $payment_date,
@@ -412,9 +499,19 @@ class Payroll_model extends App_Model
             'tax'              => $live_totals['tax'],
             'loan_deduction'   => $loan_deduction,
             'net_salary'       => $live_totals['net'],
+            'notes'            => $overtime_note ? trim(($row->notes ? $row->notes . "\n" : '') . $overtime_note) : $row->notes,
             'approved_by'      => get_staff_user_id(),
             'updated_at'       => date('Y-m-d H:i:s'),
         ]);
+        if ($this->db->affected_rows() < 1) {
+            $this->db->trans_rollback();
+            return ['success' => false, 'message' => 'This payroll was already marked paid.'];
+        }
+        $this->db->trans_complete();
+        if ($this->db->trans_status() === false) {
+            return ['success' => false, 'message' => _l('hr_error_saving')];
+        }
+
         log_activity('HR Payroll Marked Paid [ID: ' . $id . ', Employee ID: ' . $row->employee_id . ', Period: ' . $row->pay_month . '/' . $row->pay_year . ']');
         return ['success' => true, 'message' => _l('hr_payroll_paid')];
     }

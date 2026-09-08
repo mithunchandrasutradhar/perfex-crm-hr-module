@@ -42,7 +42,7 @@ $v = function($field) use ($contract) {
                             data-none-selected-text="<?php echo _l('hr_select'); ?>" required>
                       <option value=""><?php echo _l('hr_select'); ?></option>
                       <?php foreach ($employees as $id => $name): ?>
-                      <option value="<?php echo $id; ?>" <?php if($editing && $contract->employee_id==$id) echo 'selected'; ?>>
+                      <option value="<?php echo $id; ?>" <?php if($editing ? $contract->employee_id==$id : (!empty($default_employee_id) && $default_employee_id==$id)) echo 'selected'; ?>>
                         <?php echo htmlspecialchars($name); ?>
                       </option>
                       <?php endforeach; ?>

@@ -22,7 +22,7 @@
                             <?php if (!empty($own_only)) echo 'disabled'; ?>>
                       <option value=""><?php echo _l('hr_select'); ?></option>
                       <?php foreach ($employees as $id => $name): ?>
-                      <option value="<?php echo $id; ?>" <?php if (!empty($own_only)) echo 'selected'; ?>><?php echo htmlspecialchars($name); ?></option>
+                      <option value="<?php echo $id; ?>" <?php if (!empty($own_only) || (empty($own_only) && !empty($default_employee_id) && $id == $default_employee_id)) echo 'selected'; ?>><?php echo htmlspecialchars($name); ?></option>
                       <?php endforeach; ?>
                     </select>
                     <?php if (!empty($own_only)): ?>

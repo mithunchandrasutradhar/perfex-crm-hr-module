@@ -312,6 +312,12 @@ class Email_templates_model extends App_Model
                 'placeholders' => '{period}, {success_count}, {skipped_count}',
                 'body' => "Dear Team,\n\nThe payroll for {period} has been generated.\n\nEmployees Processed: {success_count}\nSkipped (already existed): {skipped_count}\n\nRegards,\nHR Department",
             ],
+            'contract_expiring' => [
+                'name' => 'Contract Expiring Soon (to HR)',
+                'subject' => 'Contract Expiring Soon: {employee_name}',
+                'placeholders' => '{employee_name}, {contract_title}, {end_date}',
+                'body' => "Dear Team,\n\nThe following employee contract is expiring soon:\n\nEmployee: {employee_name}\nContract: {contract_title}\nEnd Date: {end_date}\n\nRegards,\nHR Department",
+            ],
         ];
     }
 }

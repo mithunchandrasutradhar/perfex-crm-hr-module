@@ -560,16 +560,37 @@ class Hr_module_model extends App_Model
 
     // ─── Contract expiry notifications ────────────────────────────────────
 
+    // Was previously just firing hooks()->do_action('hr_contract_expiring', ...)
+    // with no listener ever registered anywhere in the module - contract
+    // expiry warnings were silently never sent. Sends directly now, the same
+    // way every other admin-facing alert in this file works (HR inbox email +
+    // in-app bell to anyone with hr_contracts view permission), and uses
+    // Hr_contracts_model::get_unnotified_expiring() - a >=/<= range rather
+    // than an exact "today + 30 days" match, so a contract already inside the
+    // window still gets caught even if the cron didn't run on the one exact
+    // day it crossed the threshold - each contract is only ever notified
+    // once (see expiry_notified_at), not once per cron tick for the rest of
+    // its 30-day window.
     public function notify_expiring_contracts()
     {
-        $alert_date = date('Y-m-d', strtotime('+30 days'));
-        $this->db->where('status', 'active');
-        $this->db->where('end_date', $alert_date);
-        $contracts = $this->db->get(db_prefix() . 'hr_contracts')->result();
+        $CI = &get_instance();
+        $CI->load->model('hr_module/Hr_contracts_model');
+        $contracts = $CI->Hr_contracts_model->get_unnotified_expiring(30);
+        if (!$contracts) return;
 
+        $CI->load->model('hr_module/Email_templates_model');
         foreach ($contracts as $contract) {
-            // Fire hook for notifications — Phase 4 will add the email handler
-            hooks()->do_action('hr_contract_expiring', $contract);
+            $employee_name = trim($contract->first_name . ' ' . $contract->last_name);
+            $link = admin_url('hr_module/hr_contracts/view/' . $contract->id);
+            $placeholders = [
+                '{employee_name}' => $employee_name,
+                '{contract_title}' => $contract->title,
+                '{end_date}'       => _d($contract->end_date),
+            ];
+            $tpl = $CI->Email_templates_model->render('contract_expiring', $placeholders);
+            $this->send_notification_email($tpl->subject, $tpl->body, $link);
+            $this->notify_by_permission('view', 'hr_contracts', 'not_hr_contract_expiring', $link, [$employee_name]);
+            $CI->Hr_contracts_model->mark_expiry_notified($contract->id);
         }
     }
 

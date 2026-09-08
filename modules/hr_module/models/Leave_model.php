@@ -170,17 +170,26 @@ class Leave_model extends App_Model
             return ['success' => false, 'message' => _l('hr_val_no_leave_days')];
         }
 
+        // employee_id must resolve to a real employee - without this, a
+        // request submitted with no employee actually selected (employee_id
+        // posted as 0, e.g. a bypassed/disabled required attribute on the
+        // form) would silently create an orphaned request and a matching
+        // balance row for a non-existent employee.
+        $employee_id = (int) ($data['employee_id'] ?? 0);
+        $employee = $employee_id > 0
+            ? $this->db->where('id', $employee_id)->get(db_prefix() . 'hr_employees')->row()
+            : null;
+        if (!$employee) {
+            return ['success' => false, 'message' => 'Please select a valid employee.'];
+        }
+
         $type = $this->get_type($data['leave_type_id']);
         if (!$type) {
             return ['success' => false, 'message' => _l('hr_error_not_found')];
         }
 
-        if (!empty($type->gender)) {
-            $employee = $this->db->select('gender')->where('id', $data['employee_id'])
-                ->get(db_prefix() . 'hr_employees')->row();
-            if (!$employee || strtolower((string) $employee->gender) !== strtolower($type->gender)) {
-                return ['success' => false, 'message' => _l('hr_leave_gender_mismatch')];
-            }
+        if (!empty($type->gender) && strtolower((string) $employee->gender) !== strtolower($type->gender)) {
+            return ['success' => false, 'message' => _l('hr_leave_gender_mismatch')];
         }
 
         if ($type->requires_attachment && empty($data['attachment'])) {
@@ -192,9 +201,14 @@ class Leave_model extends App_Model
             return ['success' => false, 'message' => _l('hr_val_duplicate_leave_dates')];
         }
 
-        // Sandwich rule: if leave is requested on both sides of a weekend/holiday
-        // (e.g. Thursday + Saturday with Friday off), the day(s) in between are
-        // automatically included as leave too.
+        // Sandwich rule (same-request): if leave is requested on both sides of
+        // a weekend/holiday within THIS submission (e.g. Thursday + Saturday
+        // with Friday off), the day(s) in between are automatically included.
+        // Sandwich rule (cross-request): also catches the same situation when
+        // the two sides were submitted as two SEPARATE requests (e.g.
+        // Thursday submitted and approved earlier, Saturday submitted now) -
+        // added only to THIS request, the earlier one is never modified.
+        $days  = array_merge($days, $this->find_cross_request_bridge_days($data['employee_id'], $data['leave_type_id'], $days));
         $days  = $this->_add_bridge_days($days);
         $dates = array_column($days, 'date');
 
@@ -228,13 +242,19 @@ class Leave_model extends App_Model
         $data['total_days'] = $total_days;
         $data['is_half_day'] = 0;
 
-        // Check balance - create the year's balance row on first use if it doesn't exist yet
-        // (e.g. a new employee, or a leave type added after the year's balances were allocated)
-        $balance = $this->_get_or_create_balance($data['employee_id'], $data['leave_type_id'], date('Y', strtotime($data['from_date'])));
-        $remaining = $balance->allocated_days + $balance->carry_forward_days - $balance->used_days;
-
-        if ($type->days_per_year > 0 && $total_days > $remaining) {
-            return ['success' => false, 'message' => _l('hr_val_insufficient_leave') . ' (Remaining: ' . $remaining . ' days)'];
+        // Check balance - create each year's balance row on first use if it
+        // doesn't exist yet (e.g. a new employee, or a leave type added after
+        // the year's balances were allocated). Checked per calendar year (a
+        // request spanning a year boundary, e.g. Dec 31 + Jan 2, must be
+        // validated against each year's own remaining balance, not just the
+        // start year's) - matches how approve()/cancel() split the actual
+        // deduction/restore the same way.
+        foreach ($this->_day_totals_by_year($prepared_days) as $year => $days_in_year) {
+            $balance   = $this->_get_or_create_balance($data['employee_id'], $data['leave_type_id'], $year);
+            $remaining = $balance->allocated_days + $balance->carry_forward_days - $balance->used_days;
+            if ($type->days_per_year > 0 && $days_in_year > $remaining) {
+                return ['success' => false, 'message' => _l('hr_val_insufficient_leave') . " ($year remaining: $remaining days)"];
+            }
         }
 
         $data['status']     = 'pending';
@@ -302,16 +322,26 @@ class Leave_model extends App_Model
         if (!$request || $request->status !== 'pending') {
             return ['success' => false, 'message' => 'Invalid request'];
         }
-        $this->db->where('id', $id)->update($this->tbl_requests, [
+        // Atomic compare-and-swap against the 'pending' status just read -
+        // closes the race where two near-simultaneous approve calls (double
+        // click, or two approvers) could both pass the check above and both
+        // deduct balance for the same request.
+        $this->db->where('id', $id)->where('status', 'pending')->update($this->tbl_requests, [
             'status'      => 'approved',
             'approved_by' => get_staff_user_id(),
             'approved_at' => date('Y-m-d H:i:s'),
             'rejection_reason' => $notes,
             'updated_at'  => date('Y-m-d H:i:s'),
         ]);
-        // Deduct from balance
-        $year = date('Y', strtotime($request->from_date));
-        $this->_deduct_balance($request->employee_id, $request->leave_type_id, $year, $request->total_days);
+        if ($this->db->affected_rows() < 1) {
+            return ['success' => false, 'message' => 'Invalid request'];
+        }
+        // Deduct from balance - split by calendar year in case this request
+        // spans a year boundary (e.g. Dec 31 + Jan 2), so each year's own
+        // balance row is charged only for the days that actually fall in it.
+        foreach ($this->_day_totals_by_year($this->get_request_days($id)) as $year => $days_in_year) {
+            $this->_deduct_balance($request->employee_id, $request->leave_type_id, $year, $days_in_year);
+        }
         hooks()->do_action('hr_leave_approved', $request);
         log_activity('HR Leave Request Approved [ID: ' . $id . ']');
         return ['success' => true];
@@ -323,13 +353,17 @@ class Leave_model extends App_Model
         if (!$request || $request->status !== 'pending') {
             return ['success' => false, 'message' => 'Invalid request'];
         }
-        $this->db->where('id', $id)->update($this->tbl_requests, [
+        // Same atomic compare-and-swap as approve() above.
+        $this->db->where('id', $id)->where('status', 'pending')->update($this->tbl_requests, [
             'status'           => 'rejected',
             'approved_by'      => get_staff_user_id(),
             'approved_at'      => date('Y-m-d H:i:s'),
             'rejection_reason' => $reason,
             'updated_at'       => date('Y-m-d H:i:s'),
         ]);
+        if ($this->db->affected_rows() < 1) {
+            return ['success' => false, 'message' => 'Invalid request'];
+        }
         hooks()->do_action('hr_leave_rejected', $request);
         log_activity('HR Leave Request Rejected [ID: ' . $id . ']');
         return ['success' => true];
@@ -384,11 +418,21 @@ class Leave_model extends App_Model
         if ($reason !== '') {
             $update['cancellation_reason'] = $reason;
         }
-        $this->db->where('id', $id)->update($this->tbl_requests, $update);
-        // Restore balance if was approved
+        // Atomic compare-and-swap against the exact status just read - closes
+        // the race where two near-simultaneous cancels of the same approved
+        // request (e.g. a double-click, or cancel racing approve_cancellation())
+        // could both pass the check above and both restore balance.
+        $this->db->where('id', $id)->where('status', $request->status)->update($this->tbl_requests, $update);
+        if ($this->db->affected_rows() < 1) {
+            return ['success' => false, 'message' => 'This request was already updated - please refresh and try again.'];
+        }
+        // Restore balance if was approved - split by calendar year the same
+        // way approve() deducts it, so a cross-year request restores each
+        // year's own balance row correctly instead of all to the start year.
         if ($was_approved) {
-            $year = date('Y', strtotime($request->from_date));
-            $this->_restore_balance($request->employee_id, $request->leave_type_id, $year, $request->total_days);
+            foreach ($this->_day_totals_by_year($this->get_request_days($id)) as $year => $days_in_year) {
+                $this->_restore_balance($request->employee_id, $request->leave_type_id, $year, $days_in_year);
+            }
         }
         log_activity('HR Leave Cancelled [ID: ' . $id . ']');
         return ['success' => true];
@@ -427,8 +471,14 @@ class Leave_model extends App_Model
         if (!$request || $request->cancellation_status !== 'pending') {
             return ['success' => false, 'message' => 'No pending cancellation request found.'];
         }
-        $this->cancel($id, '', true);
-        $this->db->where('id', $id)->update($this->tbl_requests, [
+        $result = $this->cancel($id, '', true);
+        if (!$result['success']) return $result;
+        // Also guarded against the same race - if cancel() above lost the
+        // compare-and-swap (someone else already processed this request),
+        // its own failure return already stopped us before this point; this
+        // extra where() just keeps the reviewed-by/at metadata from being
+        // overwritten by a second concurrent approval too.
+        $this->db->where('id', $id)->where('cancellation_status', 'pending')->update($this->tbl_requests, [
             'cancellation_status'      => 'approved',
             'cancellation_reviewed_by' => get_staff_user_id(),
             'cancellation_reviewed_at' => date('Y-m-d H:i:s'),
@@ -459,10 +509,13 @@ class Leave_model extends App_Model
         $request = $this->get_request($id);
         if (!$request) return false;
         // Mirrors cancel()'s balance restore - deleting an approved request must
-        // give back the days it deducted, same as cancelling one does.
+        // give back the days it deducted, same as cancelling one does. Split by
+        // calendar year same as approve()/cancel() - must read the day-rows
+        // BEFORE they're deleted below.
         if ($request->status === 'approved') {
-            $year = date('Y', strtotime($request->from_date));
-            $this->_restore_balance($request->employee_id, $request->leave_type_id, $year, $request->total_days);
+            foreach ($this->_day_totals_by_year($this->get_request_days($id)) as $year => $days_in_year) {
+                $this->_restore_balance($request->employee_id, $request->leave_type_id, $year, $days_in_year);
+            }
         }
         $this->db->where('leave_request_id', $id)->delete($this->tbl_request_days);
         $this->db->where('id', $id)->delete($this->tbl_requests);
@@ -610,6 +663,25 @@ class Leave_model extends App_Model
         return $this->db->get()->num_rows() > 0;
     }
 
+    // Groups a leave request's day-rows by calendar year, summing day_value
+    // per year - a request spanning a year boundary (e.g. Dec 31 + Jan 2)
+    // needs its balance deducted/restored against BOTH years' balance rows in
+    // the correct proportion, not lumped entirely against the start year.
+    // Accepts either the day-arrays apply() builds before insert, or the
+    // day-row objects get_request_days() returns - both shapes are used by
+    // different callers.
+    private function _day_totals_by_year($days)
+    {
+        $totals = [];
+        foreach ($days as $d) {
+            $date  = is_array($d) ? $d['leave_date'] : $d->leave_date;
+            $value = is_array($d) ? $d['day_value']  : $d->day_value;
+            $year  = (int) date('Y', strtotime($date));
+            $totals[$year] = ($totals[$year] ?? 0) + (float) $value;
+        }
+        return $totals;
+    }
+
     // Returns the day's value in days (1, 0.5, or hours/hours_per_day for hourly),
     // or null if the day entry is invalid.
     private function _calculate_day_value($type, $day)
@@ -636,6 +708,93 @@ class Leave_model extends App_Model
             default:
                 return null;
         }
+    }
+
+    // Same sandwich rule as _add_bridge_days() below, but looking for the
+    // OTHER side of the sandwich in an existing pending/approved request
+    // instead of within this same submission - e.g. Thursday was already
+    // submitted (and is still pending/approved) and this call is applying
+    // for Saturday, with Friday as the only day in between. Only matches a
+    // 'full' day for the SAME employee and SAME leave type, within a small
+    // lookback/lookahead window (a sandwich only ever spans a short
+    // weekend/holiday gap, never months). Returns just the new bridge-day
+    // entries to merge into $days - never modifies the older request. Public
+    // (not just used internally by apply()) so the Apply form's live preview
+    // can call it too, via Leave::preview_cross_bridge_ajax(), and warn the
+    // employee about this before they submit.
+    public function find_cross_request_bridge_days($employee_id, $leave_type_id, $days)
+    {
+        $full_dates = array_column(array_filter($days, function ($d) { return $d['type'] === 'full'; }), 'date');
+        if (!$full_dates) return [];
+        sort($full_dates);
+        $first = $full_dates[0];
+        $last  = end($full_dates);
+        $max_gap_days = 14;
+
+        $CI = &get_instance();
+        if (!isset($CI->Holidays_model)) {
+            $CI->load->model('hr_module/Holidays_model');
+        }
+        $weekly_off = $CI->Holidays_model->get_weekly_off_days();
+        $bridge_days = [];
+
+        // Backward: closest existing 'full' day before $first
+        $prev = $this->db->select('d.leave_date')
+            ->from($this->tbl_request_days . ' d')
+            ->join($this->tbl_requests . ' r', 'r.id = d.leave_request_id')
+            ->where('d.employee_id', $employee_id)
+            ->where('r.leave_type_id', $leave_type_id)
+            ->where('d.day_type', 'full')
+            ->where('d.leave_date <', $first)
+            ->where('d.leave_date >=', date('Y-m-d', strtotime($first . " -$max_gap_days days")))
+            ->where_in('r.status', ['pending', 'approved'])
+            ->order_by('d.leave_date', 'DESC')
+            ->limit(1)
+            ->get()->row();
+        if ($prev) {
+            $gap = $this->_bridge_gap_days(strtotime($prev->leave_date) + 86400, strtotime($first) - 86400, $weekly_off, $CI);
+            if ($gap) $bridge_days = array_merge($bridge_days, $gap);
+        }
+
+        // Forward: closest existing 'full' day after $last
+        $next = $this->db->select('d.leave_date')
+            ->from($this->tbl_request_days . ' d')
+            ->join($this->tbl_requests . ' r', 'r.id = d.leave_request_id')
+            ->where('d.employee_id', $employee_id)
+            ->where('r.leave_type_id', $leave_type_id)
+            ->where('d.day_type', 'full')
+            ->where('d.leave_date >', $last)
+            ->where('d.leave_date <=', date('Y-m-d', strtotime($last . " +$max_gap_days days")))
+            ->where_in('r.status', ['pending', 'approved'])
+            ->order_by('d.leave_date', 'ASC')
+            ->limit(1)
+            ->get()->row();
+        if ($next) {
+            $gap = $this->_bridge_gap_days(strtotime($last) + 86400, strtotime($next->leave_date) - 86400, $weekly_off, $CI);
+            if ($gap) $bridge_days = array_merge($bridge_days, $gap);
+        }
+
+        return $bridge_days;
+    }
+
+    // Builds the 'bridge' day entries for [$gap_start_ts, $gap_end_ts] if
+    // (and only if) every single day in that range is a weekly-off day or a
+    // holiday - returns null if the gap is empty (adjacent dates) or contains
+    // any real working day, meaning no bridge applies.
+    private function _bridge_gap_days($gap_start_ts, $gap_end_ts, $weekly_off, $CI)
+    {
+        if ($gap_start_ts > $gap_end_ts) return null;
+        $holiday_map = $CI->Holidays_model->get_holiday_names_in_range(
+            date('Y-m-d', $gap_start_ts), date('Y-m-d', $gap_end_ts)
+        );
+        $candidate = [];
+        for ($ts = $gap_start_ts; $ts <= $gap_end_ts; $ts += 86400) {
+            $date = date('Y-m-d', $ts);
+            $note = $this->_holiday_note_for_date($date, $weekly_off, $holiday_map);
+            if (!$note) return null;
+            $candidate[] = ['date' => $date, 'type' => 'bridge', 'hour_start' => null, 'hour_end' => null, 'note' => $note];
+        }
+        return $candidate;
     }
 
     // Applies the leave module's holiday-calendar rules to the requested days:
@@ -718,6 +877,7 @@ class Leave_model extends App_Model
                 'used_days'  => $bal->used_days + $days,
                 'updated_at' => date('Y-m-d H:i:s'),
             ]);
+        $this->_reconcile_next_year_carry_forward($emp_id, $type_id, $year);
     }
 
     private function _restore_balance($emp_id, $type_id, $year, $days)
@@ -729,6 +889,33 @@ class Leave_model extends App_Model
                     'used_days'  => max(0, $bal->used_days - $days),
                     'updated_at' => date('Y-m-d H:i:s'),
                 ]);
+            $this->_reconcile_next_year_carry_forward($emp_id, $type_id, $year);
+        }
+    }
+
+    // If a balance row for $year+1 already exists, refreshes its
+    // carry_forward_days to reflect $year's CURRENT leftover (capped at the
+    // type's max_carry_forward_days) - keeps carry-forward from staying stale
+    // after a late cancellation/approval changes $year's balance AFTER the
+    // next year's row was already created (originally computed once, at
+    // allocation time, in _allocate_balance_row()). Never creates the next
+    // year's row itself, and never touches allocated_days/used_days - only
+    // the carry_forward_days figure.
+    private function _reconcile_next_year_carry_forward($emp_id, $type_id, $year)
+    {
+        $next = $this->get_balance($emp_id, $type_id, $year + 1);
+        if (!$next) return;
+
+        $type = $this->get_type($type_id);
+        if (!$type || !$type->carry_forward) return;
+
+        $this_year = $this->get_balance($emp_id, $type_id, $year);
+        if (!$this_year) return;
+
+        $leftover  = max(0, $this_year->allocated_days + $this_year->carry_forward_days - $this_year->used_days);
+        $new_carry = min($leftover, (float) $type->max_carry_forward_days);
+        if ($new_carry != $next->carry_forward_days) {
+            $this->db->where('id', $next->id)->update($this->tbl_balances, ['carry_forward_days' => $new_carry]);
         }
     }
 

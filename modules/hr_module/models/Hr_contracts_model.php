@@ -5,6 +5,53 @@ class Hr_contracts_model extends App_Model
 {
     private $table = 'hr_contracts';
 
+    public function __construct()
+    {
+        parent::__construct();
+        $this->_ensure_expiry_notified_column();
+    }
+
+    // Self-contained lazy migration (same pattern used elsewhere in this
+    // module) - lets an already-installed site pick up the new
+    // expiry-notification tracking column without an install.php bump.
+    private function _ensure_expiry_notified_column()
+    {
+        if (!$this->db->table_exists(db_prefix() . $this->table)) return;
+        $col = $this->db->query(
+            "SHOW COLUMNS FROM `" . db_prefix() . $this->table . "` LIKE 'expiry_notified_at'"
+        )->num_rows();
+        if ($col) return;
+        $this->db->query(
+            "ALTER TABLE `" . db_prefix() . $this->table . "` ADD COLUMN `expiry_notified_at` datetime DEFAULT NULL"
+        );
+    }
+
+    // Contracts due to expire within $days that haven't been notified about
+    // yet - notify_expiring_contracts() marks each one via
+    // mark_expiry_notified() right after sending, so this only ever returns
+    // a contract once, no matter how many cron ticks run during its
+    // remaining active window.
+    public function get_unnotified_expiring($days = 30)
+    {
+        return $this->db
+            ->select('c.id, c.title, c.end_date, e.first_name, e.last_name, e.email')
+            ->from(db_prefix() . $this->table . ' c')
+            ->join(db_prefix() . 'hr_employees e', 'e.id = c.employee_id', 'left')
+            ->where('c.status', 'active')
+            ->where('c.end_date IS NOT NULL')
+            ->where('c.expiry_notified_at IS NULL')
+            ->where('c.end_date >=', date('Y-m-d'))
+            ->where('c.end_date <=', date('Y-m-d', strtotime("+$days days")))
+            ->get()->result();
+    }
+
+    public function mark_expiry_notified($id)
+    {
+        $this->db->where('id', $id)->update(db_prefix() . $this->table, [
+            'expiry_notified_at' => date('Y-m-d H:i:s'),
+        ]);
+    }
+
     public function get($id)
     {
         return $this->db

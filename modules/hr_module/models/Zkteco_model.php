@@ -442,6 +442,23 @@ class Zkteco_model extends App_Model
 
     public function save_mapping($employee_id, $device_id, $device_user_id)
     {
+        // A device_user_id must be unique per device - without this check,
+        // two employees could end up mapped to the same (device_id,
+        // device_user_id) pair (e.g. if the employee_id_prefix setting
+        // changes between their creation dates, code_exists() no longer
+        // catches the collision even though the underlying device_user_id is
+        // identical). resolve_employee() has no ordering guarantee across
+        // duplicate mapping rows, so one employee's real punches could
+        // otherwise get silently attributed to the other.
+        $conflict = $this->db
+            ->where('device_id', $device_id)
+            ->where('device_user_id', $device_user_id)
+            ->where('employee_id !=', $employee_id)
+            ->get(db_prefix() . $this->mapping_table)->row();
+        if ($conflict) {
+            return ['success' => false, 'message' => 'This device user ID is already mapped to another employee on this device.'];
+        }
+
         $existing = $this->db
             ->where('employee_id', $employee_id)
             ->where('device_id', $device_id)
@@ -483,6 +500,10 @@ class Zkteco_model extends App_Model
     // mappings with exactly the devices just submitted (all sharing the
     // one Device User ID), removing mappings for any device that's no
     // longer selected instead of leaving it stale alongside the new ones.
+    // Returns a list of device_ids that could NOT be mapped (a device_user_id
+    // conflict with another employee on that device) - empty array means
+    // every selected device mapped cleanly. Ignored by a caller that doesn't
+    // check it, same as before this was added (previously void).
     public function set_employee_device_mapping($employee_id, $device_ids, $device_user_id)
     {
         $device_ids     = array_values(array_unique(array_filter(array_map('intval', (array) $device_ids))));
@@ -490,15 +511,18 @@ class Zkteco_model extends App_Model
 
         if (empty($device_ids) || $device_user_id === '') {
             $this->db->where('employee_id', $employee_id)->delete(db_prefix() . $this->mapping_table);
-            return;
+            return [];
         }
 
         $this->db->where('employee_id', $employee_id)->where_not_in('device_id', $device_ids)
             ->delete(db_prefix() . $this->mapping_table);
 
+        $conflicts = [];
         foreach ($device_ids as $device_id) {
-            $this->save_mapping($employee_id, $device_id, $device_user_id);
+            $result = $this->save_mapping($employee_id, $device_id, $device_user_id);
+            if (!$result['success']) $conflicts[] = $device_id;
         }
+        return $conflicts;
     }
 
     // Public so file-based imports (e.g. Attendance::_parse_attlog()) can

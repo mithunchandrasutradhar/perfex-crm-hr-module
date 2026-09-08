@@ -47,6 +47,10 @@ class Hr_contracts extends AdminController
         $data['title']     = _l('hr_contract_add');
         $data['contract']  = null;
         $data['employees'] = $this->Hr_module_model->get_active_employees_dropdown();
+        // Default the dropdown to the current staff's own linked employee (if
+        // any) as a convenience preselection, still fully changeable - this
+        // form has no own_only/self-service lock, unlike Leave/Loans/etc.
+        $data['default_employee_id'] = hr_get_own_employee_id();
         $this->load->view('hr_module/contracts/form', $data);
     }
 

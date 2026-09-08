@@ -289,10 +289,28 @@ class Shifts_model extends App_Model
 
     public function delete($id)
     {
+        // Fetched before the delete so an already-approved assignment's
+        // employee/date-range is still known afterward, for the resync below.
+        $assignment = $this->get($id);
+
         $this->db->where('id', $id)->delete($this->tbl_assignments);
         $deleted = $this->db->affected_rows() > 0;
         if ($deleted) {
             log_activity('HR Shift Assignment Deleted [ID: ' . $id . ']');
+
+            // If this was an approved assignment, any attendance already
+            // computed against its shift's start time for the dates it
+            // covered needs re-checking now that it no longer applies - the
+            // same reasoning as resync_status_for_shift() being called from
+            // approve() above, just in the other direction (a shift
+            // disappearing instead of appearing). get_employee_shift_for_date()
+            // will now correctly fall through to whatever other shift (or the
+            // default office hours) actually applies.
+            if ($assignment && $assignment->status === 'approved') {
+                $CI = &get_instance();
+                $CI->load->model('hr_module/Attendance_model');
+                $CI->Attendance_model->resync_status_for_shift($assignment->employee_id, $assignment->from_date, $assignment->to_date);
+            }
         }
         return $deleted;
     }

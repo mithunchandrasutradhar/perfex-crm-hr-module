@@ -56,7 +56,7 @@ $current_month_end   = $restrict_to_current_month ? date('Y/m/t') : '';
                       <option value=""><?php echo _l('hr_select'); ?></option>
                       <?php foreach ($employees as $id => $name): ?>
                       <option value="<?php echo $id; ?>"
-                        <?php if ($own_only || ($is_edit && $overtime->employee_id == $id)) echo 'selected'; ?>>
+                        <?php if ($own_only || ($is_edit && $overtime->employee_id == $id) || (!$own_only && empty($is_edit) && !empty($default_employee_id) && $id == $default_employee_id)) echo 'selected'; ?>>
                         <?php echo htmlspecialchars($name); ?>
                       </option>
                       <?php endforeach; ?>

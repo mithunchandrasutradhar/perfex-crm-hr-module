@@ -630,6 +630,7 @@ $lang['hr_settings_office_start_time']     = 'Office Start Time';
 $lang['hr_settings_office_end_time']       = 'Office End Time';
 $lang['hr_settings_late_threshold']        = 'Late Threshold (minutes)';
 $lang['hr_settings_night_shift_grace']     = 'Night Shift Grace Period (hours)';
+$lang['hr_settings_income_tax_rate']       = 'Income Tax Rate (%)';
 $lang['hr_settings_overtime_rate']         = 'Weekend Overduty Rate';
 $lang['hr_settings_overtime_holiday_rate'] = 'Holiday Overduty Rate';
 $lang['hr_settings_overtime_day_divisor']      = 'Overduty Day Divisor';
@@ -804,6 +805,7 @@ $lang['not_hr_policy_updated_published']         = 'Policy "%s" has been updated
 $lang['not_hr_shift_applied']                    = '%s submitted a new shift assignment request';
 $lang['not_hr_shift_status']                     = 'Your shift assignment request has been %s';
 $lang['not_hr_payroll_generated']                = 'Payroll for %s has been generated';
+$lang['not_hr_contract_expiring']                = 'Contract expiring soon for %s';
 
 // ─── Shift Duty ─────────────────────────────────────────────────────────
 $lang['hr_perm_shifts']                    = 'HR Shifts';

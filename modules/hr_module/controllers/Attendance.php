@@ -374,6 +374,13 @@ class Attendance extends AdminController
             fclose($fh);
         }
 
+        // A night-shift employee's closing punches land on the next calendar
+        // date in the raw export (e.g. 18:00 in, 02:00 out the next day) -
+        // without this, they'd be split into two broken day-records instead
+        // of one correct one, the same class of bug already fixed for the
+        // live device-push path.
+        $this->_merge_night_shift_dates($punches);
+
         $records = [];
         foreach ($punches as $employee_id => $dates) {
             foreach ($dates as $date => $times) {
@@ -389,6 +396,45 @@ class Attendance extends AdminController
         }
 
         return ['records' => $records, 'unmatched' => $unmatched];
+    }
+
+    // Merges a night-shift employee's next-day punch group back into the
+    // previous day's group when: the employee has an approved overnight shift
+    // (end time earlier than start time) covering the previous date, and the
+    // next date's earliest punch falls within the configured grace window
+    // after that shift's end time. Mutates $punches in place. Only handles a
+    // single-day merge (not a multi-day chain), matching the one-night span
+    // any real shift actually covers.
+    private function _merge_night_shift_dates(array &$punches)
+    {
+        $this->load->model('hr_module/Shifts_model');
+        $grace_hours = (float) $this->Hr_module_model->get_setting('night_shift_grace_hours', '4');
+
+        foreach ($punches as $employee_id => &$dates) {
+            ksort($dates);
+            $ordered_dates = array_keys($dates);
+            for ($i = 1; $i < count($ordered_dates); $i++) {
+                $date      = $ordered_dates[$i];
+                $prev_date = $ordered_dates[$i - 1];
+                if (!isset($dates[$date]) || !isset($dates[$prev_date])) continue;
+                if (date('Y-m-d', strtotime($prev_date . ' +1 day')) !== $date) continue;
+
+                $shift = $this->Shifts_model->get_employee_shift_for_date($employee_id, $prev_date);
+                if (!$shift || !$shift->start_time || !$shift->end_time || $shift->end_time >= $shift->start_time) {
+                    continue;
+                }
+
+                $grace_cutoff = date('H:i:s', strtotime($shift->end_time) + $grace_hours * 3600);
+                $times = $dates[$date];
+                sort($times);
+                $earliest_time = date('H:i:s', strtotime($times[0]));
+                if ($earliest_time > $grace_cutoff) continue;
+
+                $dates[$prev_date] = array_merge($dates[$prev_date], $dates[$date]);
+                unset($dates[$date]);
+            }
+        }
+        unset($dates);
     }
 
     private function _import_and_report($records, $unmatched, $unmatchedLabel = 'row(s)')

@@ -115,6 +115,10 @@ class Overduty extends AdminController
         $data['title']     = _l('hr_overtime_add');
         $data['own_only']  = $own_only;
         $data['own_emp_id']= $own_emp_id;
+        // Global-view callers see the full employee dropdown - default it to
+        // their own linked employee (if any) as a convenience preselection,
+        // still fully changeable, unlike the locked own_only case above.
+        $data['default_employee_id'] = $own_only ? 0 : hr_get_own_employee_id();
 
         if ($own_only) {
             $emp = $this->Employees_model->get($own_emp_id);

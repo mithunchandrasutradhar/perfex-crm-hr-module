@@ -170,6 +170,14 @@ $can_edit = staff_can('edit', 'hr_settings') || is_admin();
                                 </div>
                                 <div class="col-md-3 col-sm-6">
                                     <div class="form-group">
+                                        <label><?php echo _l('hr_settings_income_tax_rate'); ?></label>
+                                        <input type="number" name="hr_income_tax_rate" class="form-control" step="0.1" min="0" max="100"
+                                            value="<?php echo isset($settings['hr_income_tax_rate']) ? $settings['hr_income_tax_rate'] : 0; ?>"
+                                            <?php echo !$can_edit ? 'readonly' : ''; ?>>
+                                    </div>
+                                </div>
+                                <div class="col-md-3 col-sm-6">
+                                    <div class="form-group">
                                         <label><?php echo _l('hr_settings_overtime_rate'); ?></label>
                                         <input type="number" name="default_overtime_rate" class="form-control" step="0.1" min="1" max="5"
                                             value="<?php echo isset($settings['default_overtime_rate']) ? $settings['default_overtime_rate'] : '1.5'; ?>"

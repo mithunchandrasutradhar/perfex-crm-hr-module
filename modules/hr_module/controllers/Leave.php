@@ -148,6 +148,11 @@ class Leave extends AdminController
         $data['leave_types']    = $this->Leave_model->get_active_types();
         $data['own_only']       = $own_only;
         $data['own_emp_id']     = $own_emp_id;
+        // Global-view callers (own_only false) see the full employee dropdown -
+        // default it to their own linked employee (if any) purely as a
+        // convenience preselection, still fully changeable, unlike the locked
+        // own_only case above which uses own_emp_id for that instead.
+        $data['default_employee_id'] = $own_only ? 0 : hr_get_own_employee_id();
         $data['holidays_json']  = json_encode($this->Holidays_model->get_as_json($year));
         $data['weekly_off_json']= json_encode($this->Holidays_model->get_weekly_off_days());
 
@@ -556,6 +561,50 @@ class Leave extends AdminController
             $remaining = $balance->allocated_days + $balance->carry_forward_days - $balance->used_days;
         }
         echo json_encode(['balance' => $balance, 'remaining' => $remaining]);
+    }
+
+    // Live preview for the Apply form: warns the employee BEFORE they submit
+    // if any day currently entered would bridge with an existing pending/
+    // approved request (e.g. they already have Thursday approved and are now
+    // entering Saturday, with Friday off in between) - the same rule
+    // apply() itself enforces server-side; this just surfaces it earlier so
+    // it isn't a surprise only visible after the request's already been
+    // recorded with the extra day silently added.
+    public function preview_cross_bridge_ajax()
+    {
+        if (!$this->input->is_ajax_request()) show_404();
+        if (staff_cant('view', 'hr_leave') && staff_cant('view_own', 'hr_leave') && staff_cant('create', 'hr_leave')) {
+            show_404();
+        }
+        $emp_id = (int) $this->input->post('employee_id');
+        // A view_own-only caller (applying only for themselves) can only ever
+        // preview their own bridge days - same "ignore any spoofed
+        // employee_id" rule apply() already enforces server-side regardless.
+        if (!staff_can('view', 'hr_leave') && staff_can('view_own', 'hr_leave')) {
+            $emp_id = hr_get_own_employee_id();
+        }
+        $type_id = (int) $this->input->post('leave_type_id');
+
+        $days = json_decode($this->input->post('days'), true);
+        if (!is_array($days)) $days = [];
+        // 'date' arrives as the datepicker's display format (e.g. dd-mm-yyyy),
+        // not SQL format - must go through to_sql_date() the same way
+        // _parse_posted_days() does for the real submit, otherwise every
+        // date comparison in find_cross_request_bridge_days() silently
+        // fails to match against tbl_request_days.leave_date.
+        $days = array_values(array_filter(array_map(function ($d) {
+            return (is_array($d) && !empty($d['date']) && !empty($d['type']))
+                ? ['date' => to_sql_date($d['date']), 'type' => $d['type']]
+                : null;
+        }, $days)));
+
+        $bridges = ($emp_id && $type_id && $days)
+            ? $this->Leave_model->find_cross_request_bridge_days($emp_id, $type_id, $days)
+            : [];
+
+        echo json_encode(['bridges' => array_map(function ($b) {
+            return ['date' => $b['date'], 'name' => $b['note']];
+        }, $bridges)]);
     }
 
     // Plain-text (not HTML) rendering of a leave request's day-by-day breakdown,

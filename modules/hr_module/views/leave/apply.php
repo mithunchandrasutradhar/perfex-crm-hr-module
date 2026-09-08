@@ -39,7 +39,7 @@ if (!isset($employee_genders_json)) $employee_genders_json = '{}';
                 <?php if (!empty($own_only)) echo 'disabled'; ?>>
                 <option value=""><?php echo _l('hr_select'); ?></option>
                 <?php foreach ($employees as $id => $name): ?>
-                <option value="<?php echo $id; ?>" <?php if (!empty($own_only)) echo 'selected'; ?>>
+                <option value="<?php echo $id; ?>" <?php if (!empty($own_only) || (empty($own_only) && !empty($default_employee_id) && $id == $default_employee_id)) echo 'selected'; ?>>
                   <?php echo htmlspecialchars($name); ?>
                 </option>
                 <?php endforeach; ?>
@@ -152,6 +152,13 @@ if (!isset($employee_genders_json)) $employee_genders_json = '{}';
     var gHolidays  = <?php echo isset($holidays_json)  ? $holidays_json  : '[]'; ?>;
     var gWeeklyOff = <?php echo isset($weekly_off_json) ? $weekly_off_json : '[5]'; ?>;
     var gBalances  = <?php echo $balances_json; ?>;
+
+    // Bridge days detected against an existing pending/approved request on a
+    // *different*, already-submitted request (e.g. Thursday already applied
+    // for, now applying for Saturday with Friday off in between) - populated
+    // asynchronously by checkCrossRequestBridge() and merged into the total by
+    // refreshTotal(), alongside computeBridgeDays()'s same-request detection.
+    var gCrossBridges = [];
     var gEmployeeGenders = <?php echo $employee_genders_json; ?>;
     var rowIndex = 0;
 
@@ -321,6 +328,7 @@ if (!isset($employee_genders_json)) $employee_genders_json = '{}';
             $row.find('.day-value').text(parseFloat(value.toFixed(2)));
         }
         refreshTotal();
+        checkCrossRequestBridge();
     }
 
     // Sandwich rule preview: mirrors Leave_model::_add_bridge_days() so the employee
@@ -387,7 +395,15 @@ if (!isset($employee_genders_json)) $employee_genders_json = '{}';
                 }
             }
         });
-        var bridges = computeBridgeDays();
+        // Merge same-request bridges (computed purely client-side) with
+        // cross-request bridges (computed server-side against other requests
+        // already on file - see checkCrossRequestBridge()), deduping by date
+        // in case the two ever overlap.
+        var seenBridgeDates = {};
+        var bridges = [];
+        computeBridgeDays().concat(gCrossBridges).forEach(function(b){
+            if (!seenBridgeDates[b.date]) { seenBridgeDates[b.date] = true; bridges.push(b); }
+        });
         totalMinutes += bridges.length * hpd * 60;
 
         var minutesPerDay = Math.round(hpd * 60);
@@ -543,12 +559,53 @@ if (!isset($employee_genders_json)) $employee_genders_json = '{}';
         });
     }
 
+    // Same-request bridges are computed instantly in JS (computeBridgeDays()),
+    // but a bridge against a DIFFERENT, already-submitted request can only be
+    // known by asking the server (Leave_model::find_cross_request_bridge_days()).
+    // Debounced (300ms) since this fires on every row edit, and abortable so a
+    // fast-typing/rapid-editing employee never has an earlier, now-stale
+    // response overwrite a later one.
+    var crossBridgeXhr   = null;
+    var crossBridgeTimer = null;
+    function checkCrossRequestBridge() {
+        var emp  = $('#leave-employee').val();
+        var type = $('#leave-type').val();
+
+        var days = [];
+        $('#day-rows .leave-day-row').each(function(){
+            var v = $(this).find('.day-date').val();
+            var t = $(this).find('select.day-type').val();
+            if (v && t) days.push({ date: v, type: t });
+        });
+
+        if (crossBridgeTimer) { clearTimeout(crossBridgeTimer); crossBridgeTimer = null; }
+        if (crossBridgeXhr) { crossBridgeXhr.abort(); crossBridgeXhr = null; }
+
+        if (!emp || !type || !days.length) {
+            gCrossBridges = [];
+            refreshTotal();
+            return;
+        }
+
+        crossBridgeTimer = setTimeout(function(){
+            crossBridgeXhr = $.post('<?php echo admin_url('hr_module/leave/preview_cross_bridge_ajax'); ?>', {
+                employee_id: emp,
+                leave_type_id: type,
+                days: JSON.stringify(days)
+            }, function(data){
+                gCrossBridges = data.bridges || [];
+                refreshTotal();
+            }, 'json');
+        }, 300);
+    }
+
     $(document).ready(function(){
         $('#btn-add-day').on('click', addDayRow);
 
         $(document).on('click', '.remove-day', function(){
             $(this).closest('.leave-day-row').remove();
             refreshTotal();
+            checkCrossRequestBridge();
         });
 
         // bootstrap-select fires 'changed.bs.select' alongside its native 'change', so both
@@ -562,6 +619,7 @@ if (!isset($employee_genders_json)) $employee_genders_json = '{}';
 
         $('#leave-employee, #leave-type').on('change changed.bs.select', function(){
             loadBalance();
+            checkCrossRequestBridge();
         });
         $('#leave-employee').on('change changed.bs.select', applyGenderFilter);
         $('#leave-type').on('change changed.bs.select', function(){

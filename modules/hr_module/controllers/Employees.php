@@ -74,9 +74,12 @@ class Employees extends AdminController
                 // site-wide "Allocate" run.
                 $this->load->model('hr_module/Leave_model');
                 $this->Leave_model->allocate_for_employee($id);
-                $this->Zkteco_model->set_employee_device_mapping(
+                $conflicts = $this->Zkteco_model->set_employee_device_mapping(
                     $id, $this->input->post('zkteco_device_id'), $device_user_id
                 );
+                if ($conflicts) {
+                    set_alert('warning', 'Employee added, but this Device User ID is already mapped to another employee on the selected device(s) - device mapping was not saved for those. Please check for a duplicate ID.');
+                }
                 set_alert('success', _l('hr_employee_added'));
                 redirect(admin_url('hr_module/employees/view/' . $id));
             }
@@ -162,9 +165,12 @@ class Employees extends AdminController
 
             $this->Employees_model->update($data, $id);
             if (!$restrict_sensitive_fields) {
-                $this->Zkteco_model->set_employee_device_mapping(
+                $conflicts = $this->Zkteco_model->set_employee_device_mapping(
                     $id, $this->input->post('zkteco_device_id'), $this->input->post('device_user_id', true)
                 );
+                if ($conflicts) {
+                    set_alert('warning', 'Employee updated, but this Device User ID is already mapped to another employee on the selected device(s) - device mapping was not saved for those. Please check for a duplicate ID.');
+                }
             }
             set_alert('success', _l('hr_employee_updated'));
             redirect(admin_url('hr_module/employees/view/' . $id));

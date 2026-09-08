@@ -176,8 +176,25 @@ class Attendance_model extends App_Model
                 continue;
             }
 
-            $mergedIn  = $this->_merge_time($existing->in_time, $rec['in_time'] ?? null, true);
-            $mergedOut = $this->_merge_time($existing->out_time, $rec['out_time'] ?? null, false);
+            $mergedIn = $this->_merge_time($existing->in_time, $rec['in_time'] ?? null, true);
+
+            // Night-shift-safe "is this the later out_time" comparison (same
+            // resolve_new_out_time() the live device-push path already uses)
+            // - plain max() would wrongly discard a real post-midnight close
+            // (e.g. "00:30") in favor of an earlier evening out_time (e.g.
+            // "23:50") because it looks "smaller" as a string. Only used once
+            // both sides actually have a value and in_time is known, exactly
+            // mirroring _merge_time()'s own null-handling otherwise.
+            $newOut = $rec['out_time'] ?? null;
+            if (!$existing->out_time) {
+                $mergedOut = $newOut ?: null;
+            } elseif (!$newOut) {
+                $mergedOut = $existing->out_time;
+            } elseif ($mergedIn) {
+                $mergedOut = $this->resolve_new_out_time($rec['employee_id'], $rec['attendance_date'], $mergedIn, $existing->out_time, $newOut);
+            } else {
+                $mergedOut = $this->_merge_time($existing->out_time, $newOut, false);
+            }
 
             if ($mergedIn === $existing->in_time && $mergedOut === $existing->out_time) {
                 $skipped++;
