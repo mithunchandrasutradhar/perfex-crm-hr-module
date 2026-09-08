@@ -110,15 +110,20 @@ $(function(){
     }
     $('#f-status, #f-type, #f-dept, #f-emp').on('change changed.bs.select', reload);
 
-    // Pre-select the Employee filter when landing here with ?employee_id=
-    // in the URL (e.g. the dashboard's "My Leaves" quick action) - the
-    // table itself is already filtered server-side by the initial
-    // window.location.href load above, this just reflects it in the UI.
+    // Pre-select the Employee/Status filters when landing here with
+    // ?employee_id=/?status= in the URL (e.g. the dashboard's "My Leaves" or
+    // "Pending Leave Requests" quick actions) - the table itself is already
+    // filtered server-side by the initial window.location.href load above,
+    // this just reflects it in the UI.
     (function(){
         var params = new URLSearchParams(window.location.search);
-        var empId = params.get('employee_id');
+        var empId  = params.get('employee_id');
+        var status = params.get('status');
         if (empId) {
             $('#f-emp').val(empId).selectpicker('refresh');
+        }
+        if (status) {
+            $('#f-status').val(status).selectpicker('refresh');
         }
     })();
 

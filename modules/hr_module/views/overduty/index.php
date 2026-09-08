@@ -90,6 +90,17 @@ $(function(){
     }
     $('#f-dept,#f-status,#f-from,#f-to').on('change changed.bs.select', reload);
 
+    // Pre-select the Status filter when landing here with ?status= in the
+    // URL (e.g. the dashboard's "Pending Overduty Requests" quick action) -
+    // the table itself is already filtered server-side by the initial
+    // window.location.href load above, this just reflects it in the UI.
+    (function(){
+        var status = new URLSearchParams(window.location.search).get('status');
+        if (status) {
+            $('#f-status').val(status).selectpicker('refresh');
+        }
+    })();
+
     $(document).on('click', '.hr-ot-reject', function(e){
         e.preventDefault();
         var reason = prompt('<?php echo _l('hr_overtime_reject_reason_prompt'); ?>', '');

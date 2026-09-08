@@ -63,5 +63,16 @@ $(function(){
     }
 
     $('#filter-dept, #filter-branch, #filter-status').on('change', function(){ reloadWithFilters(); });
+
+    // Pre-select the Status filter when landing here with ?status= in the
+    // URL (e.g. the dashboard's "Active Employees" quick action) - the table
+    // itself is already filtered server-side by the initial
+    // window.location.href load above, this just reflects it in the UI.
+    (function(){
+        var status = new URLSearchParams(window.location.search).get('status');
+        if (status !== null && status !== '') {
+            $('#filter-status').val(status).selectpicker('refresh');
+        }
+    })();
 });
 </script>

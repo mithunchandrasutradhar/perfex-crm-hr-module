@@ -149,6 +149,16 @@ class Leave_model extends App_Model
         if (!empty($filters['status']))       $this->db->where('r.status', $filters['status']);
         if (!empty($filters['leave_type_id'])) $this->db->where('r.leave_type_id', $filters['leave_type_id']);
         if (!empty($filters['year']))         $this->db->where('YEAR(r.from_date)', $filters['year']);
+        // "On Leave Today" dashboard widget - same definition as
+        // Hr_module_model::get_dashboard_stats()'s on_leave_today count, so the
+        // list this links to always matches the number shown on the card:
+        // approved requests whose date range covers the given date. Expects a
+        // plain SQL-format (Y-m-d) date, not the site display format.
+        if (!empty($filters['on_date'])) {
+            $this->db->where('r.status', 'approved');
+            $this->db->where('r.from_date <=', $filters['on_date']);
+            $this->db->where('r.to_date >=', $filters['on_date']);
+        }
         if (!empty($filters['search'])) {
             $this->db->group_start()
                 ->like('CONCAT(e.first_name," ",e.last_name)', $filters['search'])

@@ -9,6 +9,13 @@ foreach (['employee_id', 'department_id', 'shift_type_id', 'status'] as $key) {
     $v = $CI->input->get($key);
     if ($v !== null && $v !== '') $filters[$key] = $v;
 }
+// from_date/to_date arrive in the site display format (same datepicker
+// convention as Overduty/Attendance's own date filters), so they need
+// converting to SQL format before being handed to the model.
+foreach (['from_date', 'to_date'] as $key) {
+    $v = $CI->input->get($key);
+    if ($v !== null && $v !== '') $filters[$key] = to_sql_date($v);
+}
 
 if (!is_admin() && !staff_can('view', 'hr_shifts')) {
     if (staff_can('view_department', 'hr_shifts')) {
@@ -80,6 +87,15 @@ foreach ($rows as $r) {
     $status_cell = '<span class="label label-' . ($badge[$r->status] ?? 'default') . '">' . ucfirst($r->status) . '</span>';
     $date_range  = date('d M Y', strtotime($r->from_date)) . ($r->to_date !== $r->from_date ? ' - ' . date('d M Y', strtotime($r->to_date)) : '');
 
+    // Multiple shift types can share the same display name with different
+    // hours (e.g. two "Night" shifts) - showing the time distinguishes them,
+    // same "(g:i A - g:i A)" convention already used on the Assign Shift form
+    // and the request detail page (shifts/form.php, shifts/view.php).
+    $shift_cell = htmlspecialchars($r->shift_name);
+    if (!empty($r->start_time) && !empty($r->end_time)) {
+        $shift_cell .= '<br><small class="text-muted">' . date('g:i A', strtotime($r->start_time)) . ' - ' . date('g:i A', strtotime($r->end_time)) . '</small>';
+    }
+
     // Bulk-approve checkbox: only for a pending row the caller can actually
     // approve - matches the single-row Approve link's own condition above.
     $checkbox_cell = ($r->status === 'pending' && $can_approve)
@@ -90,7 +106,7 @@ foreach ($rows as $r) {
         $checkbox_cell,
         $employee_cell,
         $r->department_name ? htmlspecialchars($r->department_name) : '-',
-        htmlspecialchars($r->shift_name),
+        $shift_cell,
         $date_range,
         $status_cell,
         date('d M Y', strtotime($r->created_at)),

@@ -147,7 +147,7 @@ class Shifts_model extends App_Model
 
     public function get_all($filters = [])
     {
-        $this->db->select('a.*, st.name as shift_name,
+        $this->db->select('a.*, st.name as shift_name, st.start_time, st.end_time,
                 CONCAT(e.first_name," ",e.last_name) as employee_name, e.employee_code,
                 d.name as department_name', false)
             ->from($this->tbl_assignments . ' a')
@@ -159,6 +159,11 @@ class Shifts_model extends App_Model
         if (!empty($filters['status']))       $this->db->where('a.status', $filters['status']);
         if (!empty($filters['shift_type_id'])) $this->db->where('a.shift_type_id', $filters['shift_type_id']);
         if (!empty($filters['department_id'])) $this->db->where('e.department_id', $filters['department_id']);
+        // Date range filter - matches any assignment whose own [from_date,to_date]
+        // range overlaps the requested window at all, same overlap test
+        // _has_overlap() below already uses for conflict detection.
+        if (!empty($filters['from_date'])) $this->db->where('a.to_date >=', $filters['from_date']);
+        if (!empty($filters['to_date']))   $this->db->where('a.from_date <=', $filters['to_date']);
         if (!empty($filters['search'])) {
             $this->db->group_start()
                 ->like('CONCAT(e.first_name," ",e.last_name)', $filters['search'])

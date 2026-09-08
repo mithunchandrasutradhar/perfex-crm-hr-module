@@ -98,6 +98,7 @@ $lang['hr_select']                         = 'Select';
 $lang['hr_all']                            = 'All';
 $lang['hr_none']                           = 'None';
 $lang['hr_filter']                         = 'Filter';
+$lang['hr_reset_filters']                  = 'Reset';
 $lang['hr_reset']                          = 'Reset';
 $lang['hr_submit']                         = 'Submit';
 $lang['hr_back']                           = 'Back';

@@ -17,7 +17,7 @@ if (!isset($is_global))   $is_global   = is_admin() || staff_can('view', 'hr_att
           <div class="tw-flex tw-flex-wrap tw-gap-2">
             <!-- Filters -->
             <?php if ($is_global): ?>
-            <select id="f-dept" class="selectpicker" data-width="260px">
+            <select id="f-dept" class="selectpicker" data-width="150px">
               <option value=""><?php echo _l('hr_all') . ' Dept'; ?></option>
               <?php foreach ($departments as $d): ?>
               <option value="<?php echo $d->id; ?>"><?php echo htmlspecialchars($d->name); ?></option>
@@ -25,7 +25,7 @@ if (!isset($is_global))   $is_global   = is_admin() || staff_can('view', 'hr_att
             </select>
             <?php endif; ?>
             <?php if ($is_global): ?>
-            <select id="f-emp" class="selectpicker" data-width="220px" data-live-search="true"
+            <select id="f-emp" class="selectpicker" data-width="200px" data-live-search="true"
                     data-none-selected-text="<?php echo _l('hr_employee'); ?>">
               <option value=""><?php echo _l('hr_all') . ' Employees'; ?></option>
               <?php foreach ($employees as $id => $name): ?>
@@ -48,6 +48,9 @@ if (!isset($is_global))   $is_global   = is_admin() || staff_can('view', 'hr_att
               <option value="absent">Absent</option>
               <option value="half_day">Half Day</option>
             </select>
+            <button type="button" id="btn-reset-filters" class="btn btn-default btn-sm" title="Reset filters">
+              <i class="fa fa-rotate-left tw-mr-1"></i><?php echo _l('hr_reset_filters'); ?>
+            </button>
             <?php if (staff_can('create', 'hr_attendance')): ?>
             <button class="btn btn-primary" id="btn-add-att">
               <i class="fa-regular fa-plus tw-mr-1"></i><?php echo _l('hr_attendance_add'); ?>
@@ -185,15 +188,21 @@ if (!isset($is_global))   $is_global   = is_admin() || staff_can('view', 'hr_att
 <?php init_tail(); ?>
 <script>
 $(function(){
-    // Pre-select the Employee filter when landing here with ?employee_id=
-    // in the URL (e.g. the dashboard's "My Attendance" quick action) - done
-    // before the initial load below so that load's own URL (built from these
-    // same fields) picks it up too, not just the dropdown's displayed state.
+    // Pre-select the Employee/Status filters when landing here with
+    // ?employee_id=/?status= in the URL (e.g. the dashboard's "My Attendance"
+    // or "Present Today" quick actions) - done before the initial load below
+    // so that load's own URL (built from these same fields, not from
+    // window.location.search directly - see buildFilterUrl() below) picks it
+    // up too, not just the dropdown's displayed state.
     (function(){
         var params = new URLSearchParams(window.location.search);
-        var empId = params.get('employee_id');
+        var empId  = params.get('employee_id');
+        var status = params.get('status');
         if (empId) {
             $('#f-emp').val(empId).selectpicker('refresh');
+        }
+        if (status && $('#f-status').length) {
+            $('#f-status').val(status).selectpicker('refresh');
         }
     })();
 
@@ -223,6 +232,20 @@ $(function(){
         $('.table-hr-attendance').DataTable().ajax.url(buildFilterUrl()).load();
     }
     $('#f-dept, #f-emp, #f-status, #f-from, #f-to').on('change changed.bs.select', reload);
+
+    // Reset every filter to blank/"All" in one click, instead of clearing
+    // each dropdown/date by hand - a single reload() at the end picks up all
+    // of them at once. The date fields clear to blank here (not back to
+    // today) - only the page's own first-load default is today; Reset means
+    // "no filter at all", matching what the Shifts list's Reset now does.
+    $('#btn-reset-filters').on('click', function(){
+        if ($('#f-dept').length) $('#f-dept').val('').selectpicker('refresh');
+        if ($('#f-emp').length)  $('#f-emp').val('').selectpicker('refresh');
+        $('#f-status').val('').selectpicker('refresh');
+        $('#f-from').val('');
+        $('#f-to').val('');
+        reload();
+    });
 
     // View Log
     var verifyIcon = {

@@ -407,7 +407,7 @@ $task_status_colors = [
         </a>
     </div>
     <div class="col-md-3 col-sm-6">
-        <a href="<?php echo admin_url('hr_module/employees'); ?>" class="block-link">
+        <a href="<?php echo admin_url('hr_module/employees?status=1'); ?>" class="block-link">
             <div class="panel_s hr-stat-card">
                 <div class="panel-body tw-p-4 tw-flex tw-items-center tw-gap-4">
                     <div class="hr-stat-icon bg-success">
@@ -437,7 +437,7 @@ $task_status_colors = [
         </a>
     </div>
     <div class="col-md-3 col-sm-6">
-        <a href="<?php echo admin_url('hr_module/attendance'); ?>" class="block-link">
+        <a href="<?php echo admin_url('hr_module/attendance?status=present'); ?>" class="block-link">
             <div class="panel_s hr-stat-card">
                 <div class="panel-body tw-p-4 tw-flex tw-items-center tw-gap-4">
                     <div class="hr-stat-icon bg-warning">
@@ -456,7 +456,7 @@ $task_status_colors = [
 <!-- KPI Row 2 -->
 <div class="row">
     <div class="col-md-3 col-sm-6">
-        <a href="<?php echo admin_url('hr_module/leave'); ?>" class="block-link">
+        <a href="<?php echo admin_url('hr_module/leave?on_date=' . date('Y-m-d')); ?>" class="block-link">
             <div class="panel_s hr-stat-card">
                 <div class="panel-body tw-p-4 tw-flex tw-items-center tw-gap-4">
                     <div class="hr-stat-icon bg-danger">
@@ -471,7 +471,7 @@ $task_status_colors = [
         </a>
     </div>
     <div class="col-md-3 col-sm-6">
-        <a href="<?php echo admin_url('hr_module/leave'); ?>" class="block-link">
+        <a href="<?php echo admin_url('hr_module/leave?status=pending'); ?>" class="block-link">
             <div class="panel_s hr-stat-card">
                 <div class="panel-body tw-p-4 tw-flex tw-items-center tw-gap-4">
                     <div class="hr-stat-icon" style="background:#f59e0b">
@@ -486,7 +486,7 @@ $task_status_colors = [
         </a>
     </div>
     <div class="col-md-3 col-sm-6">
-        <a href="<?php echo admin_url('hr_module/loans'); ?>" class="block-link">
+        <a href="<?php echo admin_url('hr_module/loans?status=pending'); ?>" class="block-link">
             <div class="panel_s hr-stat-card">
                 <div class="panel-body tw-p-4 tw-flex tw-items-center tw-gap-4">
                     <div class="hr-stat-icon" style="background:#6366f1">
@@ -501,7 +501,7 @@ $task_status_colors = [
         </a>
     </div>
     <div class="col-md-3 col-sm-6">
-        <a href="<?php echo admin_url('hr_module/overduty'); ?>" class="block-link">
+        <a href="<?php echo admin_url('hr_module/overduty?status=pending'); ?>" class="block-link">
             <div class="panel_s hr-stat-card">
                 <div class="panel-body tw-p-4 tw-flex tw-items-center tw-gap-4">
                     <div class="hr-stat-icon" style="background:#0891b2">
@@ -534,9 +534,9 @@ $task_status_colors = [
                         <i class="fa fa-calendar-plus"></i> <?php echo _l('hr_leave_add'); ?>
                     </a>
                     <?php endif; ?>
-                    <?php if (staff_can('create', 'hr_attendance')): ?>
-                    <a href="<?php echo admin_url('hr_module/attendance/add'); ?>" class="btn btn-success btn-sm">
-                        <i class="fa fa-check-circle"></i> <?php echo _l('hr_attendance_add'); ?>
+                    <?php if (staff_can('create', 'hr_training')): ?>
+                    <a href="<?php echo admin_url('hr_module/training/add'); ?>" class="btn btn-success btn-sm">
+                        <i class="fa fa-graduation-cap"></i> <?php echo _l('hr_training_add'); ?>
                     </a>
                     <?php endif; ?>
                     <?php if (staff_can('view', 'hr_payroll')): ?>

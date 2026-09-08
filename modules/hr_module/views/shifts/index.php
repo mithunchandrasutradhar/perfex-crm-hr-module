@@ -15,18 +15,35 @@
               <?php endforeach; ?>
             </select>
             <?php endif; ?>
-            <select id="f-shift" class="selectpicker" data-width="150px">
+            <select id="f-shift" class="selectpicker" data-width="220px">
               <option value="">All Shifts</option>
               <?php foreach ($shift_types as $s): ?>
-              <option value="<?php echo $s->id; ?>"><?php echo htmlspecialchars($s->name); ?></option>
+              <?php
+              $shift_label = $s->name;
+              if (!empty($s->start_time) && !empty($s->end_time)) {
+                  $shift_label .= ' (' . date('g:i A', strtotime($s->start_time)) . ' - ' . date('g:i A', strtotime($s->end_time)) . ')';
+              }
+              ?>
+              <option value="<?php echo $s->id; ?>"><?php echo htmlspecialchars($shift_label); ?></option>
               <?php endforeach; ?>
             </select>
+            <div class="input-group date" style="width:150px">
+              <input type="text" id="f-from" class="form-control datepicker" autocomplete="off" placeholder="From date">
+              <div class="input-group-addon"><i class="fa-regular fa-calendar calendar-icon"></i></div>
+            </div>
+            <div class="input-group date" style="width:150px">
+              <input type="text" id="f-to" class="form-control datepicker" autocomplete="off" placeholder="To date">
+              <div class="input-group-addon"><i class="fa-regular fa-calendar calendar-icon"></i></div>
+            </div>
             <select id="f-status" class="selectpicker" data-width="120px">
               <option value="">All Status</option>
               <option value="pending"><?php echo _l('hr_shift_status_pending'); ?></option>
               <option value="approved"><?php echo _l('hr_shift_status_approved'); ?></option>
               <option value="rejected"><?php echo _l('hr_shift_status_rejected'); ?></option>
             </select>
+            <button type="button" id="btn-reset-filters" class="btn btn-default btn-sm" title="Reset filters">
+              <i class="fa fa-rotate-left tw-mr-1"></i><?php echo _l('hr_reset_filters'); ?>
+            </button>
             <?php if ($can_manage): ?>
             <a href="<?php echo admin_url('hr_module/shifts/apply'); ?>" class="btn btn-primary">
               <i class="fa-regular fa-plus tw-mr-1"></i><?php echo _l('hr_shift_add_request'); ?>
@@ -97,16 +114,34 @@
 <?php init_tail(); ?>
 <script>
 $(function(){
-    initDataTable('.table-hr-shifts', window.location.href, [], [], [], [5,'desc']);
-    function reload() {
+    // Built from these fields' live values - not window.location.href
+    // directly - same as the Attendance list's equivalent buildFilterUrl().
+    function buildFilterUrl() {
         var deptVal = $('#f-dept').length ? $('#f-dept').val() : '';
-        var url = window.location.href.split('?')[0]
-            + '?department_id=' + deptVal
-            + '&shift_type_id=' + $('#f-shift').val()
-            + '&status='        + $('#f-status').val();
-        $('.table-hr-shifts').DataTable().ajax.url(url).load();
+        return window.location.href.split('?')[0]
+            + '?department_id=' + encodeURIComponent(deptVal || '')
+            + '&shift_type_id=' + encodeURIComponent($('#f-shift').val() || '')
+            + '&status='        + encodeURIComponent($('#f-status').val() || '')
+            + '&from_date='     + encodeURIComponent($('#f-from').val() || '')
+            + '&to_date='       + encodeURIComponent($('#f-to').val() || '');
     }
-    $('#f-dept,#f-shift,#f-status').on('change changed.bs.select', reload);
+    initDataTable('.table-hr-shifts', buildFilterUrl(), [], [], [], [5,'desc']);
+    function reload() {
+        $('.table-hr-shifts').DataTable().ajax.url(buildFilterUrl()).load();
+    }
+    $('#f-dept,#f-shift,#f-status,#f-from,#f-to').on('change changed.bs.select', reload);
+
+    // Reset every filter back to blank/"All" in one click, instead of
+    // clearing each dropdown/date by hand - a single reload() at the end
+    // picks up all of them at once.
+    $('#btn-reset-filters').on('click', function(){
+        if ($('#f-dept').length) $('#f-dept').val('').selectpicker('refresh');
+        $('#f-shift').val('').selectpicker('refresh');
+        $('#f-status').val('').selectpicker('refresh');
+        $('#f-from').val('');
+        $('#f-to').val('');
+        reload();
+    });
 
     function csrf_pair() {
         return '<?php echo $this->security->get_csrf_token_name(); ?>=<?php echo $this->security->get_csrf_hash(); ?>';

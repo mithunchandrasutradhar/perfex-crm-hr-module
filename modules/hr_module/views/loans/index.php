@@ -56,5 +56,16 @@ $(function(){
         $('.table-hr-loans').DataTable().ajax.url(url).load();
     }
     $('#f-dept,#f-status').on('change changed.bs.select', reload);
+
+    // Pre-select the Status filter when landing here with ?status= in the
+    // URL (e.g. the dashboard's "Pending Loan Requests" quick action) - the
+    // table itself is already filtered server-side by the initial
+    // window.location.href load above, this just reflects it in the UI.
+    (function(){
+        var status = new URLSearchParams(window.location.search).get('status');
+        if (status) {
+            $('#f-status').val(status).selectpicker('refresh');
+        }
+    })();
 });
 </script>
