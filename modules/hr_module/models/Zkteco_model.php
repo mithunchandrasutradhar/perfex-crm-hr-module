@@ -235,6 +235,30 @@ class Zkteco_model extends App_Model
                     continue;
                 }
 
+                // A row can already exist with no in_time at all - e.g.
+                // auto-marked absent (see hr_module_auto_mark_absent()) before
+                // this employee's first real punch of the day arrived. Without
+                // this, every later punch would only ever be treated as an
+                // out_time candidate (resolve_new_out_time() comparing against
+                // a blank in_time), leaving in_time permanently empty while
+                // status stays stuck on "absent" forever. This punch instead
+                // establishes in_time now, exactly like the brand-new-row case
+                // above.
+                if (!$existing->in_time) {
+                    $resolved = $this->Attendance_model->resolve_status_and_hours($employee_id, $date, $p['time'], $existing->out_time);
+                    $this->db->where('id', $existing->id)->update(db_prefix() . 'hr_attendance', [
+                        'in_time'       => $p['time'],
+                        'status'        => $resolved['status'],
+                        'working_hours' => $resolved['working_hours'],
+                        'source'        => 'zkteco',
+                        'verify_mode'   => $verify_label,
+                        'device_id'     => $device_id,
+                    ]);
+                    $existing->in_time = $p['time'];
+                    $saved++;
+                    continue;
+                }
+
                 $new_out = $this->Attendance_model->resolve_new_out_time($employee_id, $date, $existing->in_time, $existing->out_time, $p['time']);
                 if ($new_out !== $existing->out_time) {
                     $resolved = $this->Attendance_model->resolve_status_and_hours($employee_id, $date, $existing->in_time, $new_out);
@@ -351,6 +375,26 @@ class Zkteco_model extends App_Model
                         'in_time' => $p['time'],
                         'out_time' => null,
                     ];
+                    continue;
+                }
+
+                // See the matching comment in save_attlog_batch() above - a row
+                // can already exist with no in_time at all (e.g. auto-marked
+                // absent before this employee's first real punch arrived), and
+                // without this, every later punch would only ever update
+                // out_time, leaving in_time permanently blank.
+                if (!$existing->in_time) {
+                    $resolved = $this->Attendance_model->resolve_status_and_hours($employee_id, $date, $p['time'], $existing->out_time);
+                    $this->db->where('id', $existing->id)->update(db_prefix() . 'hr_attendance', [
+                        'in_time'       => $p['time'],
+                        'status'        => $resolved['status'],
+                        'working_hours' => $resolved['working_hours'],
+                        'source'        => 'aiface',
+                        'verify_mode'   => $verify_label,
+                        'device_id'     => $device_id,
+                    ]);
+                    $existing->in_time = $p['time'];
+                    $saved++;
                     continue;
                 }
 

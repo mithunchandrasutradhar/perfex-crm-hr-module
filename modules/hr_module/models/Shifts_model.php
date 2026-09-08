@@ -234,6 +234,13 @@ class Shifts_model extends App_Model
             if ($month > 12) { $month = 1; $year++; }
         }
 
+        // A punch already recorded for one of these dates (e.g. the employee
+        // clocked in before this shift was even requested/approved) was
+        // checked against the default office hours at that moment - re-check
+        // it now against this shift's actual start time.
+        $CI->load->model('hr_module/Attendance_model');
+        $CI->Attendance_model->resync_status_for_shift($assignment->employee_id, $assignment->from_date, $assignment->to_date);
+
         return ['success' => true];
     }
 

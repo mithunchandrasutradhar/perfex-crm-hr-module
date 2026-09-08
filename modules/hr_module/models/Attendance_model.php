@@ -346,6 +346,32 @@ class Attendance_model extends App_Model
         ];
     }
 
+    // A punch recorded before its shift assignment was even requested/approved
+    // falls back to the default office hours for the late/present check, since
+    // no approved shift exists for that date yet at that moment - if the shift
+    // is later approved retroactively (covering a date that's already punched),
+    // the stored status never re-checks itself against it. Called right after
+    // a shift assignment is approved (see Shifts_model::approve()) to
+    // recompute status for exactly the dates that assignment covers - only
+    // for rows still in an auto-determined 'present'/'late' state, so a
+    // manually-set 'absent'/'half_day' override is never touched.
+    public function resync_status_for_shift($employee_id, $from_date, $to_date)
+    {
+        $rows = $this->db->where('employee_id', $employee_id)
+            ->where('attendance_date >=', $from_date)
+            ->where('attendance_date <=', $to_date)
+            ->where_in('status', ['present', 'late'])
+            ->get($this->table)->result();
+
+        foreach ($rows as $row) {
+            if (!$row->in_time) continue;
+            $new_status = $this->_determine_status($row->in_time, $employee_id, $row->attendance_date);
+            if ($new_status !== $row->status) {
+                $this->db->where('id', $row->id)->update($this->table, ['status' => $new_status]);
+            }
+        }
+    }
+
     // Handles overnight shifts (e.g. Night Shift 22:00 -> 06:00), where out_time
     // is technically earlier in the clock than in_time because it falls on the
     // next calendar day.
