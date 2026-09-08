@@ -35,7 +35,15 @@ if (!isset($shift_types)) $shift_types = [];
               </div>
 
               <div class="form-group">
-                <label><?php echo _l('hr_shift_dates'); ?> <span class="text-danger">*</span></label>
+                <div class="row">
+                  <div class="col-md-6">
+                    <label><?php echo _l('hr_shift_dates'); ?> <span class="text-danger">*</span></label>
+                  </div>
+                  <div class="col-md-5">
+                    <label><?php echo _l('hr_shift_type'); ?></label>
+                  </div>
+                  <div class="col-md-1"></div>
+                </div>
                 <div id="shift-dates-wrapper">
                   <div class="row shift-date-row tw-mb-2">
                     <div class="col-md-6">
