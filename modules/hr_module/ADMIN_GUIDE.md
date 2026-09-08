@@ -1,15 +1,17 @@
 # HR Module — Admin Guide
 
-This guide is for whoever **operates** the HR module day to day — configuring it, setting up roles, keeping integrations healthy, and troubleshooting when something looks wrong. It assumes you already have full admin access.
+This guide is for whoever **operates** the HR module day to day — configuring it, setting up roles, keeping integrations healthy, and troubleshooting when something looks wrong. It assumes you already have full admin access. Every setup/configuration task is written as a numbered **Steps** walkthrough so you can follow it directly on your own screen.
 
-If you're looking for "how do I apply for leave" or "how do I approve a request," see [`USER_GUIDE.md`](USER_GUIDE.md) instead — this guide is about running the module, not using its features day to day. If you're extending the module's code, see [`DEVELOPER.md`](DEVELOPER.md).
+This guide **doubles as the role guide for a full admin** — since an admin bypasses every permission check and can use every feature besides, there's no separate "admin's day-to-day usage" document; everything here plus [`USER_GUIDE.md`](USER_GUIDE.md)'s feature reference already covers that.
+
+If you're looking for "how do I apply for leave" or "how do I approve a request," see [`USER_GUIDE.md`](USER_GUIDE.md) instead (or the shorter [`EMPLOYEE_GUIDE.md`](EMPLOYEE_GUIDE.md) / [`DEPARTMENT_HEAD_GUIDE.md`](DEPARTMENT_HEAD_GUIDE.md) role guides) — this guide is about running the module, not using its features day to day. If you're extending the module's code, see [`DEVELOPER.md`](DEVELOPER.md).
 
 ---
 
 ## 1. First-time setup checklist
 
 1. **Activate the module** — Setup > Modules > HR Management.
-2. **Configure Settings** (HR Management > Settings): employee ID prefix, currency, fiscal year start, payroll generation day, default maximum loan amount, working hours/days, office start/end time, overtime rates, shift allowance amounts.
+2. **Configure Settings** (HR Management > Settings): employee ID prefix, currency, fiscal year start, payroll generation day, default maximum loan amount, working hours/days, office start/end time, overtime rates, shift allowance amounts, income tax rate.
 3. **Set up roles and permissions** — see [§2](#2-roles--permissions-setup) below. Don't skip this; without it, staff will either see nothing or see everything.
 4. **Add departments and designations** if they don't already exist on the CRM side (Perfex core Setup, or HR Management > Designations for job titles).
 5. **Review the seeded Leave Types** (HR Management > Leave > Leave Types) — adjust day counts, carry-forward rules, and gender restrictions to match your company's actual policy (see [§4](#4-leave-types-including-gender-restriction)).
@@ -63,21 +65,30 @@ There's no separate "assign department head" screen — it's two ordinary permis
 
 ## 3. Employee setup
 
-**HR Management > Employees > Add** links an existing Perfex staff account to a new HR profile. Two things happen automatically:
+**Steps to add a new employee:**
+1. Go to **HR Management > Employees > Add**.
+2. Pick the existing Perfex staff account to link this HR profile to — the **Department** field pre-fills from whatever department that staff account already has on the CRM side (if any); you can still change it before saving.
+3. Fill in Work Info, Personal Info, and Bank Info.
+4. If they punch on a biometric device, select the device(s) and enter a unique **Device Number**.
+5. Click **Save**.
 
-- The **Department** field pre-fills from whatever department that staff account already has on the CRM side (if any) — you can still change it before saving.
-- Their **leave balances for the current year are allocated immediately** on save — they don't need to wait for the next bulk "Allocate" run, and they'll show up on the Leave Balances page right away.
+Two things happen automatically on save: their **leave balances for the current year are allocated immediately** (they don't need to wait for the next bulk "Allocate" run, and show up on the Leave Balances page right away), and their **Employee Code** is generated from the configured prefix.
 
 **If an employee is missing from the Leave Balances page:** this almost always means their profile was created *before* the auto-allocation feature existed, or before the module was updated. Fix: HR Management > Leave > Leave Balances > **Allocate** — safe to run any time, it only fills in missing rows and never touches existing ones.
+
+**Device User ID conflicts:** when adding or editing an employee, if the Device User ID you enter is already mapped to a *different* employee on one of the selected device(s), you'll see a warning after saving and that specific device mapping is **not** saved (the rest of the employee's data still saves normally) — pick a different Device User ID, or check whether you meant to select a different device. This prevents two employees' punches from silently getting attributed to whichever one happens to resolve first.
+
+**Employee dropdown pre-fills to yourself on Apply/Add pages:** on the Leave/Loans/Overtime/Shifts/Performance/Helpdesk/Contracts apply-or-add pages, if your role has full company-wide "view" access to that feature, the Employee field now defaults to your own linked employee record as a convenience — you can still pick someone else before submitting. Staff who can only act on their own records (`view_own` only) keep the existing locked-to-self behavior, unchanged.
 
 ---
 
 ## 4. Leave types (including gender restriction)
 
-**HR Management > Leave > Leave Types.** For each type you control:
-
-- **Maximum Days Per Year**, **Hours Per Day** (for hourly leave), **Carry Forward** (+ max carry-forward cap), **Requires Attachment**, **Half-Day allowed**, **Applied as a date range** (e.g. Maternity Leave — staff pick a From/To range instead of individual days).
-- **Gender Restriction** — Any / Male / Female. Seeded defaults: Maternity Leave → Female, Paternity Leave → Male, everything else → Any. Once set, that leave type simply won't appear in the Leave Type dropdown for an employee of the wrong gender — enforced on the server too, not just hidden in the UI.
+**Steps to add or edit a leave type:**
+1. Go to **HR Management > Leave > Leave Types** and click **Add** (or **Edit** an existing one).
+2. Set **Maximum Days Per Year**, **Hours Per Day** (for hourly leave), **Carry Forward** (+ max carry-forward cap), **Requires Attachment**, **Half-Day allowed**, and **Applied as a date range** (e.g. Maternity Leave — staff pick a From/To range instead of individual days).
+3. Set **Gender Restriction** — Any / Male / Female. Seeded defaults: Maternity Leave → Female, Paternity Leave → Male, everything else → Any. Once set, that leave type simply won't appear in the Leave Type dropdown for an employee of the wrong gender — enforced on the server too, not just hidden in the UI.
+4. Click **Save**.
 
 **If you change a type's Maximum Days Per Year:** every employee's **already-allocated** balance for the current year updates automatically **only if they haven't used any of that leave yet** (used days = 0). An employee who's already taken some of that leave keeps their existing allocation as-is, so their already-consumed balance math isn't silently rewritten out from under them. If you need to force-correct someone's allocation after they've already used some, that's a manual balance edit (see below).
 
@@ -89,22 +100,34 @@ There's no separate "assign department head" screen — it's two ordinary permis
 
 **HR Management > Leave > Leave Balances** — a filterable table (by department, year) of every employee's allocated/used/remaining days per leave type.
 
-- **Allocate** button: fills in missing balance rows for the selected year, for every active employee × every active leave type. **Safe to run repeatedly** — it only creates rows that don't already exist; it never overwrites or resets an existing row.
-- New employees get allocated automatically on creation (§3) — you generally only need to click Allocate once per year, at the start of the year, plus any time you suspect someone's missing (e.g. imported employees, or employees added before this module version).
+**Steps to allocate a new year's balances:**
+1. Go to **HR Management > Leave > Leave Balances**.
+2. Select the year you want to allocate.
+3. Click **Allocate**.
+
+This fills in missing balance rows for that year, for every active employee × every active leave type. **Safe to run repeatedly** — it only creates rows that don't already exist; it never overwrites or resets an existing row. New employees get allocated automatically on creation (§3) — you generally only need to click Allocate once per year, at the start of the year, plus any time you suspect someone's missing (e.g. imported employees, or employees added before this module version).
 - The **Casual Leave** balance specifically is also what shows on each employee's personal dashboard widget — if that widget shows 0 for someone, check whether they have a Casual Leave balance row for the current year here.
+- **Requests that span a year boundary** (e.g. Dec 31 + Jan 2) are deducted/restored against **both** years' balance rows in the correct proportion, not lumped entirely against the start year — so if you see a small deduction against next year's row for a request approved in December, that's expected.
+- **Carry-forward days on next year's row stay in sync automatically**: if an approved request in the current year is later cancelled (or a late request gets approved) *after* next year's balance row was already created, that row's `Carry Forward` figure is refreshed to reflect the current year's actual leftover the next time a deduction/restore happens — you don't need to manually correct it.
+- **The "sandwich rule" (weekend/holiday bridging) now also catches split requests**: if an employee already has an approved/pending request for one day and later applies separately for another day with only a weekend/holiday gap between them, the gap day is automatically added to the *new* request (the earlier one is never touched) — same effect as if both had been submitted together, and the employee sees a live warning about it on the Apply page before submitting.
 
 ---
 
 ## 6. WhatsApp (WAHA) integration
 
-**HR Management > Settings** — WhatsApp section. Used **only** for company-wide broadcast announcements (leave announcements, holiday reminders, policy publications) to a single configured WhatsApp group — never for individual/personal messages.
+Used **only** for company-wide broadcast announcements (leave announcements, holiday reminders, policy publications) to a single configured WhatsApp group — never for individual/personal messages.
 
-Fields: **Base URL** (your self-hosted WAHA instance), **Session** (the session name configured on your WAHA server — see below), **API Key**, **Group ID**, **Phone Number** (test-message fallback target). A **Send Test Message** button lets you verify credentials before relying on it.
+**Steps to configure it:**
+1. Go to **HR Management > Settings** and find the WhatsApp section.
+2. Fill in **Base URL** (your self-hosted WAHA instance), **Session** (the session name configured on your WAHA server — see below), **API Key**, **Group ID**, and **Phone Number** (test-message fallback target).
+3. Click **Save**.
+4. Click **Send Test Message** to verify credentials before relying on it.
 
 ### Troubleshooting: "Session does not exist"
 
 This means the **Session** field here doesn't match an actual running session on your WAHA server — WAHA doesn't auto-create sessions just because a message is sent to it.
 
+**Steps:**
 1. Log into your WAHA server's own dashboard.
 2. Find (or start) the session you intend to use, and confirm its exact name and that its status is **WORKING** (not `STARTING`/`SCOPED` — those mean it hasn't finished pairing with a phone via QR code yet).
 3. Copy that **exact** session name into the Session field here (it does *not* have to be literally "default" — any name is fine as long as it matches).
@@ -120,13 +143,16 @@ Both supported device brands **push** attendance data to this server — the ser
 
 ### 7.1 Adding any device
 
-**Attendance Devices > Add Device.** Fill in:
-- **Device Name** — any label you want (e.g. "Main Gate", "Second Office Entrance"). The specific hardware model (AI07F, AI03FC, F18, etc.) goes here too, since there's no separate model field — just type it into the name or notes.
-- **Device Type** — `ZKTeco` or `AiFace / AI-Series` — this only controls which setup instructions the form shows you and which brand-specific label appears on the device list; it does **not** affect how the device authenticates (that's always by Serial Number).
-- **Serial Number** — exactly as shown on the physical device. This is how an incoming push is matched to a device record and authorized; unregistered or inactive serial numbers are rejected outright.
-- **Location** — free text, shown on the device card and in punch logs — use it to tell multiple devices apart (e.g. "Dhaka Office (Inside)" vs "Dhaka Office (Outside)").
+**Steps:**
+1. Go to **HR Management > Attendance Devices** and click **Add Device**.
+2. **Device Name** — any label you want (e.g. "Main Gate", "Second Office Entrance"). The specific hardware model (AI07F, AI03FC, F18, etc.) goes here too, since there's no separate model field — just type it into the name or notes.
+3. **Device Type** — `ZKTeco` or `AiFace / AI-Series` — this only controls which setup instructions the form shows you and which brand-specific label appears on the device list; it does **not** affect how the device authenticates (that's always by Serial Number).
+4. **Serial Number** — exactly as shown on the physical device. This is how an incoming push is matched to a device record and authorized; unregistered or inactive serial numbers are rejected outright.
+5. **Location** — free text, shown on the device card and in punch logs — use it to tell multiple devices apart (e.g. "Dhaka Office (Inside)" vs "Dhaka Office (Outside)").
+6. Click **Save**.
+7. Map the device to employees from **each employee's own Edit page** (Attendance Devices multi-select + a required, unique Device Number) — not from a separate mapping screen.
 
-Once saved, map the device to employees from each employee's own Edit page (Attendance Devices multi-select + a required, unique Device Number) — not from a separate mapping screen. Attendance only resolves correctly for mapped employees; an unmapped device's punches are silently accepted but discarded.
+Attendance only resolves correctly for mapped employees; an unmapped device's punches are silently accepted but discarded. A Device Number already used by another employee **on the same device** is rejected (with a warning shown on save) rather than silently creating a duplicate mapping — see [§3](#3-employee-setup).
 
 ### 7.2 ZKTeco setup (on the device)
 
@@ -158,29 +184,42 @@ Punches also arrive through a second, independent path for ZKTeco specifically: 
 
 ## 8. Cron job
 
-Several features are entirely cron-dependent and will **silently never fire** without a working cron job: the day-before holiday reminder (email + WhatsApp), and automatic contract expiry + 30-day expiry warnings. Biometric device attendance (either brand) is not cron-dependent — devices push on their own schedule.
+Several features are entirely cron-dependent and will **silently never fire** without a working cron job: the day-before holiday reminder (email + WhatsApp), and automatic contract expiry + 30-day expiry warnings. The 30-day contract-expiry warning is sent **once per contract** (an HR-inbox email plus an in-app notification to anyone with Contracts view permission) — re-running cron doesn't re-notify the same contract, and a contract already inside its 30-day window when cron first runs still gets caught, not just one whose expiry lands on the exact day cron happens to tick. Biometric device attendance (either brand) is not cron-dependent — devices push on their own schedule.
 
-Setup > Settings > Cron Job tab shows the exact command Perfex expects:
-```
-wget -q -O- <your-site-url>/cron/index
-```
-Add that as a real, recurring cron job on your **server** (typically every 1–5 minutes) — via your hosting control panel's cron manager, `crontab -e` on the host, or your container orchestration's scheduled-task equivalent if you're running in Docker (a container itself has no cron daemon by default; add one to the host, or install `cron` inside the image and run it alongside the web server process).
-
-**Quick check that it's actually running:** Setup > Settings > Cron Job tab has a **Run Cron Manually** link (admin-only) — use it to confirm the underlying logic works, separately from confirming the *scheduled* job is actually configured on your server.
+**Steps to set it up:**
+1. Go to **Setup > Settings > Cron Job** tab — it shows the exact command Perfex expects:
+   ```
+   wget -q -O- <your-site-url>/cron/index
+   ```
+2. Add that as a real, recurring cron job on your **server** (typically every 1–5 minutes) — via your hosting control panel's cron manager, `crontab -e` on the host, or your container orchestration's scheduled-task equivalent if you're running in Docker (a container itself has no cron daemon by default; add one to the host, or install `cron` inside the image and run it alongside the web server process).
+3. Click **Run Cron Manually** (same tab, admin-only) to confirm the underlying logic works, separately from confirming the *scheduled* job is actually configured on your server.
 
 ---
 
 ## 9. Notifications
 
-Settings page: a single **HR notification inbox** email address receives every "new request submitted" notification, plus individual per-event toggles (leave apply/approve/cancellation, loan apply/approve/deduction, overtime, helpdesk, shift, policy, training, payroll). All toggles **default to enabled** the first time you save Settings — a fresh install is never silently quiet by omission.
+**Steps to configure:**
+1. Go to **HR Management > Settings**.
+2. Set the **HR notification inbox** — the single email address that receives every "new request submitted" notification.
+3. Toggle individual per-event switches as needed (leave apply/approve/cancellation, loan apply/approve/deduction, overtime, helpdesk, shift, policy, training, payroll). All toggles **default to enabled** the first time you save Settings — a fresh install is never silently quiet by omission.
+4. Click **Save**.
 
-**Email Templates** and **WhatsApp Templates** (buttons on the Settings page) let you edit the wording of every automated message, each with its own **Send Test** option.
+**Steps to customize the wording of a notification:**
+1. From the Settings page, click **Email Templates** or **WhatsApp Templates**.
+2. Open the template you want and edit its wording.
+3. Click **Send Test** to preview it.
+4. Click **Save**.
 
 ---
 
 ## 10. Danger Zone (uninstall behavior)
 
-Settings page, admin-only section: a single toggle, **off by default**, controlling whether deactivating/uninstalling the module deletes all its data or preserves it. Leave it off unless you deliberately want a full data wipe on uninstall — the default is that uninstalling the module never destroys your HR records.
+A single toggle (admin-only), **off by default**, controlling whether deactivating/uninstalling the module deletes all its data or preserves it.
+
+**Steps:**
+1. Go to **HR Management > Settings** and find the **Danger Zone** section (admin-only).
+2. Leave the toggle off (default) to keep all HR data if the module is ever deactivated/uninstalled — turn it on only if you deliberately want a full data wipe on uninstall.
+3. Click **Save**.
 
 ---
 
@@ -199,3 +238,21 @@ Settings page, admin-only section: a single toggle, **off by default**, controll
 | An AiFace device never shows a recent "Last Contact" | Most commonly: the required `index.php` snippet (§7.3) was never added, or the device itself has no working network connection at that location | Confirm the snippet is in place; separately verify the device has a real local IP (not stuck on a documentation-only placeholder address) and can actually reach the internet from where it's installed |
 | An AiFace device's own screen shows a placeholder-looking IP like `192.0.2.x` | The device never successfully obtained a real network address — a basic local connectivity issue, unrelated to anything in this CRM | Check the device's Network/Ethernet screen: confirm DHCP is on, and the cable/WiFi connection is actually established, before troubleshooting anything server-side |
 | A device shows Online once, then goes Offline and never reconnects on its own | The one successful contact was likely a manual test from a developer/technician, not the physical device itself | Confirm by checking whether the "Last Contact" timestamp corresponds to an actual device event (a real punch, a scheduled re-registration) rather than a one-off manual check |
+| A policy revision never gets approved | No staff have been configured in `policy_approver_ids` and no admin is checking for it | See [§12](#12-policy-approvers) |
+| Marking a payroll "Paid" fails with "Net salary would be negative" | This employee's deductions/tax/loan repayments for the period add up to more than they earned | Review and reduce the stacked deductions/loan repayments for that employee/period before retrying — this is a data/configuration issue, not a bug |
+| Marking a payroll "Paid" fails with "This payroll was already marked paid" | Two clicks (or two admins) tried to mark the same payroll paid at nearly the same moment; only the first one actually applied | Refresh the payroll's page — it will already show as Paid |
+| An employee add/edit saved with a warning about a "Device User ID already mapped to another employee" | That Device Number is already in use by someone else on the selected device(s) | Pick a different, unique Device Number for this employee (or confirm you selected the intended device) — see [§3](#3-employee-setup) |
+| Generating payroll for the same employee/month twice creates a duplicate row | Should no longer be possible — a database-level uniqueness constraint blocks it, `generate()` reports it as skipped | If it happened before this fix shipped, the duplicate needs a one-off manual cleanup (contact your developer) before the constraint can be added automatically |
+
+---
+
+## 12. Policy approvers
+
+Editing an already-**published** policy doesn't change the live version immediately — it queues a revision that a configured **policy approver** must approve first.
+
+**Steps to configure who those approvers are:**
+1. Go to **HR Management > Settings**.
+2. Find the **Policy Approver(s)** field and select whichever staff member(s) should be able to approve a pending policy revision.
+3. Click **Save**.
+
+**If this is left empty**, any admin can approve a pending revision instead — so a revision is never permanently stuck with nobody able to approve it, even before this setting is configured.

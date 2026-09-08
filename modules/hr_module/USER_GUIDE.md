@@ -1,12 +1,17 @@
 # HR Module — User Guide
 
-This guide explains how to use the HR Management module inside the CRM. It's written for three kinds of readers:
+This guide explains how to use the HR Management module inside the CRM — every feature is written as a numbered, click-by-click **Steps** walkthrough, so you can follow along on your own screen without needing anyone to show you first. It's written for three kinds of readers:
 
 - **Every employee** — you can apply for leave, request loans/overtime, check your payslips, and more, all for yourself.
 - **HR managers / department heads** — everything an employee can do, plus reviewing and approving requests, running payroll, and managing company-wide records.
 - **Admins** — everything above, plus module settings, notification setup, and integrations.
 
-You'll only see the menu items and buttons your account has permission for — if something mentioned here doesn't appear on your screen, you likely don't have that permission, and your admin or HR manager can grant it if you need it.
+You'll only see the menu items and buttons your account has permission for — if something mentioned here doesn't appear on your screen, you likely don't have that permission, and your admin or HR manager can grant it if you need it. Any step marked **(HR/managers)** or **(HR/admins)** is for reviewers/administrators, not a regular employee — skip it if it doesn't apply to your role.
+
+**Just want a shorter, role-specific starting point instead of this full reference?**
+- Plain employee (self-service only) → [`EMPLOYEE_GUIDE.md`](EMPLOYEE_GUIDE.md)
+- Department head ("View (Own Department)" + "Soft Approve/Reject") → [`DEPARTMENT_HEAD_GUIDE.md`](DEPARTMENT_HEAD_GUIDE.md)
+- Full admin → [`ADMIN_GUIDE.md`](ADMIN_GUIDE.md) also serves as the admin role's own guide
 
 If you're setting up or operating the module (roles, integrations, cron, troubleshooting) rather than just using it, see [`ADMIN_GUIDE.md`](ADMIN_GUIDE.md) instead.
 
@@ -14,22 +19,26 @@ If you're setting up or operating the module (roles, integrations, cron, trouble
 
 ## 1. Getting started: the HR Dashboard
 
-Open **HR Management > Dashboard** from the left sidebar (or just **HR Management**, which takes you straight there).
+**Steps:**
+1. Open **HR Management > Dashboard** from the left sidebar (or just click **HR Management**, which takes you straight there).
+2. If you're an employee who is also an HR manager/admin, you'll see two tabs — **My Dashboard** (opens by default) and **Company Dashboard**. Click either one to switch, any time.
 
-**If you're a regular employee**, you'll see your personal dashboard directly: today's attendance, leave balance, pending/approved leave counts, open helpdesk tickets, your net salary, any active loan, this month's overtime, your latest performance task, and any upcoming training you're enrolled in — plus a row of Quick Action buttons (Apply for Leave, My Leaves, My Attendance, My Payslips, New Ticket).
+**What you'll see:**
 
-**If you're an HR manager or admin who is also an employee yourself**, you'll see two tabs at the top:
+- **Regular employee** → your personal dashboard directly: today's attendance, leave balance, pending/approved leave counts, open helpdesk tickets, your net salary, any active loan, this month's overtime, your latest performance task, and any upcoming training you're enrolled in — plus a row of Quick Action buttons (Apply for Leave, My Leaves, My Attendance, My Payslips, New Ticket).
+- **HR manager/admin who is also an employee** → both tabs: **My Dashboard** (your own personal stats, same as above) and **Company Dashboard** (company-wide numbers: total/active employees, departments, who's present/late/on leave today, pending leave/loan/overtime counts, plus manager-level Quick Actions — Add Employee, Apply Leave, Mark Attendance, Generate Payroll, Reports).
+- **Admin/manager with no personal employee profile** (e.g. a system administrator not tracked as company staff) → just the Company Dashboard, with no tabs.
 
-- **My Dashboard** — your own personal stats, exactly like a regular employee sees.
-- **Company Dashboard** — company-wide numbers: total/active employees, departments, who's present/late/on leave today, and pending leave/loan/overtime counts, plus manager-level Quick Actions (Add Employee, Apply Leave, Mark Attendance, Generate Payroll, Reports).
+### Revealing your Net Salary
 
-"My Dashboard" opens by default — click "Company Dashboard" to switch, and back again any time.
+Your Net Salary figure is hidden behind `****` by default, for glance-privacy.
 
-**If you're an admin/manager with no personal employee profile** (e.g. a system administrator not tracked as company staff), you'll just see the Company Dashboard, with no tabs.
+**Steps:**
+1. On your personal dashboard, find the Net Salary widget.
+2. Click the small **eye icon** next to the figure to reveal the actual amount.
+3. Click it again to hide it.
 
-### Your Net Salary is private by default
-
-On your personal dashboard, the Net Salary figure is hidden behind `****` by default. Click the small eye icon next to it to reveal the actual amount, and click it again to hide it. This is just a glance-privacy convenience (so the number isn't visible if someone looks at your screen) — it doesn't affect anything else, and clicking it never navigates you away from the dashboard.
+This never navigates you away from the dashboard, and doesn't affect anything else — see the FAQ below for whether it affects your payslip too.
 
 ---
 
@@ -37,13 +46,37 @@ On your personal dashboard, the Net Salary figure is hidden behind `****` by def
 
 **HR Management > Employees** (only visible if you have permission to view the full employee directory — otherwise your own information is what you see on the dashboard and throughout the module).
 
-Your profile has three tabs:
+### Viewing your profile
 
-- **Work Info** — employee ID, department, designation, joining/end date, basic salary, your maximum loan amount (if HR has set a custom one for you — see [Loans](#5-loans)), linked staff account, which biometric attendance device(s) you're set up to punch on and your Device Number on them, and notes.
-- **Personal Info** — contact details, date of birth, blood group, marital status, national ID/passport, emergency contact, and address.
-- **Bank Info** — bank name, account number, branch, and TIN.
+**Steps:**
+1. Go to **HR Management > Employees**.
+2. Find and click your own name (or, if you don't have directory access, your profile shows on your Dashboard/throughout the module instead).
+3. Switch between the three tabs to see everything on file:
+   - **Work Info** — employee ID, department, designation, joining/end date, basic salary, your maximum loan amount (if HR has set a custom one for you — see [Loans](#5-loans)), linked staff account, which biometric attendance device(s) you're set up to punch on and your Device Number on them, and notes.
+   - **Personal Info** — contact details, date of birth, blood group, marital status, national ID/passport, emergency contact, and address.
+   - **Bank Info** — bank name, account number, branch, and TIN.
 
-HR/admins can add a new employee (linking an existing staff account to a new HR profile) or edit an existing one from this page. Your name, email, and phone always stay in sync with your linked staff account — they're not editable separately here. When adding a new employee, picking a staff member auto-fills the Department field from whatever department that staff account already has on the CRM side, and this year's leave balances are set up automatically the moment you save — no separate step needed.
+Your name, email, and phone always stay in sync with your linked staff account — they're not editable separately here.
+
+### Adding a new employee (HR/admin only)
+
+**Steps:**
+1. Go to **HR Management > Employees** and click **Add Employee**.
+2. Pick the existing Perfex staff account to link this HR profile to — the **Department** field auto-fills from whatever department that staff account already has on the CRM side (you can still change it).
+3. Fill in Work Info, Personal Info, and Bank Info as needed.
+4. If the employee punches on a biometric device, select the device(s) and enter a unique **Device Number**.
+5. Click **Save**.
+
+This year's leave balances are set up automatically the moment you save — no separate step needed, and the new employee shows up on the Leave Balances page right away.
+
+### Editing an existing employee (HR/admin only)
+
+**Steps:**
+1. Go to **HR Management > Employees**, find the employee, and click **Edit**.
+2. Update whichever fields need changing.
+3. Click **Save**.
+
+If you change the Device Number/device selection and the ID you entered is already used by someone else on the same device, you'll see a warning after saving and that specific device mapping won't be saved — pick a different, unique Device Number and save again.
 
 ---
 
@@ -53,27 +86,40 @@ HR/admins can add a new employee (linking an existing staff account to a new HR 
 
 ### Applying for leave
 
-Click **Apply for Leave**. Pick the leave type first — this determines how you fill in the rest:
-
-- **Regular leave types** (Casual, Sick, etc.) use a **day-by-day builder**: add one or more specific dates, and for each one choose Full Day, Half Day (before/after lunch), or Hourly. Click "Add another date" to cover multiple non-consecutive days in one request. As soon as you pick an employee and leave type, you'll see your **remaining balance** for that leave type update instantly.
-- **Range-based leave types** (e.g. Maternity Leave) instead show a simple **From / To date range**.
-
-Some leave types are restricted to one gender (e.g. Maternity Leave to female employees, Paternity Leave to male employees) — once an employee is selected, any leave type that doesn't apply to them simply won't appear in the Leave Type list, whether you're applying for yourself or (as HR) on someone else's behalf.
-
-If two days you pick are separated only by a weekend or a public holiday, the system automatically counts that gap day too (the "sandwich rule") — you'll see it called out before you submit.
+**Steps:**
+1. Go to **HR Management > Leave** and click **Apply for Leave**.
+2. **Employee** field: if you have full company-wide access to Leave, this already defaults to yourself — leave it as-is, or pick a different employee if you're applying on their behalf. If you can only apply for yourself, this field is locked to you already.
+3. **Leave Type**: pick it first — this decides how the rest of the form looks. Only leave types that apply to the selected employee's gender are shown (e.g. Maternity Leave only appears for a female employee, Paternity Leave only for a male one).
+4. Fill in the days, depending on the type you picked:
+   - **Regular leave types** (Casual, Sick, etc.) use a **day-by-day builder**: click **Add another date** for each day you need, and for each one choose **Full Day**, **Half Day** (before/after lunch), or **Hourly**. Add as many (non-consecutive or consecutive) dates as you need in one request.
+   - **Range-based leave types** (e.g. Maternity Leave) instead show a simple **From / To** date range — just pick the start and end date.
+5. Watch for two live indicators as you fill the form in:
+   - Your **remaining balance** for the selected leave type updates instantly once you've picked an employee and leave type.
+   - If two of your days are separated only by a weekend or public holiday, or if a day you're applying for bridges with a day you *already* have an approved/pending request for (e.g. you already have Thursday approved and you're now applying for Saturday, with Friday off in between), a warning appears calling out the extra gap day that will automatically be counted too (the "sandwich rule") — your earlier request is never changed by this, only the new one gets the extra day added.
+6. Add a **Reason**, and attach a supporting document if the leave type requires one.
+7. Click **Submit**.
 
 ### Checking your balance and requests
 
-The main Leave page lists every request with its status. **HR Management > Leave > Leave Balances** (visible to HR/managers) shows the full balance grid for every employee and leave type for a given year — a sortable, filterable table like every other list in the module — with a button to bulk-allocate a new year's balances. A new employee's balances are allocated automatically the moment their HR profile is created, so they don't need to wait for the next bulk-allocate run.
+**Steps:**
+1. Go to **HR Management > Leave** — every request you can see is listed here with its status (Pending / Approved / Rejected / Cancelled).
+2. Click any request to see its full detail, including its day-by-day breakdown.
+3. **HR/managers**: go to **HR Management > Leave > Leave Balances** to see the full balance grid for every employee and leave type for a given year — filter by department/year, and click **Allocate** to bulk-allocate a new year's balances (safe to run any time; a new employee's balances are already set up automatically the moment their HR profile is created, so you don't need to wait for this to see them).
 
-### Before HR's final decision: soft approval
+### Approving, rejecting, or soft-approving a request (HR/managers)
 
-If your role has been given the **Soft Approve/Reject** permission for Leave (typically a department head), you'll see extra "Soft Approve"/"Soft Reject" buttons on a pending request from someone in scope, above the real Approve/Reject buttons. This is purely a heads-up for whoever makes the real decision — your name and choice show right on the request, but it never blocks or changes what HR/the approver ultimately does. See [§17](#17-roles-in-plain-terms) for how this permission gets assigned.
+**Steps:**
+1. Go to **HR Management > Leave** and open the pending request.
+2. If your role has the **Soft Approve/Reject** permission (typically a department head), you'll see extra **Soft Approve**/**Soft Reject** buttons — click one to record your informational pre-review. This is purely a heads-up for whoever makes the real decision: your name and choice show right on the request, but it never blocks or changes the actual outcome. See [§17](#17-roles-in-plain-terms) for how this permission is assigned.
+3. Click **Approve** or **Reject** (the real, binding decision) — add a note/reason if prompted.
 
 ### Cancelling a leave
 
-- A **pending** request can simply be deleted.
-- An **already-approved** request can't be deleted outright — instead, submit a **cancellation request**, which HR then approves or rejects.
+**Steps:**
+1. Go to **HR Management > Leave** and open your request.
+2. If it's still **pending**, click **Delete** — it's removed outright.
+3. If it's **already approved**, click **Request Cancellation** instead and give a reason — this doesn't cancel it immediately; it submits a cancellation request for HR to approve or reject.
+4. **HR**: to act on a cancellation request, open the request and click **Approve Cancellation** or **Reject Cancellation**.
 
 ---
 
@@ -81,15 +127,42 @@ If your role has been given the **Soft Approve/Reject** permission for Leave (ty
 
 **HR Management > Attendance**
 
-Your own attendance shows on your dashboard as "Present"/"Late"/"Absent"/"Half Day" for today, and you can view your full **monthly calendar** (a color-coded grid showing every day's status, with weekends and holidays marked) from this page.
+### Checking your own attendance
 
-If your office uses a biometric device (fingerprint/face/card, either a ZKTeco or an AiFace/AI-series terminal), your punches record automatically the moment you scan — the first scan of the day is always your clock-in, and whichever scan is latest so far is always your clock-out, no matter how many times you punch in between (e.g. stepping out and back for lunch). Click **View Log** next to any day's record to see every individual punch behind it — the time, which device it came from, and how you verified (fingerprint, face, card, etc.).
+**Steps:**
+1. Your dashboard already shows today's status — "Present"/"Late"/"Absent"/"Half Day".
+2. Go to **HR Management > Attendance** for your full **monthly calendar** — a color-coded grid showing every day's status, with weekends and holidays marked.
+3. If your office uses a biometric device (fingerprint/face/card, either ZKTeco or AiFace/AI-series), your punches record automatically the moment you scan — the first scan of the day is always your clock-in, and whichever scan is latest so far is your clock-out, no matter how many times you punch in between (e.g. stepping out and back for lunch).
+4. Click **View Log** next to any day's record to see every individual punch behind it — the time, which device it came from, and how you verified (fingerprint, face, card, etc.).
 
-HR/managers can additionally:
-- Manually add or correct an attendance record for any employee.
-- Run a **filtered range report** by date, department, employee, or status.
-- **Import attendance in bulk** — for a ZKTeco device you can't point directly at this server, the Attendance page accepts a plain CSV template (download it from the same page), the device's own exported report (CSV or XLSX), or a raw export file (`.dat`/`.txt`). Whichever format you use, employees are matched by their **Employee Code**, so make sure that matches what's set up on the device side.
-- **Manage attendance devices** — HR Management > Attendance Devices lists every registered biometric device (any brand), whether it's currently online, and lets you register a new one or edit an existing one's serial number/location.
+### Correcting or adding a record (HR/managers)
+
+**Steps:**
+1. Go to **HR Management > Attendance**.
+2. Click **Add Record** (or open an existing day and click **Edit**).
+3. Pick the employee and date, set the in/out time and status, and click **Save**.
+
+### Running an attendance report (HR/managers)
+
+**Steps:**
+1. Go to **HR Management > Attendance** and open the **Report** tab.
+2. Filter by date range, department, employee, and/or status.
+3. Click **Generate** — the result is filterable/exportable like every other list in the module.
+
+### Importing attendance in bulk (HR/managers)
+
+**Steps:**
+1. Go to **HR Management > Attendance** and click **Import**.
+2. Pick the format you have: a plain CSV template (downloadable from the same page), the device's own exported report (CSV or XLSX), or a raw export file (`.dat`/`.txt`).
+3. Upload the file.
+4. Review the import summary — employees are matched by their **Employee Code**, so make sure that matches what's set up on the device side; any unmatched rows are reported so you can fix and re-import them.
+
+### Managing attendance devices (HR/admins)
+
+**Steps:**
+1. Go to **HR Management > Attendance Devices** to see every registered biometric device (any brand), whether it's currently online, and its last-contact time.
+2. Click **Add Device** to register a new one, or **Edit** an existing one's serial number/location.
+3. See [`ADMIN_GUIDE.md`](ADMIN_GUIDE.md) §7 for the full device setup and mapping process.
 
 ---
 
@@ -109,11 +182,22 @@ Every employee has a **maximum loan amount** — this is the most **total** you 
 
 ### Applying for a loan
 
-Click **Apply for Loan**. As soon as you (or, if you're HR, the employee you're applying on behalf of) are selected, you'll see a live hint: *"You can request up to X more (Y outstanding against your Z maximum limit)."* Enter your amount, then pick a monthly installment from the dropdown — the repayment period (in months) is calculated automatically from whichever installment you choose. If you try to submit more than your remaining capacity, you'll get a clear message telling you exactly why.
+**Steps:**
+1. Go to **HR Management > Loans** and click **Apply for Loan**.
+2. **Employee** field: if you have full company-wide access to Loans, this already defaults to yourself — leave it, or pick someone else if you're applying on their behalf.
+3. Once the employee is selected, read the live hint: *"You can request up to X more (Y outstanding against your Z maximum limit)."*
+4. Enter your requested **Amount**.
+5. Pick a monthly **Installment** from the dropdown — the repayment period (in months) is calculated automatically from whichever installment you choose.
+6. Click **Submit**. If your amount exceeds your remaining capacity, you'll get a clear message telling you exactly why instead of it going through.
 
-### Repaying and adjusting a monthly installment
+### Requesting a skipped or adjusted monthly installment
 
-Once your loan is active, its normal installment is deducted automatically from payroll each month. If you need to **skip a month** or **request a different amount** for a specific month, use the deduction request option on the loan's detail page — choose whether any shortfall should be added to next month's deduction or should simply extend your repayment period by one month, and HR will review it.
+**Steps:**
+1. Go to **HR Management > Loans** and open your active loan's detail page.
+2. Click the deduction-request option.
+3. Choose whether to **skip** this month's deduction or request a **different amount**.
+4. Choose whether any shortfall should be added to next month's deduction, or should simply extend your repayment period by one month.
+5. Submit — HR will review and approve or reject it.
 
 ---
 
@@ -121,11 +205,22 @@ Once your loan is active, its normal installment is deducted automatically from 
 
 **HR Management > Overtime**
 
-Click **Request Overtime** to submit one or more dates worked. You can only select dates within the **current calendar month** — this is intentional, since an earlier or later month's payroll may already be finalized by the time you'd otherwise pick a date from it. Each date is checked automatically for eligibility (weekend, government holiday, or company holiday) as you enter it.
+### Requesting overtime
+
+**Steps:**
+1. Go to **HR Management > Overtime** and click **Request Overtime**.
+2. **Employee** field: if you have full company-wide access to Overtime, this already defaults to yourself — leave it, or pick someone else if you're requesting on their behalf.
+3. Add one or more dates worked — you can only pick dates within the **current calendar month** (intentional: an earlier or later month's payroll may already be finalized). Each date is checked automatically for eligibility (weekend, government holiday, or company holiday) as you enter it.
+4. Click **Submit**.
 
 Your dashboard's Overtime widget shows this month's **approved days** (overtime here is tracked per day, not hourly).
 
-If your role has the **Soft Approve/Reject** permission for Overtime, the same pre-review step described under [Leave](#3-leave) is available here too.
+### Approving or soft-approving an overtime request (HR/managers)
+
+**Steps:**
+1. Go to **HR Management > Overtime** and open the pending request.
+2. If your role has the **Soft Approve/Reject** permission, click **Soft Approve**/**Soft Reject** first, same informational pre-review as [Leave](#3-leave).
+3. Click **Approve** or **Reject** for the real decision (this requires **Edit** permission on Overtime — see [§17](#17-roles-in-plain-terms)).
 
 ---
 
@@ -133,9 +228,21 @@ If your role has the **Soft Approve/Reject** permission for Overtime, the same p
 
 **HR Management > Shifts**
 
-Request a shift assignment for one or more dates, picking a different shift type per date if needed (e.g. Night shift on one day, Morning on another). HR/managers review and approve or reject; you can still edit or delete your own request while it's pending.
+### Requesting a shift assignment
 
-If your role has the **Soft Approve/Reject** permission for Shifts, the same pre-review step described under [Leave](#3-leave) is available here too.
+**Steps:**
+1. Go to **HR Management > Shifts** and click **Request Shift**.
+2. **Employee** field: if you have full company-wide access to Shifts, this already defaults to yourself — leave it, or pick someone else if you're requesting on their behalf.
+3. Add one or more dates, picking a different **Shift Type** per date if needed (e.g. Night shift on one day, Morning on another).
+4. Click **Submit**.
+5. While it's still **pending**, you can go back and **Edit** or **Delete** your own request.
+
+### Approving or soft-approving a shift request (HR/managers)
+
+**Steps:**
+1. Go to **HR Management > Shifts** and open the pending request.
+2. If your role has the **Soft Approve/Reject** permission, click **Soft Approve**/**Soft Reject** first, same informational pre-review as [Leave](#3-leave).
+3. Click **Approve** or **Reject** for the real decision.
 
 ---
 
@@ -143,9 +250,29 @@ If your role has the **Soft Approve/Reject** permission for Shifts, the same pre
 
 **HR Management > Payroll**
 
-Your own payslips are listed here, each showing basic salary, allowances, deductions, overtime, bonus, tax, loan deduction, and the final net salary — with a printable version available from any payslip.
+### Viewing your payslip
 
-HR/admins additionally **generate payroll** in bulk: pick a month, year, and the employees to include, and the system calculates everything automatically (already-generated employees for that period are skipped). **Payroll Items** (Settings-adjacent) lets HR define reusable allowance/deduction components — fixed amount or a percentage of basic salary, and whether each is taxable.
+**Steps:**
+1. Go to **HR Management > Payroll** — your own payslips are listed here.
+2. Click one to see the full breakdown: basic salary, allowances, deductions, overtime, bonus, tax, loan deduction, and the final net salary.
+3. Click **Print** for a printable version.
+
+### Generating payroll (HR/admins)
+
+**Steps:**
+1. Go to **HR Management > Payroll** and click **Generate Payroll**.
+2. Pick the month, year, and the employees to include.
+3. Click **Generate** — the system calculates everything automatically, and any employee already generated for that period is skipped rather than duplicated.
+
+**Payroll Items** (Settings-adjacent) lets HR define reusable allowance/deduction components: go there, click **Add**, and set whether it's a fixed amount or a percentage of basic salary, and whether it's taxable.
+
+### Marking a payroll Paid (HR/admins)
+
+**Steps:**
+1. Go to **HR Management > Payroll**, open the payslip, and click **Mark Paid**.
+2. Pick the payment method and date, and confirm.
+
+Deductions/loan repayments/tax are recalculated one final time at this point — if that would leave a **negative net salary**, marking it paid is blocked with a clear message instead of quietly recording a negative amount, so you can go review the underlying deductions first. If an approved overtime request's amount happens to differ from what's actually paid (e.g. a pay rate changed in between), a short note recording both figures is added to the payslip automatically — the amount actually paid is unaffected either way.
 
 ---
 
@@ -153,9 +280,29 @@ HR/admins additionally **generate payroll** in bulk: pick a month, year, and the
 
 **HR Management > Performance**
 
-If you've been assigned a performance target, you'll see it here with its **sub-targets** — smaller, measurable pieces of the overall goal. Update a sub-target's status (Pending / In Progress / Partially Completed / Completed) and add your own note as you make progress. If you've been assigned as an **evaluator** on someone else's sub-target, you can also add feedback and a rating on it, even if you don't otherwise have access to performance data company-wide.
+### Updating your own sub-target progress
 
-If you have permission to assign targets, click **Assign Target** to create one for an employee, with as many sub-targets and evaluators as needed.
+**Steps:**
+1. Go to **HR Management > Performance** — any target assigned to you is listed with its **sub-targets** (smaller, measurable pieces of the overall goal).
+2. Open a sub-target and update its **Status** (Pending / In Progress / Partially Completed / Completed).
+3. Add your own note describing your progress, and click **Save**.
+
+### Adding evaluator feedback
+
+If you've been assigned as an **evaluator** on someone else's sub-target, you can do this even without company-wide performance access.
+
+**Steps:**
+1. Go to **HR Management > Performance** and open the sub-target you're evaluating.
+2. Add your feedback and a rating.
+3. Click **Save**.
+
+### Assigning a target (HR/managers)
+
+**Steps:**
+1. Go to **HR Management > Performance** and click **Assign Target**.
+2. **Employee** field: if you have full company-wide access, this already defaults to yourself — pick the employee you're actually assigning to.
+3. Add as many **sub-targets** as needed, and assign an **evaluator** to each if applicable.
+4. Click **Save**.
 
 ---
 
@@ -163,9 +310,27 @@ If you have permission to assign targets, click **Assign Target** to create one 
 
 **HR Management > Training**
 
-Upcoming and in-progress trainings you're enrolled in show on your dashboard. Open a training's page to see its schedule, venue, and (if it spans multiple sessions) each session's date/time. If you're the assigned **instructor**, you can mark daily attendance for participants and mark the training complete with a closing note. Employees can leave feedback on a training they attended.
+### Viewing your training and leaving feedback
 
-HR/managers create trainings, enroll participants, and can generate a printable report (or email it directly to the HR inbox) covering the full attendance history.
+**Steps:**
+1. Upcoming and in-progress trainings you're enrolled in show on your dashboard — click one, or go to **HR Management > Training** to see all of them.
+2. Open a training's page to see its schedule, venue, and (if it spans multiple sessions) each session's date/time.
+3. After attending, click **Leave Feedback** and submit your comments.
+
+### Marking attendance and closing a training (assigned instructor)
+
+**Steps:**
+1. Go to **HR Management > Training** and open the training you're the instructor for.
+2. For each session, mark each participant's attendance.
+3. Once the training is finished, click **Mark Complete** and add a closing note.
+
+### Creating a training (HR/managers)
+
+**Steps:**
+1. Go to **HR Management > Training** and click **Add Training**.
+2. Fill in the schedule, venue, and session dates/times, and pick an instructor.
+3. Click **Save**, then **Enroll Participants** to add employees to it.
+4. Once it's finished, click **Generate Report** for a printable attendance-history report, or email it directly to the HR inbox from the same button.
 
 ---
 
@@ -173,7 +338,21 @@ HR/managers create trainings, enroll participants, and can generate a printable 
 
 **HR Management > Helpdesk**
 
-Submit an HR-related question or issue as a ticket, with an optional category, priority, and attachment. If you'd rather not have your name attached, check **Submit anonymously** — HR still sees and responds to the ticket, just without your identity. HR can reply, add an internal note, and close/reopen tickets.
+### Submitting a ticket
+
+**Steps:**
+1. Go to **HR Management > Helpdesk** and click **New Ticket**.
+2. **Employee** field: if you have full company-wide access to Helpdesk, this already defaults to yourself — leave it, or pick someone else if you're submitting on their behalf.
+3. Fill in a **Subject**, and optionally a category, priority, and attachment.
+4. If you'd rather not have your name attached, check **Submit anonymously** — HR still sees and responds to the ticket, just without your identity.
+5. Click **Submit**.
+
+### Replying to and closing a ticket (HR)
+
+**Steps:**
+1. Go to **HR Management > Helpdesk** and open the ticket.
+2. Type your reply (or add an internal note, visible only to HR) and click **Send**.
+3. Click **Close** once resolved — **Reopen** later if needed.
 
 ---
 
@@ -181,7 +360,21 @@ Submit an HR-related question or issue as a ticket, with an optional category, p
 
 **HR Management > HR Contracts**
 
-Your employment contract(s) are listed here — type, dates, value, and signature status. Contracts automatically move to "Expired" once their end date passes, and you (or HR) get a notification 30 days ahead of expiry so renewals don't get missed.
+### Viewing your contracts
+
+**Steps:**
+1. Go to **HR Management > HR Contracts** — your employment contract(s) are listed with type, dates, value, and signature status.
+2. Click one to see the full detail.
+
+Contracts automatically move to "Expired" once their end date passes, and HR gets a one-time email + in-app notification 30 days ahead of expiry so renewals don't get missed (requires the server's cron job to be running — see [`ADMIN_GUIDE.md`](ADMIN_GUIDE.md)).
+
+### Adding a contract (HR/admins)
+
+**Steps:**
+1. Go to **HR Management > HR Contracts** and click **Add Contract**.
+2. **Employee** field: if you have permission to add contracts, this already defaults to yourself — pick the employee you're actually adding a contract for.
+3. Fill in the contract type, dates, value, and attach the document.
+4. Click **Save**.
 
 ---
 
@@ -189,7 +382,19 @@ Your employment contract(s) are listed here — type, dates, value, and signatur
 
 **HR Management > Policies**
 
-Company policies show here, filtered to what's relevant to you: public policies, plus any private policy targeted at your department. HR/managers can publish new policies or department-specific ones; edits to an already-published policy go through a revision-and-approval step rather than changing the live version immediately, and approval is limited to whichever staff have been configured as policy approvers.
+### Viewing policies
+
+**Steps:**
+1. Go to **HR Management > Policies** — you'll see public policies, plus any private policy targeted at your department.
+2. Click one to read it in full.
+
+### Publishing or revising a policy (HR/managers)
+
+**Steps:**
+1. Go to **HR Management > Policies** and click **Add Policy**.
+2. Write the policy content, and mark it **Public** or target it to a specific department.
+3. Click **Publish**.
+4. To change an already-published policy, open it and click **Revise** — this doesn't change the live version immediately; it queues a revision that a configured policy approver must approve first (see [`ADMIN_GUIDE.md`](ADMIN_GUIDE.md) §12 for who that is).
 
 ---
 
@@ -197,7 +402,29 @@ Company policies show here, filtered to what's relevant to you: public policies,
 
 **HR Management > Official Calendar**
 
-The company's holiday calendar, plus the configured weekly-off day(s) (e.g. Friday, or Friday+Saturday) — this is what the Leave and Overtime pages check against automatically. HR/admins manage the holiday list here and can trigger a manual holiday announcement (email and WhatsApp, if configured) instead of waiting for the automatic day-before reminder.
+### Viewing the calendar
+
+**Steps:**
+1. Go to **HR Management > Official Calendar** to see the company's holiday list, plus the configured weekly-off day(s) (e.g. Friday, or Friday+Saturday) — this is exactly what the Leave and Overtime pages check against automatically.
+
+### Adding a holiday (HR/admins)
+
+**Steps:**
+1. Go to **HR Management > Official Calendar** and click **Add Holiday**.
+2. Enter the date and name, and click **Save**.
+
+### Setting the weekly-off day(s) (HR/admins)
+
+**Steps:**
+1. Go to **HR Management > Official Calendar** and open the weekly-off setting.
+2. Check the day(s) that should count as a weekly off (e.g. Friday, or Friday+Saturday).
+3. Click **Save**.
+
+### Sending a manual holiday announcement (HR/admins)
+
+**Steps:**
+1. Go to **HR Management > Official Calendar** and click **Send Announcement** next to the holiday.
+2. Confirm — this sends immediately (email and WhatsApp, if configured), instead of waiting for the automatic day-before reminder.
 
 ---
 
@@ -205,7 +432,11 @@ The company's holiday calendar, plus the configured weekly-off day(s) (e.g. Frid
 
 **HR Management > Reports** (HR/managers only)
 
-Eleven ready-made reports: Attendance, Leave, Payroll, Loan, Overtime, Performance, Training, Headcount, Department, Salary, and Turnover — each filterable and exportable.
+**Steps:**
+1. Go to **HR Management > Reports**.
+2. Pick a report type: Attendance, Leave, Payroll, Loan, Overtime, Performance, Training, Headcount, Department, Salary, or Turnover.
+3. Set your filters (date range, department, employee, etc.) and click **Generate**.
+4. Click **Export** to download it.
 
 ---
 
@@ -213,9 +444,20 @@ Eleven ready-made reports: Attendance, Leave, Payroll, Loan, Overtime, Performan
 
 **HR Management > Settings**
 
-Covers general configuration (employee ID prefix, currency, fiscal year start, payroll day, **default maximum loan amount**), attendance/working-hours defaults and overtime rates, shift types, notification toggles (which HR inbox receives request notifications, and which events trigger an email), WhatsApp broadcast setup (for company-wide announcements only — never individual messages), the day-before holiday reminder, and separate enable/disable toggles for the ZKTeco and AiFace device integrations. A "Danger Zone" section (admin-only) controls whether uninstalling the module deletes all its data or preserves it — it's off by default, so uninstalling never destroys your HR records unless you deliberately turn this on first.
+**Steps:**
+1. Go to **HR Management > Settings**.
+2. Update whichever section you need: general configuration (employee ID prefix, currency, fiscal year start, payroll day, **default maximum loan amount**), attendance/working-hours defaults and overtime rates, an **Income Tax Rate** used in payroll tax calculation, shift types, notification toggles (which HR inbox receives request notifications, and which events trigger an email), WhatsApp broadcast setup (for company-wide announcements only — never individual messages), the day-before holiday reminder, and separate enable/disable toggles for the ZKTeco and AiFace device integrations.
+3. Click **Save**.
 
-**Email Templates** and **WhatsApp Templates** (reached via buttons on the Settings page) let you customize the wording of every automated notification, with a "send test" option to preview one before relying on it.
+A "Danger Zone" section (admin-only) controls whether uninstalling the module deletes all its data or preserves it — it's off by default, so uninstalling never destroys your HR records unless you deliberately turn this on first.
+
+### Customizing notification wording
+
+**Steps:**
+1. From the Settings page, click **Email Templates** or **WhatsApp Templates**.
+2. Open the template you want to change and edit its wording.
+3. Click **Send Test** to preview it before relying on it.
+4. Click **Save**.
 
 ---
 
@@ -233,7 +475,24 @@ Covers general configuration (employee ID prefix, currency, fiscal year start, p
 
 Permissions are granted per feature (Leave, Attendance, Payroll, Loans, Overtime, Performance, Training, Helpdesk, Contracts, Shifts, Policies, Reports, Settings, etc.) under **Setup > Staff > Roles** — every HR-related permission there is prefixed "HR " to keep it easy to find and tell apart from unrelated CRM permissions.
 
-**Setting up a department head:** there's no separate "assign a department head" screen — it's just two ordinary permission checkboxes. Create or edit a role under **Setup > Staff > Roles**, and for Leave/Overtime/Shifts (and optionally Performance/Training) check **"View (Own Department)"** so they see their department's requests, and **"Soft Approve/Reject"** (Leave/Overtime/Shifts only) so they can record their pre-review. Assign that role to whichever staff member(s) should act as department head — they immediately see and can act on records for employees in their own department, nothing more.
+### Setting up a department head
+
+There's no separate "assign a department head" screen — it's just two ordinary permission checkboxes.
+
+**Steps:**
+1. Go to **Setup > Staff > Roles** and create or edit a role (e.g. "Department Head").
+2. For **Leave**, **Overtime**, and **Shifts** (and optionally Performance/Training), check **"View (Own Department)"** so they see their department's requests.
+3. For the same three, also check **"Soft Approve/Reject"** so they can record their pre-review.
+4. Save the role, then assign it to whichever staff member(s) should act as department head.
+
+They immediately see and can act on records for employees in their own department, nothing more.
+
+### Granting any other permission
+
+**Steps:**
+1. Go to **Setup > Staff > Roles** and create or edit a role.
+2. Check the specific "HR ..." capability box(es) needed, per the table above.
+3. Save, and assign the role to the relevant staff member(s).
 
 ---
 
@@ -256,3 +515,9 @@ Some leave types are restricted by gender — Maternity Leave to female employee
 
 **What does "Soft Approved by [Name]" mean on my Leave/Overtime/Shift request?**
 It means someone with the Soft Approve/Reject permission (typically your department head) has recorded an informational pre-review. It's just a note for whoever makes the real decision — it doesn't change your request's status, and HR/the approver still has to Approve or Reject it themselves.
+
+**Why does the Leave Apply page warn me about a day I didn't even pick?**
+The "sandwich rule" also checks against your *other* existing requests, not just the days in front of you right now — if you already have an approved or pending request for one day and you apply for another day with only a weekend/holiday gap between them, that gap day counts as leave too, and this page warns you about it live, before you submit. Your earlier request is never changed by this.
+
+**Why does the Employee field on an Apply/Add page already show my own name?**
+If you have full company-wide view access to that feature (not just access to your own records), the Employee field defaults to yourself as a convenience — you can still pick a different employee before submitting if you're acting on someone else's behalf. If you only have access to your own records, this field stays locked to you either way.

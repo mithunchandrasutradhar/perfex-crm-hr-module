@@ -28,8 +28,10 @@ This module lives inside a full Perfex CRM codebase checkout, at `modules/hr_mod
 
 | Doc | For | Covers |
 |---|---|---|
-| [`USER_GUIDE.md`](USER_GUIDE.md) | Employees, department heads, HR managers | How to use every feature, organized by what you're trying to do, role permissions in plain terms, and a FAQ |
-| [`ADMIN_GUIDE.md`](ADMIN_GUIDE.md) | Whoever operates the module | First-time setup checklist, role/permission recipes, WhatsApp & ZKTeco integration setup, cron configuration, and a troubleshooting quick-reference |
+| [`EMPLOYEE_GUIDE.md`](EMPLOYEE_GUIDE.md) | A plain employee (self-service only, no extra HR permissions) | Quick-start, per-feature steps for your own leave/attendance/payroll/loans/overtime/shifts/tickets/contracts/performance, linking into `USER_GUIDE.md` for full detail |
+| [`DEPARTMENT_HEAD_GUIDE.md`](DEPARTMENT_HEAD_GUIDE.md) | A department head ("View (Own Department)" + "Soft Approve/Reject") | What's different from a plain employee: reviewing and soft-approving your department's Leave/Overtime/Shift requests, department-scoped Performance/Training visibility |
+| [`USER_GUIDE.md`](USER_GUIDE.md) | Everyone — employees, department heads, HR managers | The full feature-by-feature reference every role guide above links into: how to use every feature, role permissions in plain terms, and a FAQ |
+| [`ADMIN_GUIDE.md`](ADMIN_GUIDE.md) | Whoever operates the module (full admin access) | First-time setup checklist, role/permission recipes, WhatsApp & ZKTeco integration setup, cron configuration, and a troubleshooting quick-reference — this doubles as the admin role's own guide |
 | [`DEVELOPER.md`](DEVELOPER.md) | Developers maintaining or extending the module | Architecture, database schema, the permission model, settings reference, the loan-capacity calculation, integrations, and a checklist for adding new features safely |
 
 ## Feature areas
@@ -98,7 +100,9 @@ See the **"Recent feature history"** section at the end of [`DEVELOPER.md`](DEVE
 ## Support
 
 For anything not covered by the docs above:
-- **Using a feature?** → [`USER_GUIDE.md`](USER_GUIDE.md)
-- **Setting up or troubleshooting?** → [`ADMIN_GUIDE.md`](ADMIN_GUIDE.md#11-troubleshooting-quick-reference)
+- **A plain employee?** → [`EMPLOYEE_GUIDE.md`](EMPLOYEE_GUIDE.md)
+- **A department head?** → [`DEPARTMENT_HEAD_GUIDE.md`](DEPARTMENT_HEAD_GUIDE.md)
+- **Using a feature, in full detail?** → [`USER_GUIDE.md`](USER_GUIDE.md)
+- **Setting up or troubleshooting (or an admin looking for your own role guide)?** → [`ADMIN_GUIDE.md`](ADMIN_GUIDE.md#11-troubleshooting-quick-reference)
 - **Extending the code?** → the checklist in [`DEVELOPER.md`](DEVELOPER.md#12-extending-the-module--checklist)
 - Otherwise, reach out to the Alpha Net HR module team.
