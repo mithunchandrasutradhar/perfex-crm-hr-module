@@ -29,6 +29,12 @@ class Holidays extends AdminController
         $data['weekly_off'] = $this->Holidays_model->get_weekly_off_days();
         $data['can_edit']   = is_admin() || staff_can('edit', 'hr_holidays');
 
+        // Renders the "Who's on Leave / Shift Roster" panel as an actual
+        // FullCalendar instance (same library/CSS every other calendar in the
+        // CRM already uses - Dashboard, Utilities > Calendar), so it matches
+        // the site's native calendar look instead of a hand-rolled table.
+        add_calendar_assets();
+
         $data = array_merge($data, $this->_build_calendar_data($cal_year, $cal_month));
 
         // The form now submits this via the same site-display-format datepicker
@@ -44,22 +50,62 @@ class Holidays extends AdminController
         $this->load->view('hr_module/holidays/index', $data);
     }
 
-    // AJAX: re-renders just the merged "Who's on Leave / Shift Roster" calendar
-    // for a given month, so the prev/next month buttons don't reload the page.
+    // AJAX event source for the "Who's on Leave / Shift Roster" FullCalendar
+    // instance - called by FullCalendar itself on load and on every
+    // prev/next/today navigation, same eventSources-function pattern the
+    // Dashboard/Utilities calendars already use (see assets/js/main.js).
+    // $start/$end are whatever range FullCalendar is currently rendering
+    // (the padded 6-week grid, not just the calendar month), so leading/
+    // trailing days from adjacent months get their data too.
     public function calendar()
     {
         if (!$this->input->is_ajax_request()) show_404();
         if (!is_admin() && staff_cant('view', 'hr_holidays')) {
             show_404();
         }
-        $cal_year  = (int) ($this->input->get('cal_year')  ?: date('Y'));
-        $cal_month = (int) ($this->input->get('cal_month') ?: date('n'));
+        $start = date('Y-m-d', strtotime($this->input->get('start')));
+        $end   = date('Y-m-d', strtotime($this->input->get('end')));
 
-        $data = $this->_build_calendar_data($cal_year, $cal_month);
-        $data['weekly_off'] = $this->Holidays_model->get_weekly_off_days();
+        $cal_holidays   = $this->Holidays_model->get_holiday_names_in_range($start, $end);
+        $cal_leave_days = $this->Leave_model->get_approved_leave_days_in_range($start, $end);
+        $cal_shifts     = $this->Shifts_model->get_approved_shifts_in_range($start, $end);
 
-        $html = $this->load->view('hr_module/holidays/calendar', $data, true);
-        echo json_encode(['html' => $html]);
+        $events = [];
+        foreach ($cal_holidays as $date => $name) {
+            $events[] = [
+                'title'      => $name,
+                'start'      => $date,
+                'allDay'     => true,
+                'color'      => '#d9534f',
+                'classNames' => ['hr-cal-holiday'],
+            ];
+        }
+        foreach ($cal_leave_days as $ld) {
+            $events[] = [
+                'title'      => $ld->employee_name . ' (' . hr_leave_day_type_label($ld->day_type) . ')',
+                'start'      => $ld->leave_date,
+                'allDay'     => true,
+                'color'      => '#f0ad4e',
+                'classNames' => ['hr-cal-leave'],
+            ];
+        }
+        // Each shift assignment is a date RANGE (not per-day rows like leave), so
+        // expand it into one event per day, clipped to the requested window.
+        foreach ($cal_shifts as $sh) {
+            $clip_from = max($sh->from_date, $start);
+            $clip_to   = min($sh->to_date, $end);
+            for ($ts = strtotime($clip_from); $ts <= strtotime($clip_to); $ts += 86400) {
+                $events[] = [
+                    'title'      => $sh->employee_name . ' (' . $sh->shift_name . ')',
+                    'start'      => date('Y-m-d', $ts),
+                    'allDay'     => true,
+                    'color'      => '#5bc0de',
+                    'classNames' => ['hr-cal-shift'],
+                ];
+            }
+        }
+
+        echo json_encode($events);
     }
 
     // Builds the derived per-day lookups the merged calendar partial needs -

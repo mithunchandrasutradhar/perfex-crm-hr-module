@@ -356,8 +356,10 @@ class Shifts_model extends App_Model
             if (!isset($roster[$type_id])) {
                 $type_id = 0; // shift type since deleted/deactivated - fall back to default
             }
-            $label = trim($e->first_name . ' ' . $e->last_name) . ($e->employee_code ? ' (' . $e->employee_code . ')' : '');
-            $roster[$type_id]['employees'][] = $label;
+            $roster[$type_id]['employees'][] = [
+                'id'   => (int) $e->id,
+                'name' => trim($e->first_name . ' ' . $e->last_name),
+            ];
         }
 
         return $roster;

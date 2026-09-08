@@ -22,7 +22,11 @@ There's no separate "assign a department head" screen in this module — it's ju
 2. Open a pending request.
 3. Click **Soft Approve** or **Soft Reject** and add a note if you'd like.
 
+![Department-scoped leave list](docs/screenshots/department_head/01-leave-list-dept.png)
+
 This is an **informational pre-review only** — your name and decision show right on the request (e.g. "Soft Approved by [You]"), but the **real** Approve/Reject decision is still made separately by whoever holds that capability (typically HR). Your soft decision never blocks or changes the outcome either way.
+
+![Soft Approve / Soft Reject on a pending request](docs/screenshots/department_head/02-leave-view-soft-approve.png)
 
 → Full detail on applying/approving each of these: [USER_GUIDE.md §3 (Leave)](USER_GUIDE.md#3-leave), [§6 (Overtime)](USER_GUIDE.md#6-overtime), [§7 (Shifts)](USER_GUIDE.md#7-shifts).
 
@@ -33,6 +37,8 @@ If your role also has **View (Own Department)** on Performance and/or Training:
 **Steps:**
 1. Go to **HR Management > Performance** (or **Training**) — targets/trainings for employees in your department are visible here, in addition to your own.
 2. Open one to see its detail — you can act on it (add evaluator feedback, mark attendance, etc.) only if you're also specifically assigned to it (as an evaluator, or instructor).
+
+![Department-scoped performance targets](docs/screenshots/department_head/05-performance-dept.png)
 
 → Full detail: [USER_GUIDE.md §9 (Performance)](USER_GUIDE.md#9-performance), [§10 (Training)](USER_GUIDE.md#10-training).
 

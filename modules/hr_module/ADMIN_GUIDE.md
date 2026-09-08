@@ -22,11 +22,15 @@ If you're looking for "how do I apply for leave" or "how do I approve a request,
 10. **Optional: Biometric attendance devices (ZKTeco / AiFace)** — see [§7](#7-biometric-device-integration).
 11. **Set up the server cron job** — see [§8](#8-cron-job) — several automated features (day-before holiday reminders, contract auto-expiry) silently do nothing without this.
 
+![HR Settings page](docs/screenshots/admin/37-settings.png)
+
 ---
 
 ## 2. Roles & permissions setup
 
 Every HR permission lives under **Setup > Staff > Roles**, prefixed "HR " to keep it apart from unrelated CRM permissions. Permissions are granted **per feature** (Leave, Attendance, Payroll, Loans, Overtime, Performance, Training, Helpdesk, Contracts, Shifts, Policies, Reports, Settings, Employees, Departments, Attendance Devices — this last one controls the device management screen for **both** ZKTeco and AiFace devices).
+
+![Roles list](docs/screenshots/admin/40-roles-list.png)
 
 ### The five capability tiers (not every feature has all five)
 
@@ -151,6 +155,10 @@ Both supported device brands **push** attendance data to this server — the ser
 5. **Location** — free text, shown on the device card and in punch logs — use it to tell multiple devices apart (e.g. "Dhaka Office (Inside)" vs "Dhaka Office (Outside)").
 6. Click **Save**.
 7. Map the device to employees from **each employee's own Edit page** (Attendance Devices multi-select + a required, unique Device Number) — not from a separate mapping screen.
+
+![Add Device form](docs/screenshots/admin/14-devices-add.png)
+
+![Attendance Devices list](docs/screenshots/admin/13-devices-list.png)
 
 Attendance only resolves correctly for mapped employees; an unmapped device's punches are silently accepted but discarded. A Device Number already used by another employee **on the same device** is rejected (with a warning shown on save) rather than silently creating a duplicate mapping — see [§3](#3-employee-setup).
 

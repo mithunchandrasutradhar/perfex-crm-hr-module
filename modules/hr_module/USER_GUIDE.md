@@ -29,6 +29,8 @@ If you're setting up or operating the module (roles, integrations, cron, trouble
 - **HR manager/admin who is also an employee** → both tabs: **My Dashboard** (your own personal stats, same as above) and **Company Dashboard** (company-wide numbers: total/active employees, departments, who's present/late/on leave today, pending leave/loan/overtime counts, plus manager-level Quick Actions — Add Employee, Apply Leave, Mark Attendance, Generate Payroll, Reports).
 - **Admin/manager with no personal employee profile** (e.g. a system administrator not tracked as company staff) → just the Company Dashboard, with no tabs.
 
+![HR personal dashboard](docs/screenshots/employee/01-dashboard.png)
+
 ### Revealing your Net Salary
 
 Your Net Salary figure is hidden behind `****` by default, for glance-privacy.
@@ -57,6 +59,8 @@ This never navigates you away from the dashboard, and doesn't affect anything el
    - **Bank Info** — bank name, account number, branch, and TIN.
 
 Your name, email, and phone always stay in sync with your linked staff account — they're not editable separately here.
+
+![Employee profile view](docs/screenshots/admin/04-employees-view.png)
 
 ### Adding a new employee (HR/admin only)
 
@@ -99,6 +103,8 @@ If you change the Device Number/device selection and the ID you entered is alrea
 6. Add a **Reason**, and attach a supporting document if the leave type requires one.
 7. Click **Submit**.
 
+![Apply for leave](docs/screenshots/admin/06-leave-apply.png)
+
 ### Checking your balance and requests
 
 **Steps:**
@@ -112,6 +118,8 @@ If you change the Device Number/device selection and the ID you entered is alrea
 1. Go to **HR Management > Leave** and open the pending request.
 2. If your role has the **Soft Approve/Reject** permission (typically a department head), you'll see extra **Soft Approve**/**Soft Reject** buttons — click one to record your informational pre-review. This is purely a heads-up for whoever makes the real decision: your name and choice show right on the request, but it never blocks or changes the actual outcome. See [§17](#17-roles-in-plain-terms) for how this permission is assigned.
 3. Click **Approve** or **Reject** (the real, binding decision) — add a note/reason if prompted.
+
+![Leave request detail with Approve/Reject/Soft Approve/Soft Reject](docs/screenshots/admin/07-leave-view.png)
 
 ### Cancelling a leave
 
@@ -134,6 +142,8 @@ If you change the Device Number/device selection and the ID you entered is alrea
 2. Go to **HR Management > Attendance** for your full **monthly calendar** — a color-coded grid showing every day's status, with weekends and holidays marked.
 3. If your office uses a biometric device (fingerprint/face/card, either ZKTeco or AiFace/AI-series), your punches record automatically the moment you scan — the first scan of the day is always your clock-in, and whichever scan is latest so far is your clock-out, no matter how many times you punch in between (e.g. stepping out and back for lunch).
 4. Click **View Log** next to any day's record to see every individual punch behind it — the time, which device it came from, and how you verified (fingerprint, face, card, etc.).
+
+![Attendance logs](docs/screenshots/admin/10-attendance-list.png)
 
 ### Correcting or adding a record (HR/managers)
 
@@ -164,6 +174,8 @@ If you change the Device Number/device selection and the ID you entered is alrea
 2. Click **Add Device** to register a new one, or **Edit** an existing one's serial number/location.
 3. See [`ADMIN_GUIDE.md`](ADMIN_GUIDE.md) §7 for the full device setup and mapping process.
 
+![Attendance Devices list](docs/screenshots/admin/13-devices-list.png)
+
 ---
 
 ## 5. Loans
@@ -190,6 +202,8 @@ Every employee has a **maximum loan amount** — this is the most **total** you 
 5. Pick a monthly **Installment** from the dropdown — the repayment period (in months) is calculated automatically from whichever installment you choose.
 6. Click **Submit**. If your amount exceeds your remaining capacity, you'll get a clear message telling you exactly why instead of it going through.
 
+![Apply for loan](docs/screenshots/admin/20-loans-apply.png)
+
 ### Requesting a skipped or adjusted monthly installment
 
 **Steps:**
@@ -212,6 +226,8 @@ Every employee has a **maximum loan amount** — this is the most **total** you 
 2. **Employee** field: if you have full company-wide access to Overtime, this already defaults to yourself — leave it, or pick someone else if you're requesting on their behalf.
 3. Add one or more dates worked — you can only pick dates within the **current calendar month** (intentional: an earlier or later month's payroll may already be finalized). Each date is checked automatically for eligibility (weekend, government holiday, or company holiday) as you enter it.
 4. Click **Submit**.
+
+![Request overtime](docs/screenshots/admin/22-overduty-request.png)
 
 Your dashboard's Overtime widget shows this month's **approved days** (overtime here is tracked per day, not hourly).
 
@@ -237,6 +253,8 @@ Your dashboard's Overtime widget shows this month's **approved days** (overtime 
 4. Click **Submit**.
 5. While it's still **pending**, you can go back and **Edit** or **Delete** your own request.
 
+![Request shift assignment](docs/screenshots/admin/26-shifts-apply.png)
+
 ### Approving or soft-approving a shift request (HR/managers)
 
 **Steps:**
@@ -257,12 +275,16 @@ Your dashboard's Overtime widget shows this month's **approved days** (overtime 
 2. Click one to see the full breakdown: basic salary, allowances, deductions, overtime, bonus, tax, loan deduction, and the final net salary.
 3. Click **Print** for a printable version.
 
+![Payroll list](docs/screenshots/admin/16-payroll-list.png)
+
 ### Generating payroll (HR/admins)
 
 **Steps:**
 1. Go to **HR Management > Payroll** and click **Generate Payroll**.
 2. Pick the month, year, and the employees to include.
 3. Click **Generate** — the system calculates everything automatically, and any employee already generated for that period is skipped rather than duplicated.
+
+![Generate payroll](docs/screenshots/admin/17-payroll-generate.png)
 
 **Payroll Items** (Settings-adjacent) lets HR define reusable allowance/deduction components: go there, click **Add**, and set whether it's a fixed amount or a percentage of basic salary, and whether it's taxable.
 
@@ -287,6 +309,8 @@ Deductions/loan repayments/tax are recalculated one final time at this point —
 2. Open a sub-target and update its **Status** (Pending / In Progress / Partially Completed / Completed).
 3. Add your own note describing your progress, and click **Save**.
 
+![Performance targets](docs/screenshots/admin/23-performance-list.png)
+
 ### Adding evaluator feedback
 
 If you've been assigned as an **evaluator** on someone else's sub-target, you can do this even without company-wide performance access.
@@ -304,6 +328,8 @@ If you've been assigned as an **evaluator** on someone else's sub-target, you ca
 3. Add as many **sub-targets** as needed, and assign an **evaluator** to each if applicable.
 4. Click **Save**.
 
+![Assign performance target](docs/screenshots/admin/24-performance-add.png)
+
 ---
 
 ## 10. Training
@@ -316,6 +342,8 @@ If you've been assigned as an **evaluator** on someone else's sub-target, you ca
 1. Upcoming and in-progress trainings you're enrolled in show on your dashboard — click one, or go to **HR Management > Training** to see all of them.
 2. Open a training's page to see its schedule, venue, and (if it spans multiple sessions) each session's date/time.
 3. After attending, click **Leave Feedback** and submit your comments.
+
+![Training programs](docs/screenshots/admin/27-training-list.png)
 
 ### Marking attendance and closing a training (assigned instructor)
 
@@ -332,6 +360,8 @@ If you've been assigned as an **evaluator** on someone else's sub-target, you ca
 3. Click **Save**, then **Enroll Participants** to add employees to it.
 4. Once it's finished, click **Generate Report** for a printable attendance-history report, or email it directly to the HR inbox from the same button.
 
+![Add training](docs/screenshots/admin/28-training-add.png)
+
 ---
 
 ## 11. Helpdesk
@@ -346,6 +376,8 @@ If you've been assigned as an **evaluator** on someone else's sub-target, you ca
 3. Fill in a **Subject**, and optionally a category, priority, and attachment.
 4. If you'd rather not have your name attached, check **Submit anonymously** — HR still sees and responds to the ticket, just without your identity.
 5. Click **Submit**.
+
+![Submit helpdesk ticket](docs/screenshots/admin/30-helpdesk-submit.png)
 
 ### Replying to and closing a ticket (HR)
 
@@ -366,6 +398,8 @@ If you've been assigned as an **evaluator** on someone else's sub-target, you ca
 1. Go to **HR Management > HR Contracts** — your employment contract(s) are listed with type, dates, value, and signature status.
 2. Click one to see the full detail.
 
+![Contracts list](docs/screenshots/admin/31-contracts-list.png)
+
 Contracts automatically move to "Expired" once their end date passes, and HR gets a one-time email + in-app notification 30 days ahead of expiry so renewals don't get missed (requires the server's cron job to be running — see [`ADMIN_GUIDE.md`](ADMIN_GUIDE.md)).
 
 ### Adding a contract (HR/admins)
@@ -375,6 +409,8 @@ Contracts automatically move to "Expired" once their end date passes, and HR get
 2. **Employee** field: if you have permission to add contracts, this already defaults to yourself — pick the employee you're actually adding a contract for.
 3. Fill in the contract type, dates, value, and attach the document.
 4. Click **Save**.
+
+![Add contract](docs/screenshots/admin/32-contracts-add.png)
 
 ---
 
@@ -387,6 +423,8 @@ Contracts automatically move to "Expired" once their end date passes, and HR get
 **Steps:**
 1. Go to **HR Management > Policies** — you'll see public policies, plus any private policy targeted at your department.
 2. Click one to read it in full.
+
+![Policies list](docs/screenshots/admin/33-policies-list.png)
 
 ### Publishing or revising a policy (HR/managers)
 
@@ -406,6 +444,8 @@ Contracts automatically move to "Expired" once their end date passes, and HR get
 
 **Steps:**
 1. Go to **HR Management > Official Calendar** to see the company's holiday list, plus the configured weekly-off day(s) (e.g. Friday, or Friday+Saturday) — this is exactly what the Leave and Overtime pages check against automatically.
+
+![Official Calendar](docs/screenshots/admin/35-official-calendar.png)
 
 ### Adding a holiday (HR/admins)
 
@@ -438,6 +478,8 @@ Contracts automatically move to "Expired" once their end date passes, and HR get
 3. Set your filters (date range, department, employee, etc.) and click **Generate**.
 4. Click **Export** to download it.
 
+![Reports hub](docs/screenshots/admin/36-reports.png)
+
 ---
 
 ## 16. Settings (Admin / HR only)
@@ -450,6 +492,8 @@ Contracts automatically move to "Expired" once their end date passes, and HR get
 3. Click **Save**.
 
 A "Danger Zone" section (admin-only) controls whether uninstalling the module deletes all its data or preserves it — it's off by default, so uninstalling never destroys your HR records unless you deliberately turn this on first.
+
+![HR Settings page](docs/screenshots/admin/37-settings.png)
 
 ### Customizing notification wording
 
@@ -474,6 +518,8 @@ A "Danger Zone" section (admin-only) controls whether uninstalling the module de
 | Admin | Everything above, plus Settings, notification setup, and the Danger Zone |
 
 Permissions are granted per feature (Leave, Attendance, Payroll, Loans, Overtime, Performance, Training, Helpdesk, Contracts, Shifts, Policies, Reports, Settings, etc.) under **Setup > Staff > Roles** — every HR-related permission there is prefixed "HR " to keep it easy to find and tell apart from unrelated CRM permissions.
+
+![Roles list](docs/screenshots/admin/40-roles-list.png)
 
 ### Setting up a department head
 

@@ -301,6 +301,7 @@ $day_names = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Satur
               <thead>
                 <tr>
                   <th style="width:220px">Shift</th>
+                  <th style="width:80px">Count</th>
                   <th>Employees</th>
                 </tr>
               </thead>
@@ -315,10 +316,17 @@ $day_names = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Satur
                     <?php if (!empty($group['start_time']) && !empty($group['end_time'])): ?>
                     <span class="text-muted tw-text-sm"><?php echo date('h:i A', strtotime($group['start_time'])) . ' - ' . date('h:i A', strtotime($group['end_time'])); ?></span>
                     <?php endif; ?>
-                    <span class="text-muted tw-text-sm">(<?php echo count($group['employees']); ?>)</span>
                   </td>
+                  <td><?php echo count($group['employees']); ?></td>
                   <td>
-                    <?php echo !empty($group['employees']) ? htmlspecialchars(implode(', ', $group['employees'])) : '<span class="text-muted">-</span>'; ?>
+                    <?php if (empty($group['employees'])): ?>
+                    <span class="text-muted">-</span>
+                    <?php else: ?>
+                    <?php foreach ($group['employees'] as $i => $emp): ?>
+                    <?php if ($i > 0) echo ', '; ?>
+                    <a href="<?php echo admin_url('hr_module/employees/view/' . $emp['id']); ?>"><?php echo htmlspecialchars($emp['name']); ?></a>
+                    <?php endforeach; ?>
+                    <?php endif; ?>
                   </td>
                 </tr>
                 <?php endforeach; ?>
