@@ -54,6 +54,11 @@
               <i class="fa fa-check-double tw-mr-1"></i><?php echo _l('hr_shift_bulk_approve'); ?>
             </a>
             <?php endif; ?>
+            <?php if (!empty($can_soft_approve)): ?>
+            <a href="#" data-toggle="modal" data-target="#hrShiftBulkSoftApproveModal" class="hide hr-bulk-soft-approve-btn btn btn-default btn-sm">
+              <i class="fa fa-check tw-mr-1"></i><?php echo _l('hr_shift_bulk_soft_approve'); ?>
+            </a>
+            <?php endif; ?>
           </div>
         </div>
         <div class="panel_s">
@@ -84,6 +89,26 @@
       <div class="modal-footer">
         <button type="button" class="btn btn-default" data-dismiss="modal"><?php echo _l('hr_cancel'); ?></button>
         <a href="#" class="btn btn-primary hr-shift-bulk-approve-confirm"><?php echo _l('hr_shift_approve'); ?></a>
+      </div>
+    </div>
+  </div>
+</div>
+<?php endif; ?>
+
+<?php if (!empty($can_soft_approve)): ?>
+<div class="modal fade bulk_actions" id="hrShiftBulkSoftApproveModal" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal">&times;</button>
+        <h4 class="modal-title"><?php echo _l('hr_shift_bulk_soft_approve'); ?></h4>
+      </div>
+      <div class="modal-body">
+        <p><?php echo _l('hr_shift_bulk_soft_approve_confirm'); ?></p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default" data-dismiss="modal"><?php echo _l('hr_cancel'); ?></button>
+        <a href="#" class="btn btn-primary hr-shift-bulk-soft-approve-confirm"><?php echo _l('hr_shift_soft_approve'); ?></a>
       </div>
     </div>
   </div>
@@ -157,7 +182,9 @@ $(function(){
     // matching checkboxes are on the page afterwards.
     var hrShiftSelected = {};
     function hrShiftSyncBtn() {
-        $('.hr-bulk-approve-btn').toggleClass('hide', $.isEmptyObject(hrShiftSelected));
+        var empty = $.isEmptyObject(hrShiftSelected);
+        $('.hr-bulk-approve-btn').toggleClass('hide', empty);
+        $('.hr-bulk-soft-approve-btn').toggleClass('hide', empty);
     }
     $(document).on('change', '.hr-bulk-id', function(){
         var id = $(this).val();
@@ -194,7 +221,31 @@ $(function(){
                 alert_float('success', '<?php echo _l('hr_shift_approved_msg'); ?>');
                 hrShiftSelected = {};
                 $('.table-hr-shifts').DataTable().ajax.reload(null, false);
-                $('.hr-bulk-approve-btn').addClass('hide');
+                $('.hr-bulk-approve-btn, .hr-bulk-soft-approve-btn').addClass('hide');
+            } else {
+                alert_float('danger', r.message);
+            }
+        }, 'json').always(function(){ $btn.removeClass('disabled'); });
+    });
+
+    // Bulk Soft Approve: same selection-tracking (hrShiftSelected) as Bulk
+    // Approve above, just posted to the soft-approve endpoint instead - kept
+    // as a fully separate handler/modal so the real Approve flow above is
+    // untouched either way.
+    $(document).on('click', '.hr-shift-bulk-soft-approve-confirm', function(e){
+        e.preventDefault();
+        var ids = Object.keys(hrShiftSelected);
+        if (!ids.length) return;
+        var params = csrf_pair();
+        ids.forEach(function(id){ params += '&ids[]=' + encodeURIComponent(id); });
+        var $btn = $(this).addClass('disabled');
+        $.post('<?php echo admin_url('hr_module/shifts/bulk_soft_approve'); ?>', params, function(r){
+            $('#hrShiftBulkSoftApproveModal').modal('hide');
+            if (r.success) {
+                alert_float('success', '<?php echo _l('hr_shift_soft_approve'); ?>');
+                hrShiftSelected = {};
+                $('.table-hr-shifts').DataTable().ajax.reload(null, false);
+                $('.hr-bulk-approve-btn, .hr-bulk-soft-approve-btn').addClass('hide');
             } else {
                 alert_float('danger', r.message);
             }

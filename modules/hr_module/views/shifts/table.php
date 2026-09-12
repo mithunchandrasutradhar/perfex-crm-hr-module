@@ -96,9 +96,10 @@ foreach ($rows as $r) {
         $shift_cell .= '<br><small class="text-muted">' . date('g:i A', strtotime($r->start_time)) . ' - ' . date('g:i A', strtotime($r->end_time)) . '</small>';
     }
 
-    // Bulk-approve checkbox: only for a pending row the caller can actually
-    // approve - matches the single-row Approve link's own condition above.
-    $checkbox_cell = ($r->status === 'pending' && $can_approve)
+    // Bulk-approve/bulk-soft-approve checkbox: shown for a pending row if the
+    // caller can do either bulk action - which one actually runs depends on
+    // which button (Bulk Approve vs Bulk Soft Approve) they click.
+    $checkbox_cell = ($r->status === 'pending' && ($can_approve || $can_soft_approve))
         ? '<div class="checkbox checkbox-primary"><input type="checkbox" class="hr-bulk-id" value="' . $r->id . '"><label></label></div>'
         : '';
 

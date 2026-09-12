@@ -35,6 +35,7 @@ class Shifts extends AdminController
         // show the Approve link at all - the bulk-approve button/checkboxes
         // are shown under that identical rule.
         $data['can_approve']      = is_admin() || staff_can('approve', 'hr_shifts');
+        $data['can_soft_approve'] = is_admin() || staff_can('soft_approve', 'hr_shifts');
         $this->load->view('hr_module/shifts/index', $data);
     }
 
@@ -64,6 +65,28 @@ class Shifts extends AdminController
             }
         }
         echo json_encode(['success' => true, 'approved' => $approved]);
+    }
+
+    // Soft-approves several pending shift requests at once - same bulk-action
+    // UI/checkboxes as bulk_approve() above, gated by its own 'soft_approve'
+    // capability instead of 'approve' (mirrors the single-row soft_approve()
+    // below), and never sends the approve/reject notification emails.
+    public function bulk_soft_approve()
+    {
+        if (!$this->input->is_ajax_request()) show_404();
+        if (staff_cant('soft_approve', 'hr_shifts') && !is_admin()) {
+            echo json_encode(['success' => false, 'message' => _l('hr_error_permission')]);
+            return;
+        }
+        $ids = (array) $this->input->post('ids');
+        $soft_approved = 0;
+        foreach ($ids as $id) {
+            $id = (int) $id;
+            if (!$id) continue;
+            $result = $this->Shifts_model->soft_approve($id);
+            if ($result['success']) $soft_approved++;
+        }
+        echo json_encode(['success' => true, 'soft_approved' => $soft_approved]);
     }
 
     public function apply()
