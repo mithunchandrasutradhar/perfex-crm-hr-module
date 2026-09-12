@@ -44,7 +44,17 @@ $badge = '<span class="label ' . ($badge_map[$r->status] ?? 'label-default') . '
                 </td></tr>
               <tr><th><?php echo _l('hr_leave_days'); ?></th>
                 <td>
-                  <strong><?php echo hr_format_day_duration($r->total_days, $r->hours_per_day); ?></strong>
+                  <strong><?php
+                    if (count($days) === 1 && $days[0]->day_type === 'hourly' && $days[0]->hour_start && $days[0]->hour_end) {
+                        // Avoid round-tripping through total_days (rounded to 2 decimals in
+                        // the DB) for a single hourly day - it can drift by a couple of
+                        // minutes on the way back out. Same exact hour_start/hour_end this
+                        // request's own Days table below already uses for this case.
+                        echo hr_format_minutes_duration((strtotime($days[0]->hour_end) - strtotime($days[0]->hour_start)) / 60);
+                    } else {
+                        echo hr_format_day_duration($r->total_days, $r->hours_per_day);
+                    }
+                  ?></strong>
                   <?php if (count($days) === 1): ?>
                   <span class="text-muted">(<?php echo htmlspecialchars(hr_leave_day_type_label($days[0]->day_type)); ?>)</span>
                   <?php endif; ?>
