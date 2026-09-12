@@ -332,6 +332,25 @@ class Leave_model extends App_Model
         return $map;
     }
 
+    // Returns [leave_request_id => [hour_start, hour_end row, ...]] for whichever of
+    // the given request IDs have an 'hourly' day - used by a list page to show a
+    // single-hourly-day request's exact duration instead of round-tripping through
+    // total_days (rounded to 2 decimals in the DB, which can drift by a couple of
+    // minutes - same fix already applied to leave/view.php's summary line).
+    public function get_hourly_days_for_requests($leave_request_ids)
+    {
+        $rows = $this->db->select('leave_request_id, hour_start, hour_end')
+            ->where_in('leave_request_id', $leave_request_ids)
+            ->where('day_type', 'hourly')
+            ->get($this->tbl_request_days)->result();
+
+        $map = [];
+        foreach ($rows as $row) {
+            $map[$row->leave_request_id][] = $row;
+        }
+        return $map;
+    }
+
     public function approve($id, $notes = '')
     {
         $request = $this->get_request($id);
