@@ -1241,6 +1241,7 @@ if (!$CI->db->table_exists(db_prefix() . 'hr_settings')) {
       ('office_start_time', '09:00', '$now'),
       ('office_end_time', '18:00', '$now'),
       ('late_threshold_minutes', '15', '$now'),
+      ('lunch_break_end_time', '14:00', '$now'),
       ('default_overtime_rate', '1.5', '$now'),
       ('employee_id_prefix', 'EMP', '$now'),
       ('fiscal_year_start_month', '1', '$now'),

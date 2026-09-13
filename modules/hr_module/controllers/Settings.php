@@ -208,6 +208,7 @@ class Settings extends AdminController
             'office_start_time',
             'office_end_time',
             'late_threshold_minutes',
+            'lunch_break_end_time',
             'night_shift_grace_hours',
             'hr_income_tax_rate',
             'default_overtime_rate',

@@ -389,6 +389,26 @@ class Attendance_model extends App_Model
         }
     }
 
+    // Same rationale as resync_status_for_shift() above, for the equivalent leave
+    // scenario: an approved hourly leave changes the late-arrival reference point
+    // (see Leave_model::get_approved_hourly_window() and this model's own
+    // _determine_status()) - called right after a leave request is approved (see
+    // Leave_model::approve()) to recompute status for exactly the date it covers,
+    // only if that row is still in an auto-determined 'present'/'late' state, so
+    // a manually-set 'absent'/'half_day' override is never touched.
+    public function resync_status_for_leave($employee_id, $date)
+    {
+        $row = $this->db->where('employee_id', $employee_id)
+            ->where('attendance_date', $date)
+            ->where_in('status', ['present', 'late'])
+            ->get($this->table)->row();
+        if (!$row || !$row->in_time) return;
+        $new_status = $this->_determine_status($row->in_time, $employee_id, $date);
+        if ($new_status !== $row->status) {
+            $this->db->where('id', $row->id)->update($this->table, ['status' => $new_status]);
+        }
+    }
+
     // Handles overnight shifts (e.g. Night Shift 22:00 -> 06:00), where out_time
     // is technically earlier in the clock than in_time because it falls on the
     // next calendar day.
@@ -424,6 +444,36 @@ class Attendance_model extends App_Model
         }
         if (!$start_time) {
             $start_time = $CI->Hr_module_model->get_setting('office_start_time', '09:00');
+        }
+
+        // If an approved hourly leave covers the normal shift/office start (its
+        // own window begins at or before it and ends after it), push the
+        // late-arrival reference point out to when that leave ends instead -
+        // punching in while still covered by approved leave should never count
+        // as "late" (e.g. approved 09:00-12:00 leave, punched in at 11:11).
+        if ($employee_id && $date) {
+            $CI->load->model('hr_module/Leave_model');
+            $leave_window = $CI->Leave_model->get_approved_hourly_window($employee_id, $date);
+            if ($leave_window && $leave_window->hour_start && $leave_window->hour_end) {
+                $shift_start_ts = strtotime($start_time);
+                $leave_start_ts = strtotime($leave_window->hour_start);
+                $leave_end_ts   = strtotime($leave_window->hour_end);
+                if ($leave_start_ts <= $shift_start_ts && $leave_end_ts > $shift_start_ts) {
+                    $start_time = $leave_window->hour_end;
+                }
+            }
+            // Same idea for an approved half-day-before-lunch leave: it has no
+            // per-request hour_start/hour_end of its own (unlike 'hourly'), so
+            // the fixed lunch break end time configured in Settings >
+            // Attendance is used as the late-arrival reference point instead,
+            // as long as that's actually later than the normal shift/office
+            // start (otherwise there'd be nothing to push out).
+            elseif ($CI->Leave_model->has_approved_half_before_lunch($employee_id, $date)) {
+                $lunch_end = $CI->Hr_module_model->get_setting('lunch_break_end_time', '14:00');
+                if (strtotime($lunch_end) > strtotime($start_time)) {
+                    $start_time = $lunch_end;
+                }
+            }
         }
 
         $threshold   = (int) $CI->Hr_module_model->get_setting('late_threshold_minutes', '15');

@@ -170,6 +170,14 @@ $can_edit = staff_can('edit', 'hr_settings') || is_admin();
                                 </div>
                                 <div class="col-md-3 col-sm-6">
                                     <div class="form-group">
+                                        <label><?php echo _l('hr_settings_lunch_break_end_time'); ?></label>
+                                        <input type="time" name="lunch_break_end_time" class="form-control"
+                                            value="<?php echo isset($settings['lunch_break_end_time']) ? htmlspecialchars($settings['lunch_break_end_time']) : '14:00'; ?>"
+                                            <?php echo !$can_edit ? 'readonly' : ''; ?>>
+                                    </div>
+                                </div>
+                                <div class="col-md-3 col-sm-6">
+                                    <div class="form-group">
                                         <label><?php echo _l('hr_settings_income_tax_rate'); ?></label>
                                         <input type="number" name="hr_income_tax_rate" class="form-control" step="0.1" min="0" max="100"
                                             value="<?php echo isset($settings['hr_income_tax_rate']) ? $settings['hr_income_tax_rate'] : 0; ?>"

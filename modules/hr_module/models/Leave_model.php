@@ -315,6 +315,45 @@ class Leave_model extends App_Model
             ->get()->result();
     }
 
+    // Returns the hour_start/hour_end of an approved 'hourly' leave day-row for
+    // this employee/date, if any - used by Attendance_model::_determine_status()
+    // so a punch-in isn't marked "late" against the normal shift/office start
+    // time while the employee is still covered by an approved partial-day leave
+    // (e.g. approved 09:00-12:00 leave, punched in at 11:11 - not late).
+    public function get_approved_hourly_window($employee_id, $date)
+    {
+        return $this->db->select('d.hour_start, d.hour_end')
+            ->from($this->tbl_request_days . ' d')
+            ->join($this->tbl_requests . ' r', 'r.id = d.leave_request_id')
+            ->where('r.status', 'approved')
+            ->where('d.employee_id', $employee_id)
+            ->where('d.leave_date', $date)
+            ->where('d.day_type', 'hourly')
+            ->order_by('d.hour_end', 'DESC')
+            ->limit(1)
+            ->get()->row();
+    }
+
+    // Whether this employee has an approved 'half_before_lunch' leave for the
+    // given date - used by Attendance_model::_determine_status() so a punch-in
+    // isn't marked "late" against the normal shift/office start time while the
+    // employee is off for the first (before-lunch) half of the day. Unlike
+    // 'hourly' leave, a half-day request has no per-request hour_start/hour_end
+    // of its own, so the late-arrival reference point becomes the fixed lunch
+    // break end time configured in Settings > Attendance instead.
+    public function has_approved_half_before_lunch($employee_id, $date)
+    {
+        return (bool) $this->db
+            ->from($this->tbl_request_days . ' d')
+            ->join($this->tbl_requests . ' r', 'r.id = d.leave_request_id')
+            ->where('r.status', 'approved')
+            ->where('d.employee_id', $employee_id)
+            ->where('d.leave_date', $date)
+            ->where('d.day_type', 'half_before_lunch')
+            ->limit(1)
+            ->get()->num_rows();
+    }
+
     // Returns [leave_request_id => ['full', 'half_before_lunch', ...]] for the given
     // request IDs in one query, so a list page can show each request's day-type
     // composition without an N+1 query per row.
@@ -371,12 +410,30 @@ class Leave_model extends App_Model
         if ($this->db->affected_rows() < 1) {
             return ['success' => false, 'message' => 'Invalid request'];
         }
+        $days = $this->get_request_days($id);
+
         // Deduct from balance - split by calendar year in case this request
         // spans a year boundary (e.g. Dec 31 + Jan 2), so each year's own
         // balance row is charged only for the days that actually fall in it.
-        foreach ($this->_day_totals_by_year($this->get_request_days($id)) as $year => $days_in_year) {
+        foreach ($this->_day_totals_by_year($days) as $year => $days_in_year) {
             $this->_deduct_balance($request->employee_id, $request->leave_type_id, $year, $days_in_year);
         }
+
+        // An approved hourly or half-before-lunch leave changes the
+        // late-arrival reference point for that date's attendance (see
+        // Attendance_model::_determine_status() / Leave_model::
+        // get_approved_hourly_window() / has_approved_half_before_lunch()) -
+        // resync any attendance already recorded (and auto-marked
+        // present/late) for exactly the date(s) this request covers, same
+        // pattern Shifts_model::approve() already uses for shift assignments.
+        $CI = &get_instance();
+        $CI->load->model('hr_module/Attendance_model');
+        foreach ($days as $day) {
+            if (in_array($day->day_type, ['hourly', 'half_before_lunch'], true)) {
+                $CI->Attendance_model->resync_status_for_leave($request->employee_id, $day->leave_date);
+            }
+        }
+
         hooks()->do_action('hr_leave_approved', $request);
         log_activity('HR Leave Request Approved [ID: ' . $id . ']');
         return ['success' => true];
