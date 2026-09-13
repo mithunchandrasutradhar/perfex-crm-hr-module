@@ -354,6 +354,25 @@ class Leave_model extends App_Model
             ->get()->num_rows();
     }
 
+    // Whether this employee has an approved full-day ('full' or 'bridge' - a
+    // bridge day carries the same full-day semantics, see
+    // hr_leave_day_type_label()) leave for the given date - used by
+    // Attendance_model::_determine_status() so a stray punch on a day the
+    // employee was fully approved off never counts as "Late" (there's no
+    // scheduled start time to be late against).
+    public function has_approved_full_day_leave($employee_id, $date)
+    {
+        return (bool) $this->db
+            ->from($this->tbl_request_days . ' d')
+            ->join($this->tbl_requests . ' r', 'r.id = d.leave_request_id')
+            ->where('r.status', 'approved')
+            ->where('d.employee_id', $employee_id)
+            ->where('d.leave_date', $date)
+            ->where_in('d.day_type', ['full', 'bridge'])
+            ->limit(1)
+            ->get()->num_rows();
+    }
+
     // Returns [leave_request_id => ['full', 'half_before_lunch', ...]] for the given
     // request IDs in one query, so a list page can show each request's day-type
     // composition without an N+1 query per row.
@@ -419,17 +438,18 @@ class Leave_model extends App_Model
             $this->_deduct_balance($request->employee_id, $request->leave_type_id, $year, $days_in_year);
         }
 
-        // An approved hourly or half-before-lunch leave changes the
+        // An approved hourly/half-before-lunch/full-day leave changes the
         // late-arrival reference point for that date's attendance (see
         // Attendance_model::_determine_status() / Leave_model::
-        // get_approved_hourly_window() / has_approved_half_before_lunch()) -
-        // resync any attendance already recorded (and auto-marked
-        // present/late) for exactly the date(s) this request covers, same
-        // pattern Shifts_model::approve() already uses for shift assignments.
+        // get_approved_hourly_window() / has_approved_half_before_lunch() /
+        // has_approved_full_day_leave()) - resync any attendance already
+        // recorded (and auto-marked present/late) for exactly the date(s)
+        // this request covers, same pattern Shifts_model::approve() already
+        // uses for shift assignments.
         $CI = &get_instance();
         $CI->load->model('hr_module/Attendance_model');
         foreach ($days as $day) {
-            if (in_array($day->day_type, ['hourly', 'half_before_lunch'], true)) {
+            if (in_array($day->day_type, ['hourly', 'half_before_lunch', 'full', 'bridge'], true)) {
                 $CI->Attendance_model->resync_status_for_leave($request->employee_id, $day->leave_date);
             }
         }
@@ -522,8 +542,23 @@ class Leave_model extends App_Model
         // way approve() deducts it, so a cross-year request restores each
         // year's own balance row correctly instead of all to the start year.
         if ($was_approved) {
-            foreach ($this->_day_totals_by_year($this->get_request_days($id)) as $year => $days_in_year) {
+            $days = $this->get_request_days($id);
+            foreach ($this->_day_totals_by_year($days) as $year => $days_in_year) {
                 $this->_restore_balance($request->employee_id, $request->leave_type_id, $year, $days_in_year);
+            }
+
+            // Mirrors approve()'s own resync, in reverse: an approved leave that
+            // changed a date's late-arrival reference point (see
+            // Attendance_model::_determine_status()) no longer applies once
+            // cancelled - re-check any attendance already recorded for exactly
+            // the date(s) this request covered, same pattern Shifts_model::
+            // delete() already uses when an approved shift assignment disappears.
+            $CI = &get_instance();
+            $CI->load->model('hr_module/Attendance_model');
+            foreach ($days as $day) {
+                if (in_array($day->day_type, ['hourly', 'half_before_lunch', 'full', 'bridge'], true)) {
+                    $CI->Attendance_model->resync_status_for_leave($request->employee_id, $day->leave_date);
+                }
             }
         }
         log_activity('HR Leave Cancelled [ID: ' . $id . ']');
@@ -604,14 +639,28 @@ class Leave_model extends App_Model
         // give back the days it deducted, same as cancelling one does. Split by
         // calendar year same as approve()/cancel() - must read the day-rows
         // BEFORE they're deleted below.
-        if ($request->status === 'approved') {
-            foreach ($this->_day_totals_by_year($this->get_request_days($id)) as $year => $days_in_year) {
+        $was_approved = $request->status === 'approved';
+        $days = $was_approved ? $this->get_request_days($id) : [];
+        if ($was_approved) {
+            foreach ($this->_day_totals_by_year($days) as $year => $days_in_year) {
                 $this->_restore_balance($request->employee_id, $request->leave_type_id, $year, $days_in_year);
             }
         }
         $this->db->where('leave_request_id', $id)->delete($this->tbl_request_days);
         $this->db->where('id', $id)->delete($this->tbl_requests);
         $deleted = $this->db->affected_rows() > 0;
+        // Mirrors cancel()'s own resync (see there for the full rationale) -
+        // must run after the deletes above so the "is there an approved leave"
+        // check they trigger correctly finds nothing for this now-gone request.
+        if ($deleted && $was_approved) {
+            $CI = &get_instance();
+            $CI->load->model('hr_module/Attendance_model');
+            foreach ($days as $day) {
+                if (in_array($day->day_type, ['hourly', 'half_before_lunch', 'full', 'bridge'], true)) {
+                    $CI->Attendance_model->resync_status_for_leave($request->employee_id, $day->leave_date);
+                }
+            }
+        }
         if ($deleted) {
             log_activity('HR Leave Request Deleted [ID: ' . $id . ']');
         }

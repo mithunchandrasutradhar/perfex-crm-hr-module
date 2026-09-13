@@ -434,6 +434,18 @@ class Attendance_model extends App_Model
         $CI = &get_instance();
         $CI->load->model('hr_module/Hr_module_model');
 
+        // A full-day approved leave means there's no scheduled start time to be
+        // "late" against at all - a stray punch on a day the employee was fully
+        // approved off (came in briefly, plans changed, etc.) always counts as
+        // present, never late. Checked first, before any shift/office-hours
+        // lookup below, since none of that matters once this is true.
+        if ($employee_id && $date) {
+            $CI->load->model('hr_module/Leave_model');
+            if ($CI->Leave_model->has_approved_full_day_leave($employee_id, $date)) {
+                return 'present';
+            }
+        }
+
         $start_time = null;
         if ($employee_id && $date) {
             $CI->load->model('hr_module/Shifts_model');
@@ -451,6 +463,13 @@ class Attendance_model extends App_Model
         // late-arrival reference point out to when that leave ends instead -
         // punching in while still covered by approved leave should never count
         // as "late" (e.g. approved 09:00-12:00 leave, punched in at 11:11).
+        //
+        // Both this and the half-before-lunch check below compare bare "H:i"
+        // time-of-day strings via strtotime() with no date component, which
+        // only stays correct as long as the leave window (or the lunch break
+        // split) never crosses midnight - true today given office hours of
+        // 09:00-18:30, but worth knowing if that ever changes (e.g. a real
+        // overnight shift gets its own leave window).
         if ($employee_id && $date) {
             $CI->load->model('hr_module/Leave_model');
             $leave_window = $CI->Leave_model->get_approved_hourly_window($employee_id, $date);
