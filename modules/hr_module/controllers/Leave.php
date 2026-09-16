@@ -285,6 +285,32 @@ class Leave extends AdminController
         $this->Hr_module_model->notify_staff($req->employee_staff_id, 'not_hr_leave_status', 'hr_module/leave/view/' . $id, [$status]);
     }
 
+    // Whether every day this leave covers has already fully concluded by now -
+    // an hourly day is "over" once its own hour_end has passed; a full/half/
+    // bridge day is "over" once that calendar day itself has ended (23:59:59).
+    // Used to skip the company-wide email/WhatsApp broadcast for a leave
+    // approved (or cancelled) after the fact - there's nothing left for
+    // colleagues to "plan around" once the period is already over. The
+    // in-app notification bell and the employee's own status email are
+    // unaffected - only the "please plan your work accordingly"-style
+    // broadcast stops making sense once the period is already over.
+    private function _leave_period_has_passed($req_days)
+    {
+        if (empty($req_days)) return false;
+        $last = null;
+        foreach ($req_days as $d) {
+            if ($last === null || $d->leave_date > $last->leave_date) {
+                $last = $d;
+            }
+        }
+        if (!$last) return false;
+
+        $end = ($last->day_type === 'hourly' && $last->hour_end)
+            ? strtotime($last->leave_date . ' ' . $last->hour_end)
+            : strtotime($last->leave_date . ' 23:59:59');
+        return $end !== false && $end < time();
+    }
+
     // Broadcasts a formal announcement to all active staff once a leave request
     // is approved, so colleagues know the employee will be out on those dates.
     private function _broadcast_leave_announcement($id)
@@ -305,12 +331,18 @@ class Leave extends AdminController
             '{leave_dates}'   => $this->_leave_dates_plain($req_days),
             '{total_days}'    => hr_format_day_duration($req->total_days, $req->hours_per_day),
         ];
-        $tpl  = $this->Email_templates_model->render('leave_announcement', $placeholders);
 
-        $this->Hr_module_model->send_leave_announcement($tpl->subject, $tpl->body);
-        // No link on the WhatsApp message for leave announcements - unlike policy
-        // announcements, there's nothing an employee should click through to here.
-        $this->Hr_module_model->send_whatsapp_announcement('leave_announcement', $placeholders);
+        // Approved after the fact (the leave's own period is already fully
+        // over) - the "will be on leave, please plan accordingly" broadcast
+        // no longer makes sense, so skip the email/WhatsApp announcement.
+        // The in-app notification bell still fires below as a record.
+        if (!$this->_leave_period_has_passed($req_days)) {
+            $tpl = $this->Email_templates_model->render('leave_announcement', $placeholders);
+            $this->Hr_module_model->send_leave_announcement($tpl->subject, $tpl->body);
+            // No link on the WhatsApp message for leave announcements - unlike policy
+            // announcements, there's nothing an employee should click through to here.
+            $this->Hr_module_model->send_whatsapp_announcement('leave_announcement', $placeholders);
+        }
         $this->Hr_module_model->notify_staff_list(
             $this->Employees_model->get_active_staff_ids(),
             'not_hr_leave_announcement',
@@ -518,11 +550,16 @@ class Leave extends AdminController
             '{leave_type}'    => $req->leave_type_name ?? '',
             '{leave_dates}'   => $this->_leave_dates_plain($req_days),
         ];
-        $tpl  = $this->Email_templates_model->render('leave_cancellation_announcement', $placeholders);
-
-        $this->Hr_module_model->send_leave_announcement($tpl->subject, $tpl->body);
-        // No link on the WhatsApp message for leave announcements - see note above.
-        $this->Hr_module_model->send_whatsapp_announcement('leave_cancellation_announcement', $placeholders);
+        // Same reasoning as _broadcast_leave_announcement()'s own check: once
+        // the leave's period is already fully over, there's nothing left for
+        // colleagues to "disregard" going forward - skip the email/WhatsApp
+        // broadcast. The in-app notification bell still fires below.
+        if (!$this->_leave_period_has_passed($req_days)) {
+            $tpl = $this->Email_templates_model->render('leave_cancellation_announcement', $placeholders);
+            $this->Hr_module_model->send_leave_announcement($tpl->subject, $tpl->body);
+            // No link on the WhatsApp message for leave announcements - see note above.
+            $this->Hr_module_model->send_whatsapp_announcement('leave_cancellation_announcement', $placeholders);
+        }
         $this->Hr_module_model->notify_staff_list(
             $this->Employees_model->get_active_staff_ids(),
             'not_hr_leave_cancellation_announcement',
