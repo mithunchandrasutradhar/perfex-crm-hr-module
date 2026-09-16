@@ -320,6 +320,48 @@ function hr_format_minutes_duration($total_minutes)
     return hr_format_dhm(0, $hours, $minutes);
 }
 
+// Sums the exact minutes a leave request's day rows actually represent -
+// precise (hour_end - hour_start) for an 'hourly' day, or day_value converted
+// via hours_per_day for every other type (full/half/bridge, which have no
+// hour_start/hour_end of their own). Accepts either object or array day rows
+// (get_request_days() returns objects; a just-prepared apply() day list is an
+// array), same dual-shape convention as Leave_model::_day_totals_by_year().
+function hr_leave_days_exact_minutes($days, $hours_per_day = null)
+{
+    $hpd = ($hours_per_day !== null && (float) $hours_per_day > 0) ? (float) $hours_per_day : 8.0;
+    $total = 0;
+    foreach ($days as $d) {
+        $day_type   = is_array($d) ? $d['day_type']            : $d->day_type;
+        $hour_start = is_array($d) ? ($d['hour_start'] ?? null) : $d->hour_start;
+        $hour_end   = is_array($d) ? ($d['hour_end'] ?? null)   : $d->hour_end;
+        $day_value  = is_array($d) ? $d['day_value']            : $d->day_value;
+        if ($day_type === 'hourly' && $hour_start && $hour_end) {
+            $total += (strtotime($hour_end) - strtotime($hour_start)) / 60;
+        } else {
+            $total += $day_value * $hpd * 60;
+        }
+    }
+    return $total;
+}
+
+// Formats an exact total duration already known in minutes (see
+// hr_leave_days_exact_minutes() above) as "X days Y hours Z min", rolling
+// over into full days using the leave type's own hours_per_day - the
+// multi-day equivalent of hr_format_minutes_duration(), used whenever a
+// request's day list includes at least one 'hourly' day (so total_days
+// alone, rounded to 2 decimals in the DB, would drift on the way back out).
+function hr_format_total_minutes_duration($total_minutes, $hours_per_day = null)
+{
+    $hpd = ($hours_per_day !== null && (float) $hours_per_day > 0) ? (float) $hours_per_day : 8.0;
+    $total_minutes   = max(0, (int) round($total_minutes));
+    $minutes_per_day = (int) round($hpd * 60);
+    $days = intdiv($total_minutes, $minutes_per_day);
+    $rem  = $total_minutes % $minutes_per_day;
+    $hours   = intdiv($rem, 60);
+    $minutes = $rem % 60;
+    return hr_format_dhm($days, $hours, $minutes);
+}
+
 function hr_module_apply_datatable_order(&$rows, array $column_map)
 {
     $CI = &get_instance();

@@ -50,12 +50,12 @@ $dt_start  = (int) $CI->input->post('start');
 $dt_length = (int) $CI->input->post('length');
 if ($dt_length > 0) $rows = array_slice($rows, $dt_start, $dt_length);
 
-$day_types_by_request   = [];
-$hourly_days_by_request = [];
+$day_types_by_request = [];
+$days_by_request      = [];
 $ids = array_column($rows, 'id');
 if ($ids) {
-    $day_types_by_request   = $CI->Leave_model->get_day_types_for_requests($ids);
-    $hourly_days_by_request = $CI->Leave_model->get_hourly_days_for_requests($ids);
+    $day_types_by_request = $CI->Leave_model->get_day_types_for_requests($ids);
+    $days_by_request      = $CI->Leave_model->get_days_for_requests($ids);
 }
 
 $output = [
@@ -102,13 +102,17 @@ foreach ($rows as $r) {
     // For a single-day request, show exactly which half/type it is. For multi-day
     // requests, only call out the non-obvious types (half/hourly) - "Full" alone
     // on every day isn't worth repeating.
-    if (count($types) === 1 && $types[0] === 'hourly' && !empty($hourly_days_by_request[$r->id][0])) {
-        // Avoid round-tripping through total_days (rounded to 2 decimals in the
-        // DB) for a single hourly day - it can drift by a couple of minutes on
-        // the way back out. Same exact hour_start/hour_end fix already applied
-        // to leave/view.php's equivalent summary line.
-        $hd = $hourly_days_by_request[$r->id][0];
-        $days_cell = hr_format_minutes_duration((strtotime($hd->hour_end) - strtotime($hd->hour_start)) / 60);
+    //
+    // Avoid round-tripping through total_days (rounded to 2 decimals in the DB)
+    // whenever any day is 'hourly' - it can drift by a couple of minutes on the
+    // way back out. Sums each day's own exact value instead (precise
+    // hour_start/hour_end for hourly days), same fix already applied to
+    // leave/view.php's equivalent summary line.
+    if (in_array('hourly', $types, true)) {
+        $days_cell = hr_format_total_minutes_duration(
+            hr_leave_days_exact_minutes($days_by_request[$r->id] ?? [], $r->hours_per_day),
+            $r->hours_per_day
+        );
     } else {
         $days_cell = hr_format_day_duration($r->total_days, $r->hours_per_day);
     }

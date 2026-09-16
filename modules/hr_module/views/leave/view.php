@@ -45,12 +45,16 @@ $badge = '<span class="label ' . ($badge_map[$r->status] ?? 'label-default') . '
               <tr><th><?php echo _l('hr_leave_days'); ?></th>
                 <td>
                   <strong><?php
-                    if (count($days) === 1 && $days[0]->day_type === 'hourly' && $days[0]->hour_start && $days[0]->hour_end) {
-                        // Avoid round-tripping through total_days (rounded to 2 decimals in
-                        // the DB) for a single hourly day - it can drift by a couple of
-                        // minutes on the way back out. Same exact hour_start/hour_end this
-                        // request's own Days table below already uses for this case.
-                        echo hr_format_minutes_duration((strtotime($days[0]->hour_end) - strtotime($days[0]->hour_start)) / 60);
+                    // Avoid round-tripping through total_days (rounded to 2 decimals in the
+                    // DB) whenever any day is 'hourly' - it can drift by a couple of minutes
+                    // on the way back out. Sums each day's own exact value instead (precise
+                    // hour_start/hour_end for hourly days, same as this request's own Days
+                    // table below already uses). Full/half/bridge-only requests are unaffected
+                    // by the drift, so they keep using total_days as before.
+                    $has_hourly_day = false;
+                    foreach ($days as $d) { if ($d->day_type === 'hourly') { $has_hourly_day = true; break; } }
+                    if ($has_hourly_day) {
+                        echo hr_format_total_minutes_duration(hr_leave_days_exact_minutes($days, $r->hours_per_day), $r->hours_per_day);
                     } else {
                         echo hr_format_day_duration($r->total_days, $r->hours_per_day);
                     }

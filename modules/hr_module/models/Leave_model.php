@@ -409,6 +409,24 @@ class Leave_model extends App_Model
         return $map;
     }
 
+    // Returns [leave_request_id => [day_type, hour_start, hour_end, day_value row, ...]]
+    // for the given request IDs in one query - used by a list page to compute a
+    // mixed multi-day request's exact total (see hr_leave_days_exact_minutes())
+    // instead of round-tripping through the rounded total_days whenever at
+    // least one of its days is 'hourly'.
+    public function get_days_for_requests($leave_request_ids)
+    {
+        $rows = $this->db->select('leave_request_id, day_type, hour_start, hour_end, day_value')
+            ->where_in('leave_request_id', $leave_request_ids)
+            ->get($this->tbl_request_days)->result();
+
+        $map = [];
+        foreach ($rows as $row) {
+            $map[$row->leave_request_id][] = $row;
+        }
+        return $map;
+    }
+
     public function approve($id, $notes = '')
     {
         $request = $this->get_request($id);

@@ -121,7 +121,7 @@ class Leave extends AdminController
                         '{designation}'   => $req->designation_name ?: '-',
                         '{leave_type}'    => $req->leave_type_name ?? '',
                         '{leave_dates}'   => $this->_leave_dates_plain($req_days),
-                        '{total_days}'    => hr_format_day_duration($req->total_days, $req->hours_per_day),
+                        '{total_days}'    => $this->_format_total_days($req, $req_days),
                         '{reason}'        => $req->reason ?: '-',
                     ];
                     $tpl  = $this->Email_templates_model->render('leave_apply', $placeholders);
@@ -275,7 +275,7 @@ class Leave extends AdminController
             '{designation}'   => $req->designation_name ?: '-',
             '{leave_type}'    => $req->leave_type_name ?? '',
             '{leave_dates}'   => $this->_leave_dates_plain($req_days),
-            '{total_days}'    => hr_format_day_duration($req->total_days, $req->hours_per_day),
+            '{total_days}'    => $this->_format_total_days($req, $req_days),
             '{notes}'         => $notes ?: '-',
         ];
         $tpl  = $this->Email_templates_model->render('leave_approved', $placeholders);
@@ -329,7 +329,7 @@ class Leave extends AdminController
             '{designation}'   => $req->designation_name ?: '-',
             '{leave_type}'    => $req->leave_type_name ?? '',
             '{leave_dates}'   => $this->_leave_dates_plain($req_days),
-            '{total_days}'    => hr_format_day_duration($req->total_days, $req->hours_per_day),
+            '{total_days}'    => $this->_format_total_days($req, $req_days),
         ];
 
         // Approved after the fact (the leave's own period is already fully
@@ -489,7 +489,7 @@ class Leave extends AdminController
             '{designation}'   => $req->designation_name ?: '-',
             '{leave_type}'    => $req->leave_type_name ?? '',
             '{leave_dates}'   => $this->_leave_dates_plain($req_days),
-            '{total_days}'    => hr_format_day_duration($req->total_days, $req->hours_per_day),
+            '{total_days}'    => $this->_format_total_days($req, $req_days),
             '{reason}'        => $reason ?: '-',
         ];
         $tpl  = $this->Email_templates_model->render('leave_cancellation_request', $placeholders);
@@ -521,7 +521,7 @@ class Leave extends AdminController
             '{designation}'   => $req->designation_name ?: '-',
             '{leave_type}'    => $req->leave_type_name ?? '',
             '{leave_dates}'   => $this->_leave_dates_plain($req_days),
-            '{total_days}'    => hr_format_day_duration($req->total_days, $req->hours_per_day),
+            '{total_days}'    => $this->_format_total_days($req, $req_days),
         ];
         $tpl  = $this->Email_templates_model->render($template_key, $placeholders);
         $link = admin_url('hr_module/leave/view/' . $id);
@@ -658,6 +658,26 @@ class Leave extends AdminController
             }
             return $line;
         }, $req_days));
+    }
+
+    // Formats the {total_days} placeholder used by every email/WhatsApp/HR
+    // notification template - whenever any day is 'hourly', sums each day's
+    // own exact value (precise hour_start/hour_end for hourly days) instead of
+    // round-tripping through total_days (rounded to 2 decimals in the DB,
+    // which can drift by a couple of minutes - e.g. an exact 1-hour pick
+    // coming back as "1 hour 2 min"). Same fix already applied to
+    // leave/view.php's and leave/table.php's equivalent "Leave Days" displays;
+    // this covers the notification-email code path those two didn't - and,
+    // unlike their earlier single-hourly-day-only version, also handles a
+    // mixed multi-day request (e.g. a full day + an hourly day together).
+    private function _format_total_days($req, $req_days)
+    {
+        foreach ($req_days as $d) {
+            if ($d->day_type === 'hourly') {
+                return hr_format_total_minutes_duration(hr_leave_days_exact_minutes($req_days, $req->hours_per_day), $req->hours_per_day);
+            }
+        }
+        return hr_format_day_duration($req->total_days, $req->hours_per_day);
     }
 
     // Parses the day-by-day rows posted from the apply form (days[i][date/type/half_period/hour_start/hour_end])
