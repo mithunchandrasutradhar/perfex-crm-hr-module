@@ -62,7 +62,11 @@ $(function(){
             + '&year=' + $('#f-year').val()
             + '&leave_type_id=' + $('#f-type').val();
     }
-    initDataTable('.table-hr-leave-balances', tableUrl(), [], [0, 'asc']);
+    // initDataTable(selector, url, notsearchable, notsortable, fnserverparams, defaultorder) -
+    // [0, 'asc'] was previously passed as the 4th argument (notsortable), which
+    // actually disabled sorting on column 0 (Employee) instead of setting the
+    // default sort order it was meant for - moved to the correct 6th slot.
+    initDataTable('.table-hr-leave-balances', tableUrl(), [], [], [], [0, 'asc']);
     $('#f-dept, #f-year, #f-type').on('change changed.bs.select', function(){
         $('.table-hr-leave-balances').DataTable().ajax.url(tableUrl()).load();
     });
