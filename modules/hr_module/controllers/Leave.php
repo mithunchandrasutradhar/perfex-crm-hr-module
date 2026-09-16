@@ -206,8 +206,15 @@ class Leave extends AdminController
         $data['title']   = _l('hr_leave_view') . ' #' . $id;
         $data['request'] = $request;
         $data['days']    = $this->Leave_model->get_request_days($id);
+        $balance_year    = date('Y', strtotime($request->from_date));
         $data['balance'] = $this->Leave_model->get_balance(
-            $request->employee_id, $request->leave_type_id, date('Y', strtotime($request->from_date))
+            $request->employee_id, $request->leave_type_id, $balance_year
+        );
+        // Exact "Used"/"Remaining" balance figures (see get_used_minutes_exact()'s
+        // own comment) - computed here rather than in the view, since it needs
+        // the same employee_id/leave_type_id/year the balance lookup above uses.
+        $data['used_minutes_exact'] = $this->Leave_model->get_used_minutes_exact(
+            $request->employee_id, $request->leave_type_id, $balance_year, $request->hours_per_day
         );
         $this->load->view('hr_module/leave/view', $data);
     }

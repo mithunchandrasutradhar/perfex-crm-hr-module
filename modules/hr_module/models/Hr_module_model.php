@@ -431,26 +431,38 @@ class Hr_module_model extends App_Model
         $stats['attendance_today_in_time'] = $att ? $att->in_time : null;
 
         // Leave balance — Casual Leave remaining days this year (dashboard widget
-        // shows only this one leave type, not a combined total across all types)
-        $this->db->select('SUM(b.allocated_days + b.carry_forward_days - b.used_days) as remaining, MAX(lt.hours_per_day) as hours_per_day', false)
+        // shows only this one leave type, not a combined total across all types).
+        // Used/Remaining are computed from the EXACT minutes of every approved
+        // Casual Leave day this employee has taken this year (see
+        // Leave_model::get_used_minutes_exact()'s own comment), rather than the
+        // accumulated used_days column - which sums each contributing request's
+        // already-rounded day_value, and so drifts the same way a single
+        // request's total_days does once hourly-leave days are involved.
+        // Allocated_days/carry_forward_days are set directly (not accumulated
+        // from hour-based leave), so summing them is unaffected by that drift.
+        $this->db->select('b.leave_type_id, SUM(b.allocated_days + b.carry_forward_days) as allocated, MAX(lt.hours_per_day) as hours_per_day', false)
             ->from(db_prefix() . 'hr_leave_balances b')
             ->join(db_prefix() . 'hr_leave_types lt', 'lt.id = b.leave_type_id', 'left')
             ->where('b.employee_id', $employee_id)
             ->where('b.year', $year)
-            ->where('lt.name', 'Casual Leave');
+            ->where('lt.name', 'Casual Leave')
+            ->group_by('b.leave_type_id');
         $bal = $this->db->get()->row();
-        $stats['leave_balance_remaining'] = ($bal && $bal->remaining !== null) ? (float) $bal->remaining : 0;
-        $stats['leave_hours_per_day']     = ($bal && $bal->hours_per_day) ? (float) $bal->hours_per_day : 8.0;
 
-        // Used Casual Leave days this year
-        $this->db->select('SUM(b.used_days) as used', false)
-            ->from(db_prefix() . 'hr_leave_balances b')
-            ->join(db_prefix() . 'hr_leave_types lt', 'lt.id = b.leave_type_id', 'left')
-            ->where('b.employee_id', $employee_id)
-            ->where('b.year', $year)
-            ->where('lt.name', 'Casual Leave');
-        $used = $this->db->get()->row();
-        $stats['leave_days_used'] = ($used && $used->used !== null) ? (float) $used->used : 0;
+        $hpd = ($bal && $bal->hours_per_day) ? (float) $bal->hours_per_day : 8.0;
+        $stats['leave_hours_per_day'] = $hpd;
+
+        if ($bal) {
+            $CI = &get_instance();
+            $CI->load->model('hr_module/Leave_model');
+            $used_minutes      = $CI->Leave_model->get_used_minutes_exact($employee_id, $bal->leave_type_id, $year, $hpd);
+            $allocated_minutes = ((float) $bal->allocated) * $hpd * 60;
+            $stats['leave_days_used_minutes']         = $used_minutes;
+            $stats['leave_balance_remaining_minutes']  = max(0, $allocated_minutes - $used_minutes);
+        } else {
+            $stats['leave_days_used_minutes']         = 0;
+            $stats['leave_balance_remaining_minutes'] = 0;
+        }
 
         // Pending leave requests
         $this->db->where('employee_id', $employee_id)->where('status', 'pending');

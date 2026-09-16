@@ -107,11 +107,11 @@ $task_status_colors = [
                     <div>
                         <div class="tw-text-xs tw-text-neutral-500 tw-uppercase tw-tracking-wide">Casual Leave Balance</div>
                         <div class="tw-text-xl tw-font-bold tw-text-neutral-800">
-                            <?php echo hr_format_day_duration($stats['leave_balance_remaining'] ?? 0, $stats['leave_hours_per_day'] ?? 8); ?>
+                            <?php echo hr_format_total_minutes_duration($stats['leave_balance_remaining_minutes'] ?? 0, $stats['leave_hours_per_day'] ?? 8); ?>
                         </div>
                     </div>
                 </div>
-                <div class="tw-text-xs text-muted"><?php echo hr_format_day_duration($stats['leave_days_used'] ?? 0, $stats['leave_hours_per_day'] ?? 8); ?> used this year</div>
+                <div class="tw-text-xs text-muted"><?php echo hr_format_total_minutes_duration($stats['leave_days_used_minutes'] ?? 0, $stats['leave_hours_per_day'] ?? 8); ?> used this year</div>
             </div>
         </div>
         </a>

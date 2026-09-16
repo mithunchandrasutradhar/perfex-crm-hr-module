@@ -732,6 +732,54 @@ class Leave_model extends App_Model
         return $this->db->get()->result();
     }
 
+    // Sums the EXACT minutes of every approved leave day this employee has
+    // taken for the given leave type/year - used for the Used/Remaining
+    // balance display instead of the accumulated used_days column, which sums
+    // each contributing request's already-rounded day_value (decimal(4,2) in
+    // the DB) and so carries the same drift risk as a single request's
+    // total_days once hourly-leave days are involved (see
+    // hr_leave_days_exact_minutes() in hr_module.php). Same per-year,
+    // approved-only scope _deduct_balance()/_restore_balance() already use,
+    // so this always matches what used_days is supposed to represent.
+    public function get_used_minutes_exact($employee_id, $leave_type_id, $year, $hours_per_day = null)
+    {
+        $rows = $this->db->select('day_type, hour_start, hour_end, day_value')
+            ->from($this->tbl_request_days . ' d')
+            ->join($this->tbl_requests . ' r', 'r.id = d.leave_request_id')
+            ->where('r.status', 'approved')
+            ->where('r.leave_type_id', $leave_type_id)
+            ->where('d.employee_id', $employee_id)
+            ->where('YEAR(d.leave_date)', $year)
+            ->get()->result();
+        return hr_leave_days_exact_minutes($rows, $hours_per_day);
+    }
+
+    // Batched version of get_used_minutes_exact() for a list page showing many
+    // (employee, leave type) balances at once - one query total instead of one
+    // per row. Returns [employee_id => [leave_type_id => [day rows...]]]; feed
+    // the inner array straight into hr_leave_days_exact_minutes() per row.
+    public function get_approved_days_for_balances($employee_ids, $leave_type_ids, $year)
+    {
+        $employee_ids   = array_values(array_unique(array_filter(array_map('intval', (array) $employee_ids))));
+        $leave_type_ids = array_values(array_unique(array_filter(array_map('intval', (array) $leave_type_ids))));
+        if (empty($employee_ids) || empty($leave_type_ids)) return [];
+
+        $rows = $this->db->select('d.employee_id, r.leave_type_id, d.day_type, d.hour_start, d.hour_end, d.day_value', false)
+            ->from($this->tbl_request_days . ' d')
+            ->join($this->tbl_requests . ' r', 'r.id = d.leave_request_id')
+            ->where('r.status', 'approved')
+            ->where_in('d.employee_id', $employee_ids)
+            ->where_in('r.leave_type_id', $leave_type_ids)
+            ->where('YEAR(d.leave_date)', $year)
+            ->get()->result();
+
+        $map = [];
+        foreach ($rows as $row) {
+            $map[$row->employee_id][$row->leave_type_id][] = $row;
+        }
+        return $map;
+    }
+
     public function allocate_balances($year = null)
     {
         if (!$year) $year = date('Y');

@@ -5,6 +5,7 @@
 if (!isset($request)) $request = (object)['id'=>0,'status'=>'pending','leave_type_name'=>'','hours_per_day'=>8,'employee_name'=>'','employee_code'=>'','from_date'=>null,'to_date'=>null,'total_days'=>0,'is_half_day'=>0,'reason'=>'','rejection_reason'=>null,'attachment'=>null,'created_at'=>null,'approved_by'=>null,'approved_by_name'=>'','approved_at'=>null,'cancellation_status'=>null,'cancellation_reason'=>null,'cancellation_requested_at'=>null,'soft_status'=>null,'soft_approved_by'=>null,'soft_approved_by_name'=>'','soft_approved_at'=>null];
 if (!isset($days)) $days = [];
 if (!isset($balance)) $balance = null;
+if (!isset($used_minutes_exact)) $used_minutes_exact = null;
 $r = $request;
 $badge_map = ['pending'=>'label-warning','approved'=>'label-success','rejected'=>'label-danger','cancelled'=>'label-default'];
 $badge = '<span class="label ' . ($badge_map[$r->status] ?? 'label-default') . ' label-tag">' . ucfirst($r->status) . '</span>';
@@ -119,11 +120,26 @@ $badge = '<span class="label ' . ($badge_map[$r->status] ?? 'label-default') . '
             <?php endif; ?>
 
             <?php if ($balance): ?>
+            <?php
+              // Used/Remaining are computed from the exact minutes of every approved
+              // leave day this balance covers (see get_used_minutes_exact()), instead
+              // of round-tripping through used_days - an accumulated sum of already-
+              // rounded day_value contributions, which drifts the same way a single
+              // request's total_days does once hourly-leave days are involved.
+              // Allocated/carry-forward are set directly (not accumulated from
+              // hour-based leave), so they keep the simpler day-based formatting,
+              // unaffected by this drift. Falls back to the old day-based figure if
+              // the controller didn't provide the exact value for some reason.
+              $hpd_for_balance   = $r->hours_per_day ?: 8;
+              $allocated_minutes = ($balance->allocated_days + $balance->carry_forward_days) * $hpd_for_balance * 60;
+              $used_minutes      = $used_minutes_exact !== null ? $used_minutes_exact : ($balance->used_days * $hpd_for_balance * 60);
+              $remaining_minutes = max(0, $allocated_minutes - $used_minutes);
+            ?>
             <div class="alert alert-info tw-mt-2">
               <strong><?php echo _l('hr_leave_balance'); ?>:</strong>
               <?php echo _l('hr_leave_allocated'); ?>: <?php echo hr_format_day_duration($balance->allocated_days + $balance->carry_forward_days, $r->hours_per_day); ?> |
-              <?php echo _l('hr_leave_used'); ?>: <?php echo hr_format_day_duration($balance->used_days, $r->hours_per_day); ?> |
-              <?php echo _l('hr_leave_remaining'); ?>: <strong><?php echo hr_format_day_duration($balance->allocated_days + $balance->carry_forward_days - $balance->used_days, $r->hours_per_day); ?></strong>
+              <?php echo _l('hr_leave_used'); ?>: <?php echo hr_format_total_minutes_duration($used_minutes, $hpd_for_balance); ?> |
+              <?php echo _l('hr_leave_remaining'); ?>: <strong><?php echo hr_format_total_minutes_duration($remaining_minutes, $hpd_for_balance); ?></strong>
             </div>
             <?php endif; ?>
           </div>
