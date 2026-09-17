@@ -19,6 +19,15 @@ if (!empty($search_value['value'])) {
     }));
 }
 
+// The DataTable's own column-header sort (the client sends order[column,dir]
+// on every AJAX request) - server-side since rows here are built manually,
+// not through the generic data_tables_init() helper. Applied after the search
+// filter above (sorts whatever's actually being paginated).
+hr_module_apply_datatable_order($rows, [
+    0 => 'name',
+    2 => 'status',
+]);
+
 $total_filtered = count($rows);
 
 $dt_start  = (int) $CI->input->post('start');

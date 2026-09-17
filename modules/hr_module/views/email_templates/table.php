@@ -7,6 +7,15 @@ $CI->load->model('hr_module/Email_templates_model');
 $can_edit = staff_can('edit', 'hr_settings') || is_admin();
 $rows     = $CI->Email_templates_model->get_all();
 
+// The DataTable's own column-header sort (the client sends order[column,dir]
+// on every AJAX request) - server-side since rows here are built manually,
+// not through the generic data_tables_init() helper.
+hr_module_apply_datatable_order($rows, [
+    0 => 'name',
+    1 => 'subject',
+    2 => 'updated_at',
+]);
+
 // The DataTable's own pagination - rows here are built manually (below)
 // instead of through the generic data_tables_init() helper, so start/length
 // have to be applied by hand after the full set is fetched.

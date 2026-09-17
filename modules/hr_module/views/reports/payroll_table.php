@@ -13,6 +13,21 @@ if (empty($f['year'])) $f['year'] = date('Y');
 
 $rows = $CI->Reports_model->payroll($f);
 
+// The DataTable's own column-header sort (the client sends order[column,dir]
+// on every AJAX request) - server-side since rows here are built manually,
+// not through the generic data_tables_init() helper. Period sorts
+// chronologically (pay_year*100+pay_month), matching the render loop below.
+hr_module_apply_datatable_order($rows, [
+    0 => function ($r) { return $r->first_name . ' ' . $r->last_name; },
+    1 => 'department_name',
+    2 => function ($r) { return $r->pay_year * 100 + $r->pay_month; },
+    3 => 'basic_salary',
+    4 => 'gross_earnings',
+    5 => 'total_deductions',
+    6 => 'net_salary',
+    7 => 'status',
+]);
+
 $sbadge = ['draft' => 'default', 'approved' => 'info', 'paid' => 'success'];
 $months = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 

@@ -13,6 +13,20 @@ if (empty($f['year'])) $f['year'] = date('Y');
 
 $rows = $CI->Reports_model->turnover($f);
 
+// The DataTable's own column-header sort (the client sends order[column,dir]
+// on every AJAX request) - server-side since rows here are built manually,
+// not through the generic data_tables_init() helper. Month sorts chronologically
+// (year*100+month), Net is computed (joined - left_count), same as the render
+// loop below.
+hr_module_apply_datatable_order($rows, [
+    0 => function ($r) { return $r->year * 100 + $r->month; },
+    1 => 'joined',
+    2 => 'left_count',
+    3 => function ($r) { return $r->joined - $r->left_count; },
+    4 => 'headcount_end',
+    5 => 'turnover_rate',
+]);
+
 $total_joined = array_sum(array_column((array) $rows, 'joined'));
 $total_left   = array_sum(array_column((array) $rows, 'left_count'));
 $avg_rate     = count($rows) ? array_sum(array_column((array) $rows, 'turnover_rate')) / count($rows) : 0;

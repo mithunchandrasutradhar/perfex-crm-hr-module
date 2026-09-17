@@ -76,7 +76,7 @@
 <?php init_tail(); ?>
 <script>
 $(function(){
-    initDataTable('.table-hr-whatsapp-templates', window.location.href, [], [0,'asc']);
+    initDataTable('.table-hr-whatsapp-templates', window.location.href, [], [], [], [0,'asc']);
 
     var csrfName = '<?php echo $this->security->get_csrf_token_name(); ?>';
     var csrfHash = '<?php echo $this->security->get_csrf_hash(); ?>';

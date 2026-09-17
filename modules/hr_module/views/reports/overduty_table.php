@@ -14,6 +14,19 @@ if (!empty($f['to_date']))   $f['to_date']   = to_sql_date($f['to_date']);
 
 $rows = $CI->Reports_model->overduty($f);
 
+// The DataTable's own column-header sort (the client sends order[column,dir]
+// on every AJAX request) - server-side since rows here are built manually,
+// not through the generic data_tables_init() helper.
+hr_module_apply_datatable_order($rows, [
+    0 => function ($r) { return $r->first_name . ' ' . $r->last_name; },
+    1 => 'department_name',
+    2 => 'overtime_date',
+    3 => 'day_type',
+    4 => 'rate_multiplier',
+    5 => 'total_amount',
+    6 => 'status',
+]);
+
 $sbadge = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'danger'];
 $day_type_labels = [
     'weekend'            => _l('hr_overtime_weekend'),

@@ -16,6 +16,18 @@ if (empty($f['year'])) $f['year'] = date('Y');
 // "nothing is queried until a department is picked" behavior.
 $rows = $CI->Reports_model->department($f);
 
+// The DataTable's own column-header sort (the client sends order[column,dir]
+// on every AJAX request) - server-side since rows here are built manually,
+// not through the generic data_tables_init() helper.
+hr_module_apply_datatable_order($rows, [
+    0 => function ($r) { return $r->first_name . ' ' . $r->last_name; },
+    1 => 'designation_name',
+    2 => 'employment_type',
+    3 => 'hire_date',
+    4 => 'total_leave_days',
+    5 => 'total_salary',
+]);
+
 $total_leave  = round(array_sum(array_column((array) $rows, 'total_leave_days')), 2);
 $total_salary = array_sum(array_column((array) $rows, 'total_salary'));
 

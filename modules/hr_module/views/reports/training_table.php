@@ -12,6 +12,22 @@ foreach (['status', 'year'] as $k) {
 
 $rows = $CI->Reports_model->training($f);
 
+// The DataTable's own column-header sort (the client sends order[column,dir]
+// on every AJAX request) - server-side since rows here are built manually,
+// not through the generic data_tables_init() helper. Trainer and Rate are
+// computed values, matching the render loop below exactly.
+hr_module_apply_datatable_order($rows, [
+    0 => 'title',
+    1 => function ($r) { return $r->instructor_name ?: $r->trainer; },
+    2 => 'start_date',
+    3 => 'end_date',
+    4 => 'capacity',
+    5 => 'enrolled',
+    6 => 'present',
+    7 => function ($r) { return $r->enrolled > 0 ? round($r->present / $r->enrolled * 100) : 0; },
+    8 => 'status',
+]);
+
 $sbadge = ['scheduled' => 'info', 'ongoing' => 'primary', 'completed' => 'success', 'cancelled' => 'danger'];
 
 $total_enrolled  = array_sum(array_column((array) $rows, 'enrolled'));

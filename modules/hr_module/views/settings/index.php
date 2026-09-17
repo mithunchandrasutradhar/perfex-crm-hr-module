@@ -230,41 +230,11 @@ $can_edit = staff_can('edit', 'hr_settings') || is_admin();
                                 <?php endif; ?>
                             </div>
 
-                            <?php if (empty($shift_types)): ?>
-                            <p class="text-muted tw-mb-0"><?php echo _l('hr_shift_none_added'); ?></p>
-                            <?php else: ?>
-                            <table class="table table-condensed tw-mb-0">
-                                <thead>
-                                    <tr>
-                                        <th><?php echo _l('hr_shift_name'); ?></th>
-                                        <th><?php echo _l('hr_shift_start_time'); ?></th>
-                                        <th><?php echo _l('hr_shift_end_time'); ?></th>
-                                        <th style="width:60px"></th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <?php $time_fmt = (get_option('time_format') == 24) ? 'H:i' : 'g:i A'; ?>
-                                    <?php foreach ($shift_types as $s): ?>
-                                    <tr>
-                                        <td><?php echo htmlspecialchars($s->name); ?></td>
-                                        <td><?php echo date($time_fmt, strtotime($s->start_time)); ?></td>
-                                        <td><?php echo date($time_fmt, strtotime($s->end_time)); ?></td>
-                                        <td>
-                                            <?php if ($can_edit): ?>
-                                            <a href="#" class="hr-edit-shift tw-mr-2"
-                                                data-id="<?php echo $s->id; ?>"
-                                                data-name="<?php echo htmlspecialchars($s->name, ENT_QUOTES); ?>"
-                                                data-start="<?php echo date('H:i', strtotime($s->start_time)); ?>"
-                                                data-end="<?php echo date('H:i', strtotime($s->end_time)); ?>"
-                                                title="<?php echo _l('hr_edit'); ?>"><i class="fa fa-pencil"></i></a>
-                                            <a href="<?php echo admin_url('hr_module/settings/delete_shift/' . $s->id); ?>" class="_delete text-danger" title="<?php echo _l('hr_delete'); ?>"><i class="fa fa-trash"></i></a>
-                                            <?php endif; ?>
-                                        </td>
-                                    </tr>
-                                    <?php endforeach; ?>
-                                </tbody>
-                            </table>
-                            <?php endif; ?>
+                            <?php
+                            $shift_headers = [_l('hr_shift_name'), _l('hr_shift_start_time'), _l('hr_shift_end_time')];
+                            if ($can_edit) $shift_headers[] = '';
+                            render_datatable($shift_headers, 'hr-shift-types');
+                            ?>
 
                             <hr>
                             <p class="tw-text-sm tw-font-semibold tw-mb-2">
@@ -646,6 +616,8 @@ $(document).ready(function(){
     var csrfName = '<?php echo $this->security->get_csrf_token_name(); ?>';
     var csrfHash = '<?php echo $this->security->get_csrf_hash(); ?>';
 
+    initDataTable('.table-hr-shift-types', window.location.href, [], [], [], [1, 'asc']);
+
     $('#hr-settings-form').on('submit', function(e){
         e.preventDefault();
         var $btn = $('#hr-save-settings').prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i>');
@@ -723,7 +695,8 @@ $(document).ready(function(){
         $.post(url, $(this).serialize() + '&' + csrfName + '=' + csrfHash, function(r){
             if (r.success) {
                 alert_float('success', successMsg);
-                location.reload();
+                $('#addShiftModal').modal('hide');
+                $('.table-hr-shift-types').DataTable().ajax.reload(null, false);
             } else {
                 alert_float('danger', r.message || 'Error saving shift.');
             }

@@ -31,6 +31,21 @@ if ($search !== '') {
     }));
 }
 
+// The DataTable's own column-header sort (the client sends order[column,dir]
+// on every AJAX request) - server-side since rows here are built manually,
+// not through the generic data_tables_init() helper. Applied after the search
+// filter above (sorts whatever's actually being paginated), same as every
+// other manually-built report table in this module.
+hr_module_apply_datatable_order($rows, [
+    0 => function ($r) { return $r->first_name . ' ' . $r->last_name; },
+    1 => 'employee_code',
+    2 => 'department_name',
+    3 => 'present',
+    4 => 'late',
+    5 => 'absent',
+    6 => 'leave',
+]);
+
 $total_present = array_sum(array_column((array) $rows, 'present'));
 $total_late    = array_sum(array_column((array) $rows, 'late'));
 $total_absent  = array_sum(array_column((array) $rows, 'absent'));

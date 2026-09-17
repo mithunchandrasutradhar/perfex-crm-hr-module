@@ -17,6 +17,14 @@ class Holidays extends AdminController
         if (!is_admin() && staff_cant('view', 'hr_holidays')) {
             access_denied('hr_holidays');
         }
+        // Two separate DataTables on this one page (Holiday List, Shift
+        // Roster by Date) - distinguished by ?table=, same convention already
+        // used by Reports::salary()'s detail/summary table pair.
+        if ($this->input->is_ajax_request()) {
+            $table = $this->input->get('table') === 'shift_roster' ? 'shift_roster_table' : 'table';
+            $this->app->get_table_data(module_views_path('hr_module', 'holidays/' . $table));
+            return;
+        }
 
         $year = (int) ($this->input->get('year') ?: date('Y'));
 

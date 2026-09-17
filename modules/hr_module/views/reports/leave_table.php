@@ -14,6 +14,19 @@ if (!empty($f['to_date']))   $f['to_date']   = to_sql_date($f['to_date']);
 
 $rows = $CI->Reports_model->leave($f);
 
+// The DataTable's own column-header sort (the client sends order[column,dir]
+// on every AJAX request) - server-side since rows here are built manually,
+// not through the generic data_tables_init() helper.
+hr_module_apply_datatable_order($rows, [
+    0 => function ($r) { return $r->first_name . ' ' . $r->last_name; },
+    1 => 'department_name',
+    2 => 'leave_type_name',
+    3 => 'from_date',
+    4 => 'to_date',
+    5 => 'days_requested',
+    6 => 'status',
+]);
+
 $sbadge = ['approved' => 'success', 'pending' => 'warning', 'rejected' => 'danger', 'cancelled' => 'default'];
 
 $counts = ['approved' => 0, 'pending' => 0, 'rejected' => 0, 'total_days' => 0];

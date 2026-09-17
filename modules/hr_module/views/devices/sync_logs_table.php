@@ -10,6 +10,18 @@ $device_id = $CI->input->get('device_id');
 // after fetching, the same way views/branches/table.php does it.
 $logs = $CI->Zkteco_model->get_logs($device_id ?: null, 1000000);
 
+// The DataTable's own column-header sort (the client sends order[column,dir]
+// on every AJAX request) - server-side since rows here are built manually,
+// not through the generic data_tables_init() helper.
+hr_module_apply_datatable_order($logs, [
+    0 => 'device_name',
+    1 => 'sync_at',
+    2 => 'records_fetched',
+    3 => 'records_saved',
+    4 => 'status',
+    5 => 'error_message',
+]);
+
 $total_records = count($logs);
 $dt_start      = (int) $CI->input->post('start');
 $dt_length     = (int) $CI->input->post('length');

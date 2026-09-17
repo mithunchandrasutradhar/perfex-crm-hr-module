@@ -40,7 +40,7 @@
 <?php init_tail(); ?>
 <script>
 $(function(){
-    initDataTable('.table-device-sync-logs', window.location.href, [], [1, 'desc']);
+    initDataTable('.table-device-sync-logs', window.location.href, [], [], [], [1, 'desc']);
 
     function reload() {
         var url = window.location.href.split('?')[0]

@@ -158,10 +158,21 @@ class Reports extends AdminController
     public function performance()
     {
         if (staff_cant('view', 'hr_reports')) access_denied('hr_reports');
-        $f = $this->_get_filters(['department_id','year','status']);
-        if (empty($f['year'])) $f['year'] = date('Y');
 
         $view = in_array($this->input->get('view'), ['employee', 'department'], true) ? $this->input->get('view') : 'detailed';
+
+        // Three different DataTables, one per view (?view=), all on the same
+        // action/URL - same distinguishing convention already used by
+        // Reports::salary()'s detail/summary table pair (?table=).
+        if ($this->input->is_ajax_request()) {
+            $table = $view === 'employee' ? 'performance_employee_table'
+                : ($view === 'department' ? 'performance_department_table' : 'performance_table');
+            $this->app->get_table_data(module_views_path('hr_module', 'reports/' . $table));
+            return;
+        }
+
+        $f = $this->_get_filters(['department_id','year','status']);
+        if (empty($f['year'])) $f['year'] = date('Y');
 
         if ($view === 'employee') {
             $rows = $this->Reports_model->performance_by_employee($f);

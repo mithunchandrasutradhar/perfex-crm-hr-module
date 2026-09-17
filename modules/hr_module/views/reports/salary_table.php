@@ -12,6 +12,19 @@ foreach (['department_id', 'status'] as $k) {
 
 $rows = $CI->Reports_model->salary($f);
 
+// The DataTable's own column-header sort (the client sends order[column,dir]
+// on every AJAX request) - server-side since rows here are built manually,
+// not through the generic data_tables_init() helper.
+hr_module_apply_datatable_order($rows, [
+    0 => function ($r) { return $r->first_name . ' ' . $r->last_name; },
+    1 => 'department_name',
+    2 => 'designation_name',
+    3 => 'basic_salary',
+    4 => 'total_allowances',
+    5 => 'total_deductions',
+    6 => 'gross_salary',
+]);
+
 $total_basic       = array_sum(array_column((array) $rows, 'basic_salary'));
 $total_allowances  = array_sum(array_column((array) $rows, 'total_allowances'));
 $total_deductions  = array_sum(array_column((array) $rows, 'total_deductions'));

@@ -12,6 +12,14 @@ foreach (['department_id', 'status'] as $k) {
 
 $rows = $CI->Reports_model->salary_summary_by_dept($f);
 
+// The DataTable's own column-header sort (the client sends order[column,dir]
+// on every AJAX request) - server-side since rows here are built manually,
+// not through the generic data_tables_init() helper.
+hr_module_apply_datatable_order($rows, [
+    0 => 'department_name', 1 => 'emp_count', 2 => 'avg_salary',
+    3 => 'min_salary', 4 => 'max_salary',
+]);
+
 // DataTables (serverSide:true) expects only the requested page's rows back.
 $start      = (int) $CI->input->post('start');
 $length     = (int) $CI->input->post('length');

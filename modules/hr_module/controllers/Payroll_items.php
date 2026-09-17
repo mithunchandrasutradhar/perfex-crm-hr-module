@@ -12,8 +12,11 @@ class Payroll_items extends AdminController
     public function index()
     {
         if (staff_cant('view', 'hr_payroll')) access_denied('hr_payroll');
+        if ($this->input->is_ajax_request()) {
+            $this->app->get_table_data(module_views_path('hr_module', 'payroll_items/table'));
+            return;
+        }
         $data['title'] = _l('hr_payroll_items_list');
-        $data['items'] = $this->Payroll_model->get_items();
         $this->load->view('hr_module/payroll_items/index', $data);
     }
 

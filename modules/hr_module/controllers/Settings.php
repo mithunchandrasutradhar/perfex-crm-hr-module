@@ -16,6 +16,14 @@ class Settings extends AdminController
             access_denied('hr_settings');
         }
 
+        // The Shift Types list's own DataTable AJAX (sends its own X-Requested-With
+        // header, unlike the settings form's plain-POST fallback below) - checked
+        // first so it never falls through to that fallback's redirect.
+        if ($this->input->is_ajax_request()) {
+            $this->app->get_table_data(module_views_path('hr_module', 'settings/shift_types_table'));
+            return;
+        }
+
         // Fallback for when the page's AJAX submit handler didn't run (JS blocked,
         // disabled, or failed to bind): the <form> posts here directly, so still
         // save it rather than silently re-rendering the old values.

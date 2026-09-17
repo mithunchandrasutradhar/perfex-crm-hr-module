@@ -19,14 +19,31 @@ if (!empty($search_value['value'])) {
     }));
 }
 
+// The DataTable's own column-header sort (the client sends order[column,dir]
+// on every AJAX request) - server-side since rows here are built manually,
+// not through the generic data_tables_init() helper. Applied after the search
+// filter above (sorts whatever's actually being paginated).
+hr_module_apply_datatable_order($rows, [
+    0 => 'name',
+    2 => 'status',
+]);
+
+// The DataTable's own pagination - rows here are built manually (above)
+// instead of through the generic data_tables_init() helper, so start/length
+// have to be applied by hand after the full (searched, sorted) set is ready.
+$total_filtered = count($rows);
+$dt_start  = (int) $CI->input->post('start');
+$dt_length = (int) $CI->input->post('length');
+$paged_rows = $dt_length > 0 ? array_slice($rows, $dt_start, $dt_length) : $rows;
+
 $output = [
     'draw'                 => intval($CI->input->post('draw')),
-    'iTotalRecords'        => count($rows),
-    'iTotalDisplayRecords' => count($rows),
+    'iTotalRecords'        => $total_filtered,
+    'iTotalDisplayRecords' => $total_filtered,
     'aaData'               => [],
 ];
 
-foreach ($rows as $row) {
+foreach ($paged_rows as $row) {
     $total = $CI->Designations_model->total_employees($row->id);
     $badge = $row->status == 1
         ? '<span class="label label-success">' . _l('hr_active') . '</span>'

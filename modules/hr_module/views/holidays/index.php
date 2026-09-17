@@ -110,72 +110,11 @@ $day_names = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Satur
           <?php endif; ?>
 
           <div class="panel-body panel-table-full">
-            <?php if (empty($holidays)): ?>
-            <div class="tw-text-center tw-py-10 text-muted">
-              <i class="fa fa-calendar-times fa-2x tw-mb-3"></i>
-              <p>No holidays added for <?php echo $year; ?>.</p>
-            </div>
-            <?php else: ?>
-            <table class="table table-condensed table-hover tw-mb-0">
-              <thead>
-                <tr>
-                  <th style="width:190px">Date</th>
-                  <th>Holiday Name</th>
-                  <th style="width:120px">Day</th>
-                  <th style="width:100px">Type</th>
-                  <th style="width:110px"><?php echo _l('hr_holiday_announcement_status'); ?></th>
-                  <?php if ($can_edit): ?><th style="width:90px"></th><?php endif; ?>
-                </tr>
-              </thead>
-              <tbody>
-                <?php foreach ($holidays as $h): ?>
-                <?php $is_range = !empty($h->end_date) && $h->end_date !== $h->holiday_date; ?>
-                <tr>
-                  <td>
-                    <strong>
-                      <?php echo date('d M Y', strtotime($h->holiday_date)); ?>
-                      <?php if ($is_range): ?> - <?php echo date('d M Y', strtotime($h->end_date)); ?><?php endif; ?>
-                    </strong>
-                  </td>
-                  <td><?php echo htmlspecialchars($h->name); ?></td>
-                  <td class="text-muted">
-                    <?php if ($is_range): ?>
-                      <?php echo date('D', strtotime($h->holiday_date)); ?> - <?php echo date('D', strtotime($h->end_date)); ?>
-                    <?php else: ?>
-                      <?php echo date('l', strtotime($h->holiday_date)); ?>
-                    <?php endif; ?>
-                  </td>
-                  <td>
-                    <?php if ($h->type === 'government'): ?>
-                      <span class="label label-danger">Government</span>
-                    <?php else: ?>
-                      <span class="label label-info">Company</span>
-                    <?php endif; ?>
-                  </td>
-                  <td class="announcement-status-cell">
-                    <?php if (!empty($h->announcement_sent_at)): ?>
-                      <span class="label label-success" title="<?php echo htmlspecialchars(_dt($h->announcement_sent_at)); ?>">
-                        <i class="fa fa-check tw-mr-1"></i><?php echo _l('hr_holiday_announcement_sent_label'); ?>
-                      </span>
-                    <?php else: ?>
-                      <span class="label label-default"><?php echo _l('hr_holiday_announcement_not_sent_label'); ?></span>
-                    <?php endif; ?>
-                  </td>
-                  <?php if ($can_edit): ?>
-                  <td>
-                    <a href="#" class="text-muted btn-edit-holiday tw-text-sm tw-mr-2" data-id="<?php echo $h->id; ?>"
-                       title="<?php echo _l('hr_edit'); ?>"><i class="fa fa-pencil"></i></a>
-                    <a href="#" class="text-primary btn-send-announcement tw-text-sm tw-mr-2" data-id="<?php echo $h->id; ?>"
-                       title="<?php echo _l('hr_holiday_send_announcement'); ?>"><i class="fa fa-paper-plane"></i></a>
-                    <a href="#" class="text-danger btn-delete-holiday tw-text-sm" data-id="<?php echo $h->id; ?>"
-                       title="Delete"><i class="fa fa-trash"></i></a>
-                  </td>
-                  <?php endif; ?>
-                </tr>
-                <?php endforeach; ?>
-              </tbody>
-            </table>
-            <?php endif; ?>
+            <?php
+            $holiday_headers = ['Date', 'Holiday Name', 'Day', 'Type', _l('hr_holiday_announcement_status')];
+            if ($can_edit) $holiday_headers[] = '';
+            render_datatable($holiday_headers, 'hr-holidays');
+            ?>
           </div>
         </div>
       </div>
@@ -297,41 +236,7 @@ $day_names = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Satur
             </form>
           </div>
           <div class="panel-body panel-table-full">
-            <table class="table table-condensed tw-mb-0">
-              <thead>
-                <tr>
-                  <th style="width:220px">Shift</th>
-                  <th style="width:80px">Count</th>
-                  <th>Employees</th>
-                </tr>
-              </thead>
-              <tbody>
-                <?php foreach ($shift_roster as $type_id => $group): ?>
-                <?php if ($type_id === 0) continue; // default "Day Shift" bucket - not shown on the calendar page ?>
-                <tr>
-                  <td>
-                    <span class="label label-info">
-                      <?php echo htmlspecialchars($group['name']); ?>
-                    </span>
-                    <?php if (!empty($group['start_time']) && !empty($group['end_time'])): ?>
-                    <span class="text-muted tw-text-sm"><?php echo date('h:i A', strtotime($group['start_time'])) . ' - ' . date('h:i A', strtotime($group['end_time'])); ?></span>
-                    <?php endif; ?>
-                  </td>
-                  <td><?php echo count($group['employees']); ?></td>
-                  <td>
-                    <?php if (empty($group['employees'])): ?>
-                    <span class="text-muted">-</span>
-                    <?php else: ?>
-                    <?php foreach ($group['employees'] as $i => $emp): ?>
-                    <?php if ($i > 0) echo ', '; ?>
-                    <a href="<?php echo admin_url('hr_module/employees/view/' . $emp['id']); ?>"><?php echo htmlspecialchars($emp['name']); ?></a>
-                    <?php endforeach; ?>
-                    <?php endif; ?>
-                  </td>
-                </tr>
-                <?php endforeach; ?>
-              </tbody>
-            </table>
+            <?php render_datatable(['Shift', 'Count', 'Employees'], 'hr-shift-roster'); ?>
           </div>
         </div>
       </div>
@@ -398,6 +303,12 @@ $(function(){
     var csrfHash  = '<?php echo $this->security->get_csrf_hash(); ?>';
     var baseUrl   = '<?php echo admin_url('hr_module/holidays'); ?>';
     var canEdit   = <?php echo $can_edit ? 'true' : 'false'; ?>;
+
+    initDataTable('.table-hr-holidays', window.location.href, [], [], [], [0, 'asc']);
+    // &table=shift_roster distinguishes this from the Holiday List table above -
+    // both live on the same page/URL, same convention Reports::salary()'s
+    // detail/summary table pair already uses.
+    initDataTable('.table-hr-shift-roster', window.location.href.split('?')[0] + '?' + (window.location.search.slice(1) ? window.location.search.slice(1) + '&' : '') + 'table=shift_roster', [], [], [], [0, 'asc']);
 
     // Toggle add form
     var defaultDateToday = '<?php echo _d(date('Y-m-d')); ?>';

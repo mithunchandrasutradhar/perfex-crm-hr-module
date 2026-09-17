@@ -1,5 +1,4 @@
 <?php defined('BASEPATH') or exit('No direct script access allowed');
-$sbadge = ['pending'=>'default','in_progress'=>'warning','partially_completed'=>'info','completed'=>'success'];
 $view_filters = $filters;
 unset($view_filters['view']);
 if (!function_exists('hr_perf_report_url')) {
@@ -68,73 +67,31 @@ if (!function_exists('hr_perf_report_url')) {
     </div>
 
     <div class="panel_s"><div class="panel-body panel-table-full">
-      <table class="table table-hover">
-        <thead><tr><th>Employee</th><th>Department</th><th>Target</th><th>Sub-Target</th><th>Assigned By</th><th>Evaluators</th><th>Due Date</th><th class="text-right">Completion</th><th>Status</th></tr></thead>
-        <tbody>
-        <?php if(empty($rows)): ?><tr><td colspan="9" class="text-center text-muted" style="padding:30px">No records.</td></tr>
-        <?php else: foreach($rows as $r): ?>
-        <tr>
-          <td><?php echo htmlspecialchars($r->first_name.' '.$r->last_name); ?><br><small class="text-muted"><?php echo $r->employee_code; ?></small></td>
-          <td><?php echo htmlspecialchars($r->department_name ?? '-'); ?></td>
-          <td><?php echo htmlspecialchars($r->target_title); ?></td>
-          <td><?php echo htmlspecialchars($r->sub_target_title); ?></td>
-          <td><?php echo htmlspecialchars($r->assigned_by_name ?? '-'); ?></td>
-          <td><?php echo $r->evaluator_names ? htmlspecialchars($r->evaluator_names) : '-'; ?></td>
-          <td><?php echo $r->due_date ? date('d M Y', strtotime($r->due_date)) : '-'; ?></td>
-          <td class="text-right"><?php echo $r->completion_percentage !== null ? rtrim(rtrim(number_format($r->completion_percentage,2),'0'),'.').'%' : '-'; ?></td>
-          <td><span class="label label-<?php echo $sbadge[$r->status] ?? 'default'; ?>"><?php echo ucfirst(str_replace('_',' ',$r->status)); ?></span></td>
-        </tr>
-        <?php endforeach; endif; ?>
-        </tbody>
-      </table>
+      <?php render_datatable(['Employee', 'Department', 'Target', 'Sub-Target', 'Assigned By', 'Evaluators', 'Due Date', 'Completion', 'Status'], 'hr-report-performance'); ?>
     </div></div>
 
   <?php elseif ($view === 'employee'): ?>
     <div class="panel_s"><div class="panel-body panel-table-full">
-      <table class="table table-hover">
-        <thead><tr><th>Employee</th><th>Department</th><th class="text-right">Total</th><th class="text-right">Completed</th><th class="text-right">In Progress</th><th class="text-right">Partial</th><th class="text-right">Pending</th><th class="text-right">Avg Completion</th><th class="text-right">Avg Rating</th></tr></thead>
-        <tbody>
-        <?php if(empty($rows)): ?><tr><td colspan="9" class="text-center text-muted" style="padding:30px">No records.</td></tr>
-        <?php else: foreach($rows as $r): ?>
-        <tr>
-          <td><?php echo htmlspecialchars($r->first_name.' '.$r->last_name); ?><br><small class="text-muted"><?php echo $r->employee_code; ?></small></td>
-          <td><?php echo htmlspecialchars($r->department_name ?? '-'); ?></td>
-          <td class="text-right"><?php echo (int) $r->total_sub_targets; ?></td>
-          <td class="text-right"><span class="label label-success"><?php echo (int) $r->completed_count; ?></span></td>
-          <td class="text-right"><span class="label label-warning"><?php echo (int) $r->in_progress_count; ?></span></td>
-          <td class="text-right"><span class="label label-info"><?php echo (int) $r->partial_count; ?></span></td>
-          <td class="text-right"><span class="label label-default"><?php echo (int) $r->pending_count; ?></span></td>
-          <td class="text-right"><?php echo $r->avg_completion !== null ? round($r->avg_completion,1).'%' : '-'; ?></td>
-          <td class="text-right"><?php echo $r->avg_rating !== null ? $r->avg_rating.' / 5' : '-'; ?></td>
-        </tr>
-        <?php endforeach; endif; ?>
-        </tbody>
-      </table>
+      <?php render_datatable(['Employee', 'Department', 'Total', 'Completed', 'In Progress', 'Partial', 'Pending', 'Avg Completion', 'Avg Rating'], 'hr-report-performance-employee'); ?>
     </div></div>
 
   <?php elseif ($view === 'department'): ?>
     <div class="panel_s"><div class="panel-body panel-table-full">
-      <table class="table table-hover">
-        <thead><tr><th>Department</th><th class="text-right">Total</th><th class="text-right">Completed</th><th class="text-right">In Progress</th><th class="text-right">Partial</th><th class="text-right">Pending</th><th class="text-right">Avg Completion</th><th class="text-right">Avg Rating</th></tr></thead>
-        <tbody>
-        <?php if(empty($rows)): ?><tr><td colspan="8" class="text-center text-muted" style="padding:30px">No records.</td></tr>
-        <?php else: foreach($rows as $r): ?>
-        <tr>
-          <td><?php echo htmlspecialchars($r->department_name ?? '-'); ?></td>
-          <td class="text-right"><?php echo (int) $r->total_sub_targets; ?></td>
-          <td class="text-right"><span class="label label-success"><?php echo (int) $r->completed_count; ?></span></td>
-          <td class="text-right"><span class="label label-warning"><?php echo (int) $r->in_progress_count; ?></span></td>
-          <td class="text-right"><span class="label label-info"><?php echo (int) $r->partial_count; ?></span></td>
-          <td class="text-right"><span class="label label-default"><?php echo (int) $r->pending_count; ?></span></td>
-          <td class="text-right"><?php echo $r->avg_completion !== null ? round($r->avg_completion,1).'%' : '-'; ?></td>
-          <td class="text-right"><?php echo $r->avg_rating !== null ? $r->avg_rating.' / 5' : '-'; ?></td>
-        </tr>
-        <?php endforeach; endif; ?>
-        </tbody>
-      </table>
+      <?php render_datatable(['Department', 'Total', 'Completed', 'In Progress', 'Partial', 'Pending', 'Avg Completion', 'Avg Rating'], 'hr-report-performance-department'); ?>
     </div></div>
   <?php endif; ?>
 
 </div></div>
 </div></div>
 <?php init_tail(); ?>
+<script>
+$(function(){
+    <?php if ($view === 'detailed'): ?>
+    initDataTable('.table-hr-report-performance', window.location.href, [], [], [], [6, 'asc']);
+    <?php elseif ($view === 'employee'): ?>
+    initDataTable('.table-hr-report-performance-employee', window.location.href, [], [], [], [0, 'asc']);
+    <?php elseif ($view === 'department'): ?>
+    initDataTable('.table-hr-report-performance-department', window.location.href, [], [], [], [0, 'asc']);
+    <?php endif; ?>
+});
+</script>

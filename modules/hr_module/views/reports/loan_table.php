@@ -12,6 +12,20 @@ foreach (['department_id', 'status'] as $k) {
 
 $rows = $CI->Reports_model->loans($f);
 
+// The DataTable's own column-header sort (the client sends order[column,dir]
+// on every AJAX request) - server-side since rows here are built manually,
+// not through the generic data_tables_init() helper.
+hr_module_apply_datatable_order($rows, [
+    0 => function ($r) { return $r->first_name . ' ' . $r->last_name; },
+    1 => 'department_name',
+    2 => 'loan_amount',
+    3 => 'monthly_installment',
+    4 => 'outstanding',
+    5 => 'total_repaid',
+    6 => 'status',
+    7 => 'approved_at',
+]);
+
 $sbadge = ['pending' => 'warning', 'approved' => 'info', 'active' => 'primary', 'closed' => 'success', 'rejected' => 'danger'];
 
 // DataTables (serverSide:true) expects only the requested page's rows back -

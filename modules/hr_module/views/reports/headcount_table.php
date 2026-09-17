@@ -12,6 +12,14 @@ foreach (['department_id'] as $k) {
 
 $rows = $CI->Reports_model->headcount($f);
 
+// The DataTable's own column-header sort (the client sends order[column,dir]
+// on every AJAX request) - server-side since rows here are built manually,
+// not through the generic data_tables_init() helper.
+hr_module_apply_datatable_order($rows, [
+    0 => 'department_name', 1 => 'total', 2 => 'active',
+    3 => 'inactive', 4 => 'male', 5 => 'female',
+]);
+
 $total    = 0;
 $active   = 0;
 $inactive = 0;
