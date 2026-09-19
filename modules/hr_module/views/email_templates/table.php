@@ -7,6 +7,17 @@ $CI->load->model('hr_module/Email_templates_model');
 $can_edit = staff_can('edit', 'hr_settings') || is_admin();
 $rows     = $CI->Email_templates_model->get_all();
 
+// The DataTable's own search box - rows here are built manually (below)
+// instead of through the generic data_tables_init() helper, so its
+// search[value] POST field has to be picked up and applied by hand.
+$search_value = $CI->input->post('search');
+if (!empty($search_value['value'])) {
+    $needle = mb_strtolower(trim($search_value['value']));
+    $rows   = array_values(array_filter($rows, function ($row) use ($needle) {
+        return mb_strpos(mb_strtolower($row->name . ' ' . $row->subject), $needle) !== false;
+    }));
+}
+
 // The DataTable's own column-header sort (the client sends order[column,dir]
 // on every AJAX request) - server-side since rows here are built manually,
 // not through the generic data_tables_init() helper.
