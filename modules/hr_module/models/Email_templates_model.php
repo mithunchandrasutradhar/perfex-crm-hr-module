@@ -201,19 +201,19 @@ class Email_templates_model extends App_Model
             'loan_apply' => [
                 'name' => 'Loan Request Submitted (to HR)',
                 'subject' => 'New Loan Request Submitted',
-                'placeholders' => '{employee_name}, {department}, {designation}, {amount}, {monthly_installment}, {repayment_months}, {reason}',
+                'placeholders' => '{employee_name}, {department}, {designation}, {amount}, {monthly_installment}, {repayment_months}, {repayment_summary}, {reason}',
                 'body' => "A new loan request has been submitted and is awaiting review.\n\nEmployee: {employee_name}\nDepartment: {department}\nDesignation: {designation}\nAmount: {amount}\nMonthly Installment: {monthly_installment}\nRepayment Months: {repayment_months}\nReason: {reason}",
             ],
             'loan_approved' => [
                 'name' => 'Loan Request Approved (to Employee)',
                 'subject' => 'Your Loan Request Has Been Approved',
-                'placeholders' => '{employee_name}, {department}, {designation}, {amount}, {monthly_installment}, {repayment_months}, {disbursement_date}',
+                'placeholders' => '{employee_name}, {department}, {designation}, {amount}, {monthly_installment}, {repayment_months}, {repayment_summary}, {disbursement_date}',
                 'body' => "Hi {employee_name},\n\nYour loan request has been approved.\n\nDepartment: {department}\nDesignation: {designation}\nAmount: {amount}\nMonthly Installment: {monthly_installment}\nRepayment Months: {repayment_months}\nDisbursement Date: {disbursement_date}",
             ],
             'loan_rejected' => [
                 'name' => 'Loan Request Rejected (to Employee)',
                 'subject' => 'Your Loan Request Has Been Rejected',
-                'placeholders' => '{employee_name}, {department}, {designation}, {amount}, {monthly_installment}, {repayment_months}, {reason}',
+                'placeholders' => '{employee_name}, {department}, {designation}, {amount}, {monthly_installment}, {repayment_months}, {repayment_summary}, {reason}',
                 'body' => "Hi {employee_name},\n\nYour loan request has been rejected.\n\nDepartment: {department}\nDesignation: {designation}\nAmount: {amount}\nMonthly Installment: {monthly_installment}\nRepayment Months: {repayment_months}\nReason: {reason}",
             ],
             'loan_deduction_request' => [

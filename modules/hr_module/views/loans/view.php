@@ -2,9 +2,14 @@
 $badge = ['pending'=>'default','approved'=>'warning','active'=>'info','rejected'=>'danger','closed'=>'success'];
 $pct   = $loan->amount > 0 ? min(100, round(($loan->total_repaid / $loan->amount) * 100)) : 0;
 
-// Find current month's deduction request (if any)
-$cur_month = (int) date('n');
-$cur_year  = (int) date('Y');
+// A lump-sum loan only ever has one deduction period - its due month - so
+// that (not necessarily today's month) is what the sidebar panel below and
+// the "Request Deduction" modal's default month/year should reflect.
+// Loans_model::submit_deduction_request() enforces the same restriction.
+$is_lump_sum = $loan->repayment_type === 'lump_sum';
+$cur_month = $is_lump_sum ? (int) $loan->due_month : (int) date('n');
+$cur_year  = $is_lump_sum ? (int) $loan->due_year  : (int) date('Y');
+$due_has_arrived = !$is_lump_sum || (!$loan->due_month || ((int) date('Ym')) >= ($cur_year * 100 + $cur_month));
 $cur_req   = null;
 foreach ($deduction_requests as $dr) {
     if ((int)$dr->pay_month === $cur_month && (int)$dr->pay_year === $cur_year) {
@@ -72,8 +77,15 @@ if (!isset($adjustments)) $adjustments = [];
                 <div class="tw-text-xs text-muted">Outstanding</div>
               </div></div></div>
               <div class="col-md-3"><div class="panel_s" style="background:#eff6ff"><div class="panel-body tw-text-center tw-py-2">
+                <?php if ($loan->repayment_type === 'lump_sum'): ?>
+                <div class="tw-font-bold tw-text-lg text-primary">
+                  <?php echo $loan->due_month ? date('M Y', mktime(0,0,0,$loan->due_month,1,$loan->due_year)) : '-'; ?>
+                </div>
+                <div class="tw-text-xs text-muted">Due In Full</div>
+                <?php else: ?>
                 <div class="tw-font-bold tw-text-lg text-primary"><?php echo number_format($loan->monthly_installment,2); ?></div>
                 <div class="tw-text-xs text-muted">Default Installment</div>
+                <?php endif; ?>
               </div></div></div>
             </div>
 
@@ -84,7 +96,14 @@ if (!isset($adjustments)) $adjustments = [];
                    aria-valuenow="<?php echo $pct; ?>" aria-valuemin="0" aria-valuemax="100"
                    style="width: <?php echo $pct; ?>%" data-percent="<?php echo $pct; ?>"></div>
             </div>
-            <p class="text-muted tw-text-sm"><?php echo $pct; ?>% repaid (<?php echo $loan->repayment_months; ?> months total)</p>
+            <p class="text-muted tw-text-sm">
+              <?php echo $pct; ?>% repaid
+              <?php if ($loan->repayment_type === 'lump_sum'): ?>
+                (due in full <?php echo $loan->due_month ? date('F Y', mktime(0,0,0,$loan->due_month,1,$loan->due_year)) : '-'; ?>)
+              <?php else: ?>
+                (<?php echo $loan->repayment_months; ?> months total)
+              <?php endif; ?>
+            </p>
 
             <?php if ($loan->reason): ?>
             <h5 class="tw-font-semibold tw-mt-3">Reason</h5>
@@ -206,17 +225,28 @@ if (!isset($adjustments)) $adjustments = [];
           </div>
         </div>
 
-        <!-- Monthly deduction request (current month) -->
+        <!-- Monthly / due-month deduction request -->
         <?php if (in_array($loan->status, ['approved','active']) && $loan->outstanding > 0): ?>
         <div class="panel_s" style="border:1px solid #e2e8f0">
           <div class="panel-body">
             <h5 class="tw-font-semibold tw-mb-3">
-              Deduction for <?php echo date('F Y'); ?>
+              <?php echo $is_lump_sum ? 'Full Repayment' : 'Deduction'; ?> for <?php echo date('F Y', mktime(0,0,0,$cur_month,1,$cur_year)); ?>
             </h5>
 
-            <?php $carry_label = ['next_month' => 'added to next month\'s deduction', 'extend_term' => 'handled by extending the repayment term by 1 month']; ?>
+            <?php if ($is_lump_sum && !$due_has_arrived): ?>
+            <p class="text-muted tw-text-sm tw-mb-0">
+              <i class="fa fa-clock-o tw-mr-1"></i>
+              Not due yet — the full outstanding balance
+              (<strong><?php echo number_format($loan->outstanding, 2); ?></strong>) will be deducted automatically
+              from payroll in <?php echo date('F Y', mktime(0,0,0,$cur_month,1,$cur_year)); ?>.
+            </p>
+            <?php else: ?>
 
-            <?php if ($loan->carry_forward_amount > 0): ?>
+            <?php $carry_label = $is_lump_sum
+                ? ['next_month' => 'pushed to next month\'s payroll', 'extend_term' => 'pushed to next month\'s payroll']
+                : ['next_month' => 'added to next month\'s deduction', 'extend_term' => 'handled by extending the repayment term by 1 month']; ?>
+
+            <?php if (!$is_lump_sum && $loan->carry_forward_amount > 0): ?>
             <div class="alert alert-warning tw-py-2 tw-mb-2">
               <i class="fa fa-exclamation-circle tw-mr-1"></i>
               <strong><?php echo number_format($loan->carry_forward_amount, 2); ?></strong> carried over from a
@@ -309,9 +339,10 @@ if (!isset($adjustments)) $adjustments = [];
               <?php endif; ?>
 
             <?php else: ?>
-              <p class="text-muted tw-text-sm tw-mb-2">No deduction request for this month.<br>
-                <small>Payroll will automatically deduct the standard installment of
-                <strong><?php echo number_format($loan->monthly_installment + $loan->carry_forward_amount, 2); ?></strong>
+              <p class="text-muted tw-text-sm tw-mb-2">No deduction request for this <?php echo $is_lump_sum ? 'due month' : 'month'; ?>.<br>
+                <small>Payroll will automatically deduct the standard
+                <?php echo $is_lump_sum ? 'full outstanding balance' : 'installment'; ?> of
+                <strong><?php echo number_format($is_lump_sum ? $loan->outstanding : ($loan->monthly_installment + $loan->carry_forward_amount), 2); ?></strong>
                 unless you submit a request to change the amount or skip this month.</small>
               </p>
               <?php if ($can_manage_deductions): ?>
@@ -319,6 +350,7 @@ if (!isset($adjustments)) $adjustments = [];
                 <i class="fa-regular fa-plus tw-mr-1"></i>Request Deduction
               </button>
               <?php endif; ?>
+            <?php endif; ?>
             <?php endif; ?>
           </div>
         </div>
@@ -407,6 +439,14 @@ if (!isset($adjustments)) $adjustments = [];
     </div>
     <?php echo form_open(admin_url('hr_module/loans/request_deduction/'.$loan->id)); ?>
     <div class="modal-body">
+      <?php if ($is_lump_sum): ?>
+      <input type="hidden" name="pay_month" value="<?php echo $cur_month; ?>">
+      <input type="hidden" name="pay_year" value="<?php echo $cur_year; ?>">
+      <p class="text-muted tw-text-sm">
+        This loan's full amount is due in <strong><?php echo date('F Y', mktime(0,0,0,$cur_month,1,$cur_year)); ?></strong> —
+        a deduction request can only be made for that month.
+      </p>
+      <?php else: ?>
       <div class="row">
         <div class="col-md-6">
           <div class="form-group select-placeholder">
@@ -431,10 +471,11 @@ if (!isset($adjustments)) $adjustments = [];
           </div>
         </div>
       </div>
+      <?php endif; ?>
       <div class="form-group">
         <div class="checkbox checkbox-primary">
           <input type="checkbox" name="is_skip" id="skipCheck" value="1" <?php echo ($cur_req && $cur_req->is_skip) ? 'checked' : ''; ?>>
-          <label for="skipCheck">Skip this month — don't deduct anything</label>
+          <label for="skipCheck">Skip this <?php echo $is_lump_sum ? 'due month' : 'month'; ?> — don't deduct anything</label>
         </div>
       </div>
       <?php
@@ -444,7 +485,7 @@ if (!isset($adjustments)) $adjustments = [];
         // when that isn't itself a clean multiple of 500.
         $deduct_default = $cur_req && !$cur_req->is_skip
             ? (float) $cur_req->amount
-            : ((float) $loan->monthly_installment + (float) $loan->carry_forward_amount);
+            : ($is_lump_sum ? (float) $loan->outstanding : ((float) $loan->monthly_installment + (float) $loan->carry_forward_amount));
         $deduct_outstanding = (float) $loan->outstanding;
       ?>
       <div class="form-group" id="amountGroup">
@@ -455,14 +496,26 @@ if (!isset($adjustments)) $adjustments = [];
                  value="<?php echo round($deduct_default, 2); ?>">
         </div>
         <p class="help-block tw-text-xs">
+          <?php if ($is_lump_sum): ?>
+          Full amount due: <strong><?php echo number_format($loan->outstanding, 2); ?></strong>
+          <?php else: ?>
           Default installment: <strong><?php echo number_format($loan->monthly_installment, 2); ?></strong>
           <?php if ($loan->carry_forward_amount > 0): ?>
           + <strong><?php echo number_format($loan->carry_forward_amount, 2); ?></strong> carried over from a skipped month
           <?php endif; ?>
           &nbsp;&middot;&nbsp; Outstanding: <strong><?php echo number_format($loan->outstanding, 2); ?></strong>
+          <?php endif; ?>
           &nbsp;&middot;&nbsp; Must be a multiple of 500, or exactly the outstanding balance for a full payoff.
         </p>
       </div>
+      <?php if ($is_lump_sum): ?>
+      <div class="form-group" id="carryOptionGroup" style="display:none">
+        <input type="hidden" name="carry_option" value="next_month">
+        <p class="text-muted tw-text-xs tw-mb-0">
+          Whatever isn't paid this month (<span id="carryShortfallAmount">-</span>) will simply become due the following month instead.
+        </p>
+      </div>
+      <?php else: ?>
       <div class="form-group" id="carryOptionGroup" style="display:none">
         <label>What should happen to the remaining <span id="carryShortfallAmount">-</span>?</label>
         <div class="radio radio-primary">
@@ -476,6 +529,7 @@ if (!isset($adjustments)) $adjustments = [];
           <label for="carryExtend">Extend repayment period by 1 month instead</label>
         </div>
       </div>
+      <?php endif; ?>
       <div class="form-group">
         <label>Notes <small class="text-muted">(optional — reason for custom amount or skip)</small></label>
         <textarea name="notes" class="form-control" rows="2"
@@ -605,6 +659,30 @@ if (!isset($adjustments)) $adjustments = [];
                  value="<?php echo $loan->amount; ?>" required>
         </div>
       </div>
+      <?php if ($is_lump_sum): ?>
+      <div class="row">
+        <div class="col-md-6">
+          <div class="form-group select-placeholder">
+            <label><?php echo _l('hr_loan_due_month'); ?> <span class="text-danger">*</span></label>
+            <select name="due_month" class="selectpicker" data-width="100%" required>
+              <?php for ($m = 1; $m <= 12; $m++): ?>
+              <option value="<?php echo $m; ?>" <?php echo $m === (int) $loan->due_month ? 'selected' : ''; ?>><?php echo date('F', mktime(0,0,0,$m,1)); ?></option>
+              <?php endfor; ?>
+            </select>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="form-group select-placeholder">
+            <label><?php echo _l('hr_loan_due_year'); ?> <span class="text-danger">*</span></label>
+            <select name="due_year" class="selectpicker" data-width="100%" required>
+              <?php $adj_cur_y = (int) date('Y'); for ($y = $adj_cur_y; $y <= $adj_cur_y + 3; $y++): ?>
+              <option value="<?php echo $y; ?>" <?php echo $y === (int) $loan->due_year ? 'selected' : ''; ?>><?php echo $y; ?></option>
+              <?php endfor; ?>
+            </select>
+          </div>
+        </div>
+      </div>
+      <?php else: ?>
       <div class="row">
         <div class="col-md-6">
           <div class="form-group">
@@ -627,6 +705,7 @@ if (!isset($adjustments)) $adjustments = [];
         </div>
       </div>
       <p class="text-muted tw-text-sm" id="adjustCalcSummary" style="display:none"></p>
+      <?php endif; ?>
       <div class="form-group"><label>Reason</label>
         <textarea name="reason" class="form-control" rows="2" placeholder="Optional note, e.g. budget constraints..."></textarea>
       </div>
@@ -642,7 +721,7 @@ if (!isset($adjustments)) $adjustments = [];
 <?php init_tail(); ?>
 <script>
 $(function () {
-    var totalDue = <?php echo (float) $loan->monthly_installment + (float) $loan->carry_forward_amount; ?>;
+    var totalDue = <?php echo $is_lump_sum ? (float) $loan->outstanding : ((float) $loan->monthly_installment + (float) $loan->carry_forward_amount); ?>;
     var loanOutstanding = <?php echo (float) $loan->outstanding; ?>;
 
     // Shared by the Deduction Request and Manual Repayment amount fields -
@@ -744,15 +823,19 @@ $(function () {
 
     $('#adjustModal form').on('submit', function (e) {
         var amount  = parseFloat($adjustAmount.val()) || 0;
-        var install = parseFloat($adjustInstallment.val()) || 0;
 
         if (!isAdjustStepValid(amount)) {
             alert('New amount must be a multiple of ' + ADJUST_STEP + ' (e.g. 500, 1000, 1500 ...).');
             e.preventDefault(); return;
         }
-        if (!isAdjustStepValid(install)) {
-            alert('New monthly installment must be a multiple of ' + ADJUST_STEP + ' (e.g. 500, 1000, 1500 ...).');
-            e.preventDefault(); return;
+        // Lump-sum loans replace the installment field with Due Month/Year
+        // selects instead - nothing to step-validate here for them.
+        if ($adjustInstallment.length) {
+            var install = parseFloat($adjustInstallment.val()) || 0;
+            if (!isAdjustStepValid(install)) {
+                alert('New monthly installment must be a multiple of ' + ADJUST_STEP + ' (e.g. 500, 1000, 1500 ...).');
+                e.preventDefault(); return;
+            }
         }
     });
 });

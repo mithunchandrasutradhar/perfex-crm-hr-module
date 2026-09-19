@@ -72,8 +72,11 @@ class Loans extends AdminController
                 'employee_id'         => $resolved_emp_id,
                 'amount'              => (float) $this->input->post('amount'),
                 'reason'              => $this->input->post('reason', true),
+                'repayment_type'      => $this->input->post('repayment_type'),
                 'repayment_months'    => (int) $this->input->post('repayment_months'),
                 'monthly_installment' => (float) $this->input->post('monthly_installment'),
+                'due_month'           => (int) $this->input->post('due_month'),
+                'due_year'            => (int) $this->input->post('due_year'),
                 'notes'               => $this->input->post('notes', true),
             ];
 
@@ -105,6 +108,7 @@ class Loans extends AdminController
                         '{amount}'                => number_format($data['amount'], 2),
                         '{monthly_installment}'   => number_format($data['monthly_installment'], 2),
                         '{repayment_months}'      => $data['repayment_months'],
+                        '{repayment_summary}'     => $this->_repayment_summary_text($data['repayment_type'], $data['monthly_installment'], $data['repayment_months'], $data['due_month'], $data['due_year']),
                         '{reason}'                => $data['reason'] ?: '-',
                     ];
                     $tpl  = $this->Email_templates_model->render('loan_apply', $placeholders);
@@ -295,11 +299,25 @@ class Loans extends AdminController
             $this->input->post('new_amount'),
             $this->input->post('monthly_installment'),
             $this->input->post('repayment_months'),
-            $this->input->post('reason', true)
+            $this->input->post('reason', true),
+            $this->input->post('due_month'),
+            $this->input->post('due_year')
         );
         set_alert($result['success'] ? 'success' : 'danger',
             $result['success'] ? 'Loan amount adjusted.' : $result['message']);
         redirect(admin_url('hr_module/loans/view/' . $id));
+    }
+
+    // 'installment' -> "500.00/month x 10 months"; 'lump_sum' -> "Full amount due in <Month Year>".
+    // Shared by every loan-status email placeholder block below.
+    private function _repayment_summary_text($repayment_type, $monthly_installment, $repayment_months, $due_month, $due_year)
+    {
+        if ($repayment_type === 'lump_sum') {
+            return $due_month
+                ? 'Full amount due in ' . date('F Y', mktime(0, 0, 0, (int) $due_month, 1, (int) $due_year))
+                : 'Full amount due (date not set)';
+        }
+        return number_format($monthly_installment, 2) . '/month x ' . $repayment_months . ' month(s)';
     }
 
     // Emails the requesting employee at their own registered address once their
@@ -318,6 +336,7 @@ class Loans extends AdminController
             '{amount}'              => number_format($loan->amount, 2),
             '{monthly_installment}' => number_format($loan->monthly_installment, 2),
             '{repayment_months}'    => $loan->repayment_months,
+            '{repayment_summary}'   => $this->_repayment_summary_text($loan->repayment_type, $loan->monthly_installment, $loan->repayment_months, $loan->due_month, $loan->due_year),
         ];
         if ($status === 'approved') {
             $placeholders['{disbursement_date}'] = $loan->disbursement_date ? _d($loan->disbursement_date) : '-';

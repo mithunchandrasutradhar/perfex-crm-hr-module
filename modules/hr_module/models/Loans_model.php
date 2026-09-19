@@ -13,6 +13,31 @@ class Loans_model extends App_Model
         parent::__construct();
         $this->_ensure_deduction_table();
         $this->_ensure_adjustment_schema();
+        $this->_ensure_repayment_type_schema();
+    }
+
+    // Lazily adds what the lump-sum repayment type needs, the same
+    // self-contained way _ensure_adjustment_schema() above already does - no
+    // install.php/HR_MODULE_SCHEMA_VERSION change, works immediately on an
+    // already-installed site. Every existing loan defaults to 'installment',
+    // so nothing about current loans/reports/payroll behavior changes.
+    private function _ensure_repayment_type_schema()
+    {
+        $col = $this->db->query("SHOW COLUMNS FROM `" . db_prefix() . $this->table . "` LIKE 'repayment_type'")->num_rows();
+        if ($col === 0) {
+            $this->db->query("ALTER TABLE `" . db_prefix() . $this->table . "` ADD COLUMN `repayment_type` VARCHAR(20) NOT NULL DEFAULT 'installment' AFTER `reason`");
+            $this->db->query("ALTER TABLE `" . db_prefix() . $this->table . "` ADD COLUMN `due_month` TINYINT UNSIGNED DEFAULT NULL AFTER `repayment_months`");
+            $this->db->query("ALTER TABLE `" . db_prefix() . $this->table . "` ADD COLUMN `due_year` SMALLINT UNSIGNED DEFAULT NULL AFTER `due_month`");
+        }
+        // Adjustment history needs to be able to record a due-month change too,
+        // alongside the amount/installment/months it already tracks.
+        $col = $this->db->query("SHOW COLUMNS FROM `" . db_prefix() . $this->adjust_table . "` LIKE 'previous_due_month'")->num_rows();
+        if ($col === 0) {
+            $this->db->query("ALTER TABLE `" . db_prefix() . $this->adjust_table . "` ADD COLUMN `previous_due_month` TINYINT UNSIGNED DEFAULT NULL");
+            $this->db->query("ALTER TABLE `" . db_prefix() . $this->adjust_table . "` ADD COLUMN `previous_due_year` SMALLINT UNSIGNED DEFAULT NULL");
+            $this->db->query("ALTER TABLE `" . db_prefix() . $this->adjust_table . "` ADD COLUMN `new_due_month` TINYINT UNSIGNED DEFAULT NULL");
+            $this->db->query("ALTER TABLE `" . db_prefix() . $this->adjust_table . "` ADD COLUMN `new_due_year` SMALLINT UNSIGNED DEFAULT NULL");
+        }
     }
 
     // Lazily adds what the amount-adjustment feature needs, the same
@@ -109,6 +134,7 @@ class Loans_model extends App_Model
     public function get_for_table($filters = [])
     {
         $this->db->select('l.id, l.amount, l.repayment_months, l.monthly_installment,
+                           l.repayment_type, l.due_month, l.due_year,
                            l.total_repaid, l.outstanding, l.status, l.disbursement_date, l.created_at,
                            e.first_name, e.last_name, e.employee_code, d.name as department_name')
             ->from(db_prefix() . $this->table . ' l')
@@ -173,31 +199,33 @@ class Loans_model extends App_Model
         return ['installment' => $install, 'months' => min($months, 360)];
     }
 
+    // A due month/year must be a real calendar period, at or after the
+    // current one - a lump sum "due" last month (or in month 13) makes no
+    // sense as a repayment target.
+    private function _valid_due_period($month, $year)
+    {
+        $month = (int) $month;
+        $year  = (int) $year;
+        if ($month < 1 || $month > 12 || $year < 2000) return false;
+        $cur_ym = (int) date('Ym');
+        return ($year * 100 + $month) >= $cur_ym;
+    }
+
     public function apply($data)
     {
         $amount = (float) $data['amount'];
         if (!$this->_valid_step_amount($amount)) {
             return ['success' => false, 'message' => 'Loan amount must be a multiple of 500.'];
         }
-        $custom_installment = $data['monthly_installment'] ?? 0;
-        if ((float) $custom_installment > 0 && !$this->_valid_step_amount($custom_installment)) {
-            return ['success' => false, 'message' => 'Monthly installment must be a multiple of 500.'];
-        }
-        $calc   = $this->_calc_installment(
-            $amount,
-            $custom_installment,
-            $data['repayment_months'] ?? 1
-        );
-        $install = $calc['installment'];
-        $months  = $calc['months'];
+
+        $repayment_type = ($data['repayment_type'] ?? 'installment') === 'lump_sum' ? 'lump_sum' : 'installment';
 
         $record = [
             'employee_id'         => (int) $data['employee_id'],
             'amount'              => $amount,
             'requested_amount'    => $amount,
             'reason'              => $data['reason'] ?? null,
-            'repayment_months'    => $months,
-            'monthly_installment' => $install,
+            'repayment_type'      => $repayment_type,
             'total_repaid'        => 0,
             'outstanding'         => $amount,
             'status'              => 'pending',
@@ -205,6 +233,28 @@ class Loans_model extends App_Model
             'created_by'          => get_staff_user_id(),
             'created_at'          => date('Y-m-d H:i:s'),
         ];
+
+        if ($repayment_type === 'lump_sum') {
+            if (!$this->_valid_due_period($data['due_month'] ?? null, $data['due_year'] ?? null)) {
+                return ['success' => false, 'message' => 'Choose a valid due month (this month or later) for the full repayment.'];
+            }
+            $record['repayment_months']    = 0;
+            $record['monthly_installment'] = 0;
+            $record['due_month']           = (int) $data['due_month'];
+            $record['due_year']            = (int) $data['due_year'];
+        } else {
+            $custom_installment = $data['monthly_installment'] ?? 0;
+            if ((float) $custom_installment > 0 && !$this->_valid_step_amount($custom_installment)) {
+                return ['success' => false, 'message' => 'Monthly installment must be a multiple of 500.'];
+            }
+            $calc = $this->_calc_installment(
+                $amount,
+                $custom_installment,
+                $data['repayment_months'] ?? 1
+            );
+            $record['repayment_months']    = $calc['months'];
+            $record['monthly_installment'] = $calc['installment'];
+        }
 
         if (!empty($data['attachment'])) $record['attachment'] = $data['attachment'];
 
@@ -232,7 +282,7 @@ class Loans_model extends App_Model
     // using the exact same dual-mode calculation apply() uses, and records
     // a full before/after snapshot so "requested 50,000, only given 30,000"
     // stays visible after the fact.
-    public function adjust_amount($loan_id, $new_amount, $custom_installment, $months, $reason = null)
+    public function adjust_amount($loan_id, $new_amount, $custom_installment, $months, $reason = null, $due_month = null, $due_year = null)
     {
         $loan = $this->get($loan_id);
         if (!$this->can_adjust($loan)) {
@@ -242,32 +292,50 @@ class Loans_model extends App_Model
         if (!$this->_valid_step_amount($new_amount)) {
             return ['success' => false, 'message' => 'Amount must be a multiple of 500.'];
         }
-        if ((float) $custom_installment > 0 && !$this->_valid_step_amount($custom_installment)) {
-            return ['success' => false, 'message' => 'Monthly installment must be a multiple of 500.'];
+
+        $update = [
+            'amount'      => $new_amount,
+            'outstanding' => $new_amount,
+            'updated_at'  => date('Y-m-d H:i:s'),
+        ];
+        $adjustment = [
+            'loan_id'         => $loan_id,
+            'previous_amount' => $loan->amount,
+            'new_amount'      => $new_amount,
+            'reason'          => $reason ?: null,
+            'adjusted_by'     => get_staff_user_id(),
+            'created_at'      => date('Y-m-d H:i:s'),
+        ];
+
+        if ($loan->repayment_type === 'lump_sum') {
+            if (!$this->_valid_due_period($due_month, $due_year)) {
+                return ['success' => false, 'message' => 'Choose a valid due month (this month or later) for the full repayment.'];
+            }
+            $update['due_month'] = (int) $due_month;
+            $update['due_year']  = (int) $due_year;
+            $adjustment['previous_monthly_installment'] = 0;
+            $adjustment['new_monthly_installment']      = 0;
+            $adjustment['previous_repayment_months']    = 0;
+            $adjustment['new_repayment_months']         = 0;
+            $adjustment['previous_due_month']           = $loan->due_month;
+            $adjustment['previous_due_year']            = $loan->due_year;
+            $adjustment['new_due_month']                = (int) $due_month;
+            $adjustment['new_due_year']                 = (int) $due_year;
+        } else {
+            if ((float) $custom_installment > 0 && !$this->_valid_step_amount($custom_installment)) {
+                return ['success' => false, 'message' => 'Monthly installment must be a multiple of 500.'];
+            }
+            $calc = $this->_calc_installment($new_amount, $custom_installment, $months ?: $loan->repayment_months);
+            $update['monthly_installment'] = $calc['installment'];
+            $update['repayment_months']    = $calc['months'];
+            $adjustment['previous_monthly_installment'] = $loan->monthly_installment;
+            $adjustment['new_monthly_installment']      = $calc['installment'];
+            $adjustment['previous_repayment_months']    = $loan->repayment_months;
+            $adjustment['new_repayment_months']         = $calc['months'];
         }
 
-        $calc = $this->_calc_installment($new_amount, $custom_installment, $months ?: $loan->repayment_months);
-
-        $this->db->where('id', $loan_id)->update(db_prefix() . $this->table, [
-            'amount'              => $new_amount,
-            'monthly_installment' => $calc['installment'],
-            'repayment_months'    => $calc['months'],
-            'outstanding'         => $new_amount,
-            'updated_at'          => date('Y-m-d H:i:s'),
-        ]);
-
-        $this->db->insert(db_prefix() . $this->adjust_table, [
-            'loan_id'                      => $loan_id,
-            'previous_amount'              => $loan->amount,
-            'new_amount'                   => $new_amount,
-            'previous_monthly_installment' => $loan->monthly_installment,
-            'new_monthly_installment'      => $calc['installment'],
-            'previous_repayment_months'    => $loan->repayment_months,
-            'new_repayment_months'         => $calc['months'],
-            'reason'                       => $reason ?: null,
-            'adjusted_by'                  => get_staff_user_id(),
-            'created_at'                   => date('Y-m-d H:i:s'),
-        ]);
+        $this->db->where('id', $loan_id)->update(db_prefix() . $this->table, $update);
+        $this->db->insert(db_prefix() . $this->adjust_table, $adjustment);
 
         // If a draft payroll for the current period already exists for this
         // employee, its stored loan_deduction/net_salary would otherwise stay
@@ -395,13 +463,24 @@ class Loans_model extends App_Model
             return ['success' => false, 'message' => 'Payroll for this period has already been paid - a deduction request can no longer be made.'];
         }
 
-        $total_due = (float) $loan->monthly_installment + (float) $loan->carry_forward_amount;
+        if ($loan->repayment_type === 'lump_sum') {
+            // Nothing is scheduled to deduct in any month except the one the
+            // full amount is due in - see Payroll_model::_pending_loan_deductions().
+            if ((int) $pay_month !== (int) $loan->due_month || (int) $pay_year !== (int) $loan->due_year) {
+                return ['success' => false, 'message' => 'This loan is due in full in ' . date('F Y', mktime(0, 0, 0, (int) $loan->due_month, 1, (int) $loan->due_year)) . ' - a deduction request can only be made for that month.'];
+            }
+            $total_due = (float) $loan->outstanding;
+        } else {
+            $total_due = (float) $loan->monthly_installment + (float) $loan->carry_forward_amount;
+        }
 
         if ($is_skip) {
             if (!in_array($carry_option, ['next_month', 'extend_term'], true)) {
                 return ['success' => false, 'message' => 'Choose how the skipped installment should be handled.'];
             }
-            $amount = round(min((float) $loan->monthly_installment, (float) $loan->outstanding), 2);
+            $amount = $loan->repayment_type === 'lump_sum'
+                ? 0.0
+                : round(min((float) $loan->monthly_installment, (float) $loan->outstanding), 2);
         } else {
             if (!$this->_valid_step_amount($amount, $loan->outstanding)) {
                 return ['success' => false, 'message' => 'Amount must be a multiple of 500, or exactly the outstanding balance for a full payoff.'];
@@ -504,7 +583,22 @@ class Loans_model extends App_Model
         ]);
 
         $loan = $this->db->where('id', $req->loan_id)->get(db_prefix() . $this->table)->row();
-        if ($loan) {
+        if ($loan && $loan->repayment_type === 'lump_sum') {
+            // A lump-sum loan has no installment/term to carry a shortfall
+            // against - either option just pushes the whole thing (whatever's
+            // left after this request) one month further out.
+            $deducted  = $req->is_skip ? 0.0 : (float) $req->amount;
+            $shortfall = max(0, (float) $loan->outstanding - $deducted);
+            if ($shortfall > 0 && in_array($req->carry_option, ['next_month', 'extend_term'], true)) {
+                $next_month = (int) $loan->due_month + 1;
+                $next_year  = (int) $loan->due_year;
+                if ($next_month > 12) { $next_month = 1; $next_year++; }
+                $this->db->where('id', $loan->id)->update(db_prefix() . $this->table, [
+                    'due_month' => $next_month,
+                    'due_year'  => $next_year,
+                ]);
+            }
+        } elseif ($loan) {
             // What's owed this month is the standard installment plus anything already
             // carried over; whatever this request doesn't cover is the shortfall.
             $total_due = (float) $loan->monthly_installment + (float) $loan->carry_forward_amount;

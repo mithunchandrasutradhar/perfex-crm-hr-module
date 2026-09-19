@@ -224,7 +224,9 @@ $task_status_colors = [
                     </div>
                 </div>
                 <div class="tw-text-xs text-muted">
-                    <?php if ($loan): ?>
+                    <?php if ($loan && $loan->repayment_type === 'lump_sum'): ?>
+                        Due in full <?php echo $loan->due_month ? date('M Y', mktime(0,0,0,$loan->due_month,1,$loan->due_year)) : '-'; ?>
+                    <?php elseif ($loan): ?>
                         <?php echo app_format_money($loan->monthly_installment, get_base_currency()); ?>/month &bull; <?php echo $loan->repayment_months; ?> months
                     <?php else: ?>
                         Click to view loan history

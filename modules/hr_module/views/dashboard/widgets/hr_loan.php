@@ -28,7 +28,11 @@ $loan = $employee_id ? ($hr_stats['active_loan'] ?? null) : null;
                 <div class="tw-text-2xl tw-font-bold text-danger"><?php echo number_format($loan->outstanding, 2); ?></div>
                 <div class="tw-text-xs tw-text-neutral-500 tw-mt-1">Outstanding balance</div>
                 <div class="tw-text-xs tw-text-neutral-400 tw-mt-1">
+                    <?php if ($loan->repayment_type === 'lump_sum'): ?>
+                    Due <?php echo $loan->due_month ? date('M Y', mktime(0,0,0,$loan->due_month,1,$loan->due_year)) : '-'; ?> &mdash; <?php echo ucfirst($loan->status); ?>
+                    <?php else: ?>
                     <?php echo number_format($loan->monthly_installment, 2); ?> / month &mdash; <?php echo ucfirst($loan->status); ?>
+                    <?php endif; ?>
                 </div>
             </div>
             <?php else: ?>

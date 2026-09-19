@@ -748,6 +748,14 @@ class Payroll_model extends App_Model
             if ($req) {
                 $amount = round(min((float) $req->amount, (float) $loan->outstanding), 2);
                 $clears_carry = false;
+            } elseif ($loan->repayment_type === 'lump_sum') {
+                // Nothing is deducted for a lump-sum loan until its due month arrives
+                // (or has already passed, e.g. payroll wasn't run that month) - then
+                // the whole remaining balance is taken in one go.
+                $due_ym = (int) $loan->due_year * 100 + (int) $loan->due_month;
+                $this_ym = (int) $year * 100 + (int) $month;
+                $amount = ($loan->due_month && $this_ym >= $due_ym) ? round((float) $loan->outstanding, 2) : 0.0;
+                $clears_carry = false;
             } else {
                 $amount = round(min((float) $loan->monthly_installment + (float) $loan->carry_forward_amount, (float) $loan->outstanding), 2);
                 $clears_carry = (float) $loan->carry_forward_amount > 0;

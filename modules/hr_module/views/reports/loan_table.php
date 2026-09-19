@@ -48,11 +48,15 @@ $output = [
 ];
 
 foreach ($paged_rows as $r) {
+    $installment_cell = $r->repayment_type === 'lump_sum'
+        ? '<span class="text-right" style="display:block">Lump sum (' . ($r->due_month ? date('M Y', mktime(0, 0, 0, (int) $r->due_month, 1, (int) $r->due_year)) : '-') . ')</span>'
+        : '<span class="text-right" style="display:block">' . number_format($r->monthly_installment, 2) . '</span>';
+
     $output['aaData'][] = [
         htmlspecialchars($r->first_name . ' ' . $r->last_name) . '<br><small class="text-muted">' . htmlspecialchars($r->employee_code) . '</small>',
         htmlspecialchars($r->department_name ?? '-'),
         '<span class="text-right" style="display:block">' . number_format($r->loan_amount, 2) . '</span>',
-        '<span class="text-right" style="display:block">' . number_format($r->monthly_installment, 2) . '</span>',
+        $installment_cell,
         '<span class="text-right text-danger" style="display:block">' . number_format($r->outstanding, 2) . '</span>',
         '<span class="text-right text-success" style="display:block">' . number_format($r->total_repaid, 2) . '</span>',
         '<span class="label label-' . ($sbadge[$r->status] ?? 'default') . '">' . ucfirst($r->status) . '</span>',

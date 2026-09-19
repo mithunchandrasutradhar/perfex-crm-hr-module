@@ -48,19 +48,32 @@ if (!isset($default_max_loan_amount)) $default_max_loan_amount = 99999999.99;
               <div class="panel_s tw-mb-4" style="border:1px solid #e2e8f0;background:#f8fafc">
                 <div class="panel-body tw-py-3">
                   <h5 class="tw-font-semibold tw-mb-3">Repayment Terms</h5>
-                  <div class="row">
-                    <div class="col-md-4">
-                      <div class="form-group">
-                        <label><?php echo _l('hr_loan_amount'); ?> <span class="text-danger">*</span></label>
-                        <div class="input-group">
-                          <span class="input-group-addon"><?php echo get_option('currency_symbol') ?: 'BDT'; ?></span>
-                          <input type="number" step="500" min="500" name="amount" id="loan_amount"
-                                 class="form-control" required placeholder="500, 1000, 1500 ...">
-                        </div>
-                        <p id="maxLoanHint" class="help-block tw-text-xs tw-mb-0"></p>
-                      </div>
+
+                  <div class="form-group">
+                    <label><?php echo _l('hr_loan_repayment_type'); ?></label>
+                    <div class="radio radio-primary tw-mb-1">
+                      <input type="radio" name="repayment_type" id="repayInstallment" value="installment" checked>
+                      <label for="repayInstallment"><?php echo _l('hr_loan_repayment_type_installment'); ?></label>
                     </div>
-                    <div class="col-md-4">
+                    <div class="radio radio-primary">
+                      <input type="radio" name="repayment_type" id="repayLumpSum" value="lump_sum">
+                      <label for="repayLumpSum"><?php echo _l('hr_loan_repayment_type_lump_sum'); ?></label>
+                    </div>
+                  </div>
+
+                  <div class="form-group">
+                    <label><?php echo _l('hr_loan_amount'); ?> <span class="text-danger">*</span></label>
+                    <div class="input-group" style="max-width:260px">
+                      <span class="input-group-addon"><?php echo get_option('currency_symbol') ?: 'BDT'; ?></span>
+                      <input type="number" step="500" min="500" name="amount" id="loan_amount"
+                             class="form-control" required placeholder="500, 1000, 1500 ...">
+                    </div>
+                    <p id="maxLoanHint" class="help-block tw-text-xs tw-mb-0"></p>
+                  </div>
+
+                  <!-- Installment fields -->
+                  <div id="installmentFields" class="row">
+                    <div class="col-md-6">
                       <div class="form-group">
                         <label>
                           <?php echo _l('hr_loan_monthly_installment'); ?>
@@ -69,11 +82,11 @@ if (!isset($default_max_loan_amount)) $default_max_loan_amount = 99999999.99;
                         <div class="input-group">
                           <span class="input-group-addon"><?php echo get_option('currency_symbol') ?: 'BDT'; ?></span>
                           <input type="number" step="500" min="500" name="monthly_installment" id="loan_installment"
-                                 class="form-control" required placeholder="500, 1000, 1500 ...">
+                                 class="form-control" placeholder="500, 1000, 1500 ...">
                         </div>
                       </div>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-6">
                       <div class="form-group">
                         <label><?php echo _l('hr_loan_repayment_months'); ?></label>
                         <div class="input-group">
@@ -84,11 +97,41 @@ if (!isset($default_max_loan_amount)) $default_max_loan_amount = 99999999.99;
                       </div>
                     </div>
                   </div>
-                  <div id="calcHint" class="text-muted" style="font-size:11px;margin-top:8px">
+                  <div id="calcHint" class="text-muted" style="font-size:11px;margin-top:-8px;margin-bottom:8px">
                     <i class="fa fa-info-circle"></i>
                     Amount and installment must both be a multiple of <?php echo number_format(500, 0); ?> — the repayment period is calculated automatically.
                   </div>
-                  <div id="calcSummary" class="alert alert-info tw-mt-3 tw-mb-0 tw-py-2 tw-px-3" style="display:none;font-size:13px"></div>
+                  <div id="calcSummary" class="alert alert-info tw-mb-3 tw-py-2 tw-px-3" style="display:none;font-size:13px"></div>
+
+                  <!-- Lump-sum field -->
+                  <div id="lumpSumFields" class="row" style="display:none">
+                    <div class="col-md-6">
+                      <div class="form-group select-placeholder">
+                        <label><?php echo _l('hr_loan_due_month'); ?> <span class="text-danger">*</span></label>
+                        <select name="due_month" id="loan_due_month" class="selectpicker" data-width="100%">
+                          <?php for ($m = 1; $m <= 12; $m++): ?>
+                          <option value="<?php echo $m; ?>"><?php echo date('F', mktime(0, 0, 0, $m, 1)); ?></option>
+                          <?php endfor; ?>
+                        </select>
+                      </div>
+                    </div>
+                    <div class="col-md-6">
+                      <div class="form-group select-placeholder">
+                        <label><?php echo _l('hr_loan_due_year'); ?> <span class="text-danger">*</span></label>
+                        <select name="due_year" id="loan_due_year" class="selectpicker" data-width="100%">
+                          <?php $cur_y = (int) date('Y'); for ($y = $cur_y; $y <= $cur_y + 3; $y++): ?>
+                          <option value="<?php echo $y; ?>"><?php echo $y; ?></option>
+                          <?php endfor; ?>
+                        </select>
+                      </div>
+                    </div>
+                    <div class="col-md-12">
+                      <div class="text-muted" style="font-size:11px">
+                        <i class="fa fa-info-circle"></i>
+                        No monthly deduction is made — the full loan amount is deducted in one go from payroll in the selected month.
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -170,6 +213,22 @@ $(function () {
     var $installment = $('#loan_installment');
     var $summary     = $('#calcSummary');
 
+    // Repayment type toggle - swaps the Installment fields for the Due
+    // Month/Year fields, and moves the `required` attribute along with them
+    // so a hidden field never blocks (or silently skips) submission.
+    function isLumpSum() { return $('input[name="repayment_type"]:checked').val() === 'lump_sum'; }
+
+    function toggleRepaymentType() {
+        var lumpSum = isLumpSum();
+        $('#installmentFields, #calcHint, #calcSummary').toggle(!lumpSum);
+        $('#lumpSumFields').toggle(lumpSum);
+        $installment.prop('required', !lumpSum);
+        $('select[name="due_month"], select[name="due_year"]').prop('required', lumpSum);
+        if (!lumpSum) $summary.hide();
+    }
+    $('input[name="repayment_type"]').on('change', toggleRepaymentType);
+    toggleRepaymentType();
+
     function fmt(n) { return parseFloat(n).toFixed(2); }
 
     // Amount and installment must both land on a clean multiple of STEP.
@@ -207,15 +266,17 @@ $(function () {
     // Client-side validation before submit
     $('#loanForm').on('submit', function (e) {
         var amount  = parseFloat($amount.val()) || 0;
-        var install = parseFloat($installment.val()) || 0;
 
         if (!isStepValid(amount)) {
             alert('Loan amount must be a multiple of ' + STEP + ' (e.g. 500, 1000, 1500 ...).');
             e.preventDefault(); return;
         }
-        if (!isStepValid(install)) {
-            alert('Monthly installment must be a multiple of ' + STEP + ' (e.g. 500, 1000, 1500 ...).');
-            e.preventDefault(); return;
+        if (!isLumpSum()) {
+            var install = parseFloat($installment.val()) || 0;
+            if (!isStepValid(install)) {
+                alert('Monthly installment must be a multiple of ' + STEP + ' (e.g. 500, 1000, 1500 ...).');
+                e.preventDefault(); return;
+            }
         }
         var capacity = currentCapacity();
         if (amount > capacity.remaining) {

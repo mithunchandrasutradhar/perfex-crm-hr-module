@@ -65,11 +65,15 @@ foreach ($rows as $r) {
     }
     $employee_cell .= '<div class="row-options">' . implode(' | ', $options) . '</div>';
 
+    $installment_cell = $r->repayment_type === 'lump_sum'
+        ? '<span class="label label-default">Lump sum</span><br><small class="text-muted">Due ' . ($r->due_month ? date('M Y', mktime(0, 0, 0, (int) $r->due_month, 1, (int) $r->due_year)) : '-') . '</small>'
+        : number_format($r->monthly_installment, 2);
+
     $row = [
         $employee_cell,
         $r->department_name ? htmlspecialchars($r->department_name) : '-',
         number_format($r->amount, 2),
-        number_format($r->monthly_installment, 2),
+        $installment_cell,
         number_format($r->outstanding, 2),
         $progress,
         $status,
