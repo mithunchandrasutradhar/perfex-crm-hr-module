@@ -346,6 +346,21 @@ class Overduty_model extends App_Model
         return ['success' => true];
     }
 
+    // Whether this employee has an approved overduty entry for the given date -
+    // used by Attendance_model::_determine_status() so a day the company
+    // explicitly authorized them to work isn't treated as "no schedule at all"
+    // the same way an ordinary weekly-off/holiday day with no punches expected
+    // would be.
+    public function has_approved_overtime_for_date($employee_id, $date)
+    {
+        return (bool) $this->db
+            ->where('employee_id', $employee_id)
+            ->where('overtime_date', $date)
+            ->where('status', 'approved')
+            ->limit(1)
+            ->get(db_prefix() . $this->table)->num_rows();
+    }
+
     private function _generate_batch_id()
     {
         return bin2hex(random_bytes(16));

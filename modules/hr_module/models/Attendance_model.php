@@ -447,14 +447,36 @@ class Attendance_model extends App_Model
         }
 
         $start_time = null;
+        $has_shift  = false;
         if ($employee_id && $date) {
             $CI->load->model('hr_module/Shifts_model');
             $shift = $CI->Shifts_model->get_employee_shift_for_date($employee_id, $date);
             if ($shift) {
                 $start_time = $shift->start_time;
+                $has_shift  = true;
             }
         }
         if (!$start_time) {
+            // No shift assigned for this date - if it's also the company's
+            // weekly-off day or a holiday, and nobody approved overtime for
+            // the employee that day, there's no scheduled start time at all
+            // to be "late" against (same reasoning as the full-day-leave
+            // check above), so a stray punch just counts as present. An
+            // approved overduty day is left on the normal office-hours check
+            // below, unchanged, since that's a separate/more complex case
+            // this fix doesn't attempt to solve.
+            if (!$has_shift && $employee_id && $date) {
+                $CI->load->model('hr_module/Holidays_model');
+                $dow        = (int) date('w', strtotime($date));
+                $is_off_day = in_array($dow, $CI->Holidays_model->get_weekly_off_days(), true)
+                    || !empty($CI->Holidays_model->get_dates_in_range($date, $date));
+                if ($is_off_day) {
+                    $CI->load->model('hr_module/Overduty_model');
+                    if (!$CI->Overduty_model->has_approved_overtime_for_date($employee_id, $date)) {
+                        return 'present';
+                    }
+                }
+            }
             $start_time = $CI->Hr_module_model->get_setting('office_start_time', '09:00');
         }
 
