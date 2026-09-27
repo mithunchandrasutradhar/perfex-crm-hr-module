@@ -1,5 +1,7 @@
 <?php defined('BASEPATH') or exit('No direct script access allowed');
-$status_badge = ['present'=>'success','late'=>'warning','absent'=>'danger','half_day'=>'info'];
+$status_badge  = ['present'=>'success','late'=>'warning','absent'=>'danger','half_day'=>'info','non_working'=>'default'];
+// See attendance/table.php - same "Personal Visit" label for the same status.
+$status_labels = ['non_working' => 'Personal Visit'];
 $totals = ['present'=>0,'late'=>0,'absent'=>0,'half_day'=>0,'hours'=>0];
 foreach ($records as $r) {
     if (isset($totals[$r->status])) $totals[$r->status]++;
@@ -113,7 +115,7 @@ foreach ($records as $r) {
                     <td><?php echo $r->out_time ? substr($r->out_time, 0, 5) : '-'; ?></td>
                     <td><?php echo $r->working_hours ? hr_format_hours($r->working_hours) : '-'; ?></td>
                     <td><span class="label label-<?php echo $status_badge[$r->status] ?? 'default'; ?>">
-                      <?php echo ucfirst(str_replace('_',' ',$r->status)); ?></span></td>
+                      <?php echo $status_labels[$r->status] ?? ucfirst(str_replace('_',' ',$r->status)); ?></span></td>
                     <td><?php echo ucfirst($r->source); ?></td>
                   </tr>
                   <?php endforeach; ?>

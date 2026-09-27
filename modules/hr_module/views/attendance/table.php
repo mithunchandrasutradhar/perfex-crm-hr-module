@@ -49,10 +49,15 @@ $output = [
     'aaData'               => [],
 ];
 
-$badge = ['present' => 'success', 'late' => 'warning', 'absent' => 'danger', 'half_day' => 'info'];
+$badge  = ['present' => 'success', 'late' => 'warning', 'absent' => 'danger', 'half_day' => 'info', 'non_working' => 'default'];
+// A punch logged outside any scheduled work day (weekly-off/holiday, no shift,
+// no approved overtime - see Attendance_model::_determine_status()); the raw
+// generic-transform label ("Non working") reads oddly, so it gets its own text.
+$status_labels = ['non_working' => 'Personal Visit'];
 
 foreach ($rows as $r) {
-    $status_badge = '<span class="label label-' . ($badge[$r->status] ?? 'default') . '">' . ucfirst(str_replace('_', ' ', $r->status)) . '</span>';
+    $status_text  = $status_labels[$r->status] ?? ucfirst(str_replace('_', ' ', $r->status));
+    $status_badge = '<span class="label label-' . ($badge[$r->status] ?? 'default') . '">' . $status_text . '</span>';
 
     // Shows the verify method of whichever punch is currently latest for the
     // day (drives out_time, or in_time before a second punch exists) rather

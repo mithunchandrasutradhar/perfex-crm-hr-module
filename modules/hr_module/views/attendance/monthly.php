@@ -136,7 +136,11 @@ $status_labels = ['present'=>'P','late'=>'L','absent'=>'A','half_day'=>'H'];
             $holiday    = $holiday_map[$date_str] ?? null;
             $on_leave   = $leave_map[$date_str] ?? null;
             $bg = '#f8fafc'; $color = '#94a3b8'; $label = '';
-            if ($rec) {
+            // A 'non_working' punch (personal visit on a day off, no shift/overtime -
+            // see Attendance_model::_determine_status()) isn't scheduled attendance at
+            // all, so it's excluded from the calendar the same way a day with no punch
+            // at all would be - falls through to show Weekend/Holiday/Leave instead.
+            if ($rec && $rec->status !== 'non_working') {
                 $bg    = $status_colors[$rec->status] ?? '#94a3b8';
                 $color = '#fff';
                 $label = $status_labels[$rec->status] ?? '?';

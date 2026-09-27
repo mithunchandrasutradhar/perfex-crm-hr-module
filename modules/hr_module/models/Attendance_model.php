@@ -95,8 +95,8 @@ class Attendance_model extends App_Model
         if ($this->record_exists($data['employee_id'], $data['attendance_date'])) {
             return ['success' => false, 'message' => _l('hr_val_duplicate_attendance')];
         }
-        $data['working_hours'] = $this->_calc_hours($data['in_time'] ?? null, $data['out_time'] ?? null);
         $data['status']        = $this->_normalize_status($data);
+        $data['working_hours'] = $this->_hours_for_status($data['status'], $data['in_time'] ?? null, $data['out_time'] ?? null);
         $data['created_by']    = get_staff_user_id();
         $data['created_at']    = date('Y-m-d H:i:s');
         $this->db->insert($this->table, $data);
@@ -115,8 +115,8 @@ class Attendance_model extends App_Model
                 return ['success' => false, 'message' => _l('hr_val_duplicate_attendance')];
             }
         }
-        $data['working_hours'] = $this->_calc_hours($data['in_time'] ?? null, $data['out_time'] ?? null);
         $data['status']        = $this->_normalize_status($data);
+        $data['working_hours'] = $this->_hours_for_status($data['status'], $data['in_time'] ?? null, $data['out_time'] ?? null);
         $data['updated_at']    = date('Y-m-d H:i:s');
         $this->db->where('id', $id)->update($this->table, $data);
         log_activity('HR Attendance Record Edited [ID: ' . $id . ']');
@@ -168,8 +168,8 @@ class Attendance_model extends App_Model
             $existing = $this->get_by_date($rec['employee_id'], $rec['attendance_date']);
 
             if (!$existing) {
-                $rec['working_hours'] = $this->_calc_hours($rec['in_time'] ?? null, $rec['out_time'] ?? null);
                 $rec['status']        = $this->_normalize_status($rec);
+                $rec['working_hours'] = $this->_hours_for_status($rec['status'], $rec['in_time'] ?? null, $rec['out_time'] ?? null);
                 $rec['created_at']    = date('Y-m-d H:i:s');
                 $this->db->insert($this->table, $rec);
                 $saved++;
@@ -212,7 +212,7 @@ class Attendance_model extends App_Model
             $this->db->where('id', $existing->id)->update($this->table, [
                 'in_time'       => $mergedIn,
                 'out_time'      => $mergedOut,
-                'working_hours' => $this->_calc_hours($mergedIn, $mergedOut),
+                'working_hours' => $this->_hours_for_status($status, $mergedIn, $mergedOut),
                 'status'        => $status,
                 'updated_at'    => date('Y-m-d H:i:s'),
             ]);
@@ -357,9 +357,10 @@ class Attendance_model extends App_Model
     // shift-based late/hours calculation instead of a separate, divergent path.
     public function resolve_status_and_hours($employee_id, $date, $in_time, $out_time)
     {
+        $status = $this->_determine_status($in_time, $employee_id, $date);
         return [
-            'status'        => $this->_determine_status($in_time, $employee_id, $date),
-            'working_hours' => $this->_calc_hours($in_time, $out_time),
+            'status'        => $status,
+            'working_hours' => $this->_hours_for_status($status, $in_time, $out_time),
         ];
     }
 
@@ -384,7 +385,9 @@ class Attendance_model extends App_Model
             if (!$row->in_time) continue;
             $new_status = $this->_determine_status($row->in_time, $employee_id, $row->attendance_date);
             if ($new_status !== $row->status) {
-                $this->db->where('id', $row->id)->update($this->table, ['status' => $new_status]);
+                $update = ['status' => $new_status];
+                if ($new_status === 'non_working') $update['working_hours'] = null;
+                $this->db->where('id', $row->id)->update($this->table, $update);
             }
         }
     }
@@ -405,7 +408,9 @@ class Attendance_model extends App_Model
         if (!$row || !$row->in_time) return;
         $new_status = $this->_determine_status($row->in_time, $employee_id, $date);
         if ($new_status !== $row->status) {
-            $this->db->where('id', $row->id)->update($this->table, ['status' => $new_status]);
+            $update = ['status' => $new_status];
+            if ($new_status === 'non_working') $update['working_hours'] = null;
+            $this->db->where('id', $row->id)->update($this->table, $update);
         }
     }
 
@@ -420,6 +425,15 @@ class Attendance_model extends App_Model
             $diff += 86400;
         }
         return round($diff / 3600, 2);
+    }
+
+    // A 'non_working' punch (see _determine_status()) isn't scheduled work
+    // time at all, so no working_hours is calculated or stored for it -
+    // kept as null the same way an absent day already has none, rather than
+    // showing a duration for time that was never actually worked.
+    private function _hours_for_status($status, $in, $out)
+    {
+        return $status === 'non_working' ? null : $this->_calc_hours($in, $out);
     }
 
     // Looks up the employee's approved shift assignment for this date and uses
@@ -461,10 +475,15 @@ class Attendance_model extends App_Model
             // weekly-off day or a holiday, and nobody approved overtime for
             // the employee that day, there's no scheduled start time at all
             // to be "late" against (same reasoning as the full-day-leave
-            // check above), so a stray punch just counts as present. An
-            // approved overduty day is left on the normal office-hours check
-            // below, unchanged, since that's a separate/more complex case
-            // this fix doesn't attempt to solve.
+            // check above). This isn't scheduled attendance at all (e.g. a
+            // brief personal visit on a day off), so it's kept as its own
+            // 'non_working' status instead of 'present' - the punch is still
+            // logged, but it's excluded from every Present/Late/Absent count,
+            // the monthly calendar, and working-hours totals (every one of
+            // those already only tallies statuses it explicitly recognizes).
+            // An approved overduty day is left on the normal office-hours
+            // check below, unchanged, since that's a separate/more complex
+            // case this fix doesn't attempt to solve.
             if (!$has_shift && $employee_id && $date) {
                 $CI->load->model('hr_module/Holidays_model');
                 $dow        = (int) date('w', strtotime($date));
@@ -473,7 +492,7 @@ class Attendance_model extends App_Model
                 if ($is_off_day) {
                     $CI->load->model('hr_module/Overduty_model');
                     if (!$CI->Overduty_model->has_approved_overtime_for_date($employee_id, $date)) {
-                        return 'present';
+                        return 'non_working';
                     }
                 }
             }

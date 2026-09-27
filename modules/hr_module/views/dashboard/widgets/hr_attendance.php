@@ -7,10 +7,13 @@
 [$employee_id, $hr_stats] = hr_get_own_employee_dashboard_stats();
 
 $att_labels = [
-    'present'  => ['label' => 'Present',  'class' => 'text-success'],
-    'late'     => ['label' => 'Late',     'class' => 'text-warning'],
-    'absent'   => ['label' => 'Absent',   'class' => 'text-danger'],
-    'half_day' => ['label' => 'Half Day', 'class' => 'text-info'],
+    'present'     => ['label' => 'Present',  'class' => 'text-success'],
+    'late'        => ['label' => 'Late',     'class' => 'text-warning'],
+    'absent'      => ['label' => 'Absent',   'class' => 'text-danger'],
+    'half_day'    => ['label' => 'Half Day', 'class' => 'text-info'],
+    // A punch logged outside any scheduled work day (weekly-off/holiday, no
+    // shift, no approved overtime) - see Attendance_model::_determine_status().
+    'non_working' => ['label' => 'Personal Visit', 'class' => 'tw-text-neutral-500'],
 ];
 $att = $employee_id ? ($hr_stats['attendance_today'] ?? null) : null;
 $att_info = $att ? ($att_labels[$att] ?? ['label' => ucfirst($att), 'class' => 'tw-text-neutral-800']) : null;

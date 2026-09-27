@@ -50,10 +50,13 @@ $show_manager = (bool) $is_manager;
 <?php
 $att_status = $stats['attendance_today'] ?? null;
 $att_labels = [
-    'present'  => ['label' => 'Present',  'cls' => 'bg-success',  'icon' => 'fa-check-circle'],
-    'late'     => ['label' => 'Late',     'cls' => 'bg-warning',  'icon' => 'fa-clock'],
-    'absent'   => ['label' => 'Absent',   'cls' => 'bg-danger',   'icon' => 'fa-times-circle'],
-    'half_day' => ['label' => 'Half Day', 'cls' => 'bg-info',     'icon' => 'fa-adjust'],
+    'present'     => ['label' => 'Present',  'cls' => 'bg-success',  'icon' => 'fa-check-circle'],
+    'late'        => ['label' => 'Late',     'cls' => 'bg-warning',  'icon' => 'fa-clock'],
+    'absent'      => ['label' => 'Absent',   'cls' => 'bg-danger',   'icon' => 'fa-times-circle'],
+    'half_day'    => ['label' => 'Half Day', 'cls' => 'bg-info',     'icon' => 'fa-adjust'],
+    // A punch logged outside any scheduled work day (weekly-off/holiday, no
+    // shift, no approved overtime) - see Attendance_model::_determine_status().
+    'non_working' => ['label' => 'Personal Visit', 'cls' => 'bg-secondary', 'icon' => 'fa-circle'],
 ];
 $att = $att_status ? ($att_labels[$att_status] ?? ['label' => ucfirst($att_status), 'cls' => 'bg-secondary', 'icon' => 'fa-circle']) : null;
 
