@@ -61,6 +61,7 @@ class Training extends AdminController
             $this->_handle_attachment($data);
             $old_instructor_id    = (int) $training->instructor_id;
             $old_external_email   = (string) $training->external_instructor_email;
+            $old_status           = $training->status;
             $result = $this->Training_model->update($data, $id);
             $new_instructor_id  = !empty($data['instructor_id']) ? (int) $data['instructor_id'] : 0;
             $new_external_email = $new_instructor_id ? '' : trim((string) $data['external_instructor_email']);
@@ -72,6 +73,13 @@ class Training extends AdminController
             if ($result['success'] && $instructor_changed
                 && $this->Hr_module_model->notifications_enabled('notify_training')) {
                 $this->_notify_instructor_assigned($id);
+            }
+            // Only notify on the actual transition into 'cancelled' - re-saving an
+            // already-cancelled training (editing some other field) must not
+            // re-send this to everyone every time.
+            if ($result['success'] && $old_status !== 'cancelled' && $data['status'] === 'cancelled'
+                && $this->Hr_module_model->notifications_enabled('notify_training')) {
+                $this->_notify_training_cancelled($id);
             }
             set_alert($result['success'] ? 'success' : 'danger', $result['message']);
             redirect(admin_url('hr_module/training/view/' . $id));
@@ -117,7 +125,11 @@ class Training extends AdminController
         $data['employee_departments'] = array_column($emp_dept_rows, 'department_id', 'id');
         $data['is_instructor'] = $is_instructor;
         $data['own_emp_id']    = $own_emp_id;
-        $data['can_mark_attendance'] = staff_can('edit', 'hr_training') || $is_instructor;
+        // Whoever can create a training should also be able to operate one they
+        // created (enroll/remove participants, mark attendance/complete) - same
+        // 3-way check report()/email_report() already use, now shared everywhere
+        // this variable already gates in the view.
+        $data['can_mark_attendance'] = staff_can('create', 'hr_training') || staff_can('edit', 'hr_training') || $is_instructor;
         $sessions = $this->Training_model->get_sessions($id);
         $data['sessions']        = $sessions;
         $data['days']            = array_column($sessions, 'session_date');
@@ -156,11 +168,24 @@ class Training extends AdminController
 
     public function enroll($id)
     {
-        if (staff_cant('edit', 'hr_training')) access_denied('hr_training');
+        // Whoever can create a training can also operate one they created,
+        // same 3-way check as report()/email_report() below.
+        $is_instructor = $this->Training_model->is_instructor($id, get_staff_user_id());
+        if (staff_cant('create', 'hr_training') && staff_cant('edit', 'hr_training') && !$is_instructor) {
+            access_denied('hr_training');
+        }
         if ($this->input->is_ajax_request()) {
             $emp_ids = $this->input->post('employee_ids') ?: [];
             $result  = $this->Training_model->enroll($id, $emp_ids);
+            // Enrolling into an already-completed training is still allowed (e.g.
+            // retroactively recording attendance), but the "you've been enrolled"
+            // email reads like an invitation to something upcoming - it has no
+            // {status}/date-awareness of its own - so it's skipped for a training
+            // that's already completed, same as it's already skipped entirely
+            // when notify_training is off.
+            $training = $this->Training_model->get($id);
             if ($result['success'] && !empty($result['enrolled_ids'])
+                && (!$training || $training->status !== 'completed')
                 && $this->Hr_module_model->notifications_enabled('notify_training')) {
                 $this->_notify_enrolled($id, $result['enrolled_ids']);
             }
@@ -172,7 +197,10 @@ class Training extends AdminController
 
     public function remove_participant($training_id, $employee_id)
     {
-        if (staff_cant('edit', 'hr_training')) access_denied('hr_training');
+        $is_instructor = $this->Training_model->is_instructor($training_id, get_staff_user_id());
+        if (staff_cant('create', 'hr_training') && staff_cant('edit', 'hr_training') && !$is_instructor) {
+            access_denied('hr_training');
+        }
         $this->Training_model->remove_participant($training_id, $employee_id);
         set_alert('success', 'Participant removed.');
         redirect(admin_url('hr_module/training/view/' . $training_id));
@@ -182,7 +210,7 @@ class Training extends AdminController
     public function save_employee_note($training_id, $employee_id)
     {
         $is_instructor = $this->Training_model->is_instructor($training_id, get_staff_user_id());
-        if (staff_cant('edit', 'hr_training') && !$is_instructor) {
+        if (staff_cant('create', 'hr_training') && staff_cant('edit', 'hr_training') && !$is_instructor) {
             access_denied('hr_training');
         }
         $note   = $this->input->post('note', true);
@@ -206,7 +234,7 @@ class Training extends AdminController
     public function mark_complete($id)
     {
         $is_instructor = $this->Training_model->is_instructor($id, get_staff_user_id());
-        if (staff_cant('edit', 'hr_training') && !$is_instructor) {
+        if (staff_cant('create', 'hr_training') && staff_cant('edit', 'hr_training') && !$is_instructor) {
             access_denied('hr_training');
         }
         $note   = $this->input->post('completion_note', true);
@@ -274,7 +302,7 @@ class Training extends AdminController
     public function mark_attendance($training_id, $employee_id)
     {
         $is_instructor = $this->Training_model->is_instructor($training_id, get_staff_user_id());
-        if (staff_cant('edit', 'hr_training') && !$is_instructor) {
+        if (staff_cant('create', 'hr_training') && staff_cant('edit', 'hr_training') && !$is_instructor) {
             access_denied('hr_training');
         }
         $status = $this->input->post('status');
@@ -288,7 +316,7 @@ class Training extends AdminController
     public function mark_daily_attendance($training_id, $employee_id)
     {
         $is_instructor = $this->Training_model->is_instructor($training_id, get_staff_user_id());
-        if (staff_cant('edit', 'hr_training') && !$is_instructor) {
+        if (staff_cant('create', 'hr_training') && staff_cant('edit', 'hr_training') && !$is_instructor) {
             access_denied('hr_training');
         }
         $date   = $this->input->post('date');
@@ -306,7 +334,7 @@ class Training extends AdminController
     public function mark_daily_attendance_bulk($training_id)
     {
         $is_instructor = $this->Training_model->is_instructor($training_id, get_staff_user_id());
-        if (staff_cant('edit', 'hr_training') && !$is_instructor) {
+        if (staff_cant('create', 'hr_training') && staff_cant('edit', 'hr_training') && !$is_instructor) {
             access_denied('hr_training');
         }
         $date   = $this->input->post('date');
@@ -503,6 +531,54 @@ class Training extends AdminController
             }
         } catch (Exception $e) {
             log_activity('HR Training enrollment email failed: ' . $e->getMessage());
+        }
+    }
+
+    // Emails every currently enrolled participant AND the instructor (staff or
+    // external, same two-case resolution _notify_instructor_assigned() already
+    // uses) that this training has been cancelled - fired once, right on the
+    // status transition into 'cancelled' (see edit() above). Wrapped in
+    // try/catch for the same reason every other sender here is - a
+    // notification hiccup must never break the save that triggered it.
+    private function _notify_training_cancelled($training_id)
+    {
+        try {
+            $training = $this->Training_model->get($training_id);
+            if (!$training) return;
+
+            // {recipient_name} is deliberately left out of this render() call - it's
+            // filled in per-recipient below via a plain str_replace on the already-
+            // rendered body, since render() would otherwise substitute it away
+            // (with an empty value) before each recipient's name is known.
+            $tpl = $this->Email_templates_model->render('training_cancelled', [
+                '{training_title}' => $training->title,
+                '{venue}'          => $training->venue ?: '-',
+                '{schedule}'       => $this->_training_schedule_label($training_id, $training),
+            ]);
+            $link = admin_url('hr_module/training/view/' . $training_id);
+
+            // get_participants() already carries each participant's own email/name
+            // (joined from hr_employees), so no separate lookup is needed here.
+            foreach ($this->Training_model->get_participants($training_id) as $p) {
+                if (empty($p->email)) continue;
+                $body = str_replace('{recipient_name}', trim($p->first_name . ' ' . $p->last_name), $tpl->body);
+                $this->Hr_module_model->send_employee_email($p->email, $tpl->subject, $body, $link);
+            }
+
+            if ($training->instructor_id) {
+                $staff = $this->db->select('email, CONCAT(firstname," ",lastname) as name')
+                    ->where('staffid', $training->instructor_id)
+                    ->get(db_prefix() . 'staff')->row();
+                if ($staff && !empty($staff->email)) {
+                    $body = str_replace('{recipient_name}', $staff->name, $tpl->body);
+                    $this->Hr_module_model->send_employee_email($staff->email, $tpl->subject, $body, $link);
+                }
+            } elseif (!empty($training->trainer) && !empty($training->external_instructor_email)) {
+                $body = str_replace('{recipient_name}', $training->trainer, $tpl->body);
+                $this->Hr_module_model->send_employee_email($training->external_instructor_email, $tpl->subject, $body, null);
+            }
+        } catch (Exception $e) {
+            log_activity('HR Training cancellation email failed: ' . $e->getMessage());
         }
     }
 }

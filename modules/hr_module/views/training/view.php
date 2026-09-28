@@ -135,7 +135,7 @@ sort($participant_departments);
                 <option value="absent">Absent</option>
                 <option value="partial">Partial</option>
               </select>
-              <?php if (staff_can('edit','hr_training') && $training->status !== 'cancelled'): ?>
+              <?php if ($can_mark_attendance && $training->status !== 'cancelled'): ?>
               <button class="btn btn-primary" data-toggle="modal" data-target="#enrollModal">
                 <i class="fa fa-user-plus tw-mr-1"></i><?php echo _l('hr_training_enroll'); ?>
               </button>
@@ -185,7 +185,7 @@ sort($participant_departments);
                          class="tw-text-neutral-500" title="<?php echo _l('hr_edit'); ?>">
                         <i class="fa fa-pencil-alt"></i>
                       </a>
-                      <?php if (staff_can('edit','hr_training')): ?>
+                      <?php if ($can_mark_attendance): ?>
                       <a href="<?php echo admin_url('hr_module/training/remove_participant/'.$training->id.'/'.$p->employee_id); ?>"
                          class="tw-text-neutral-500 _confirm_delete" data-toggle="tooltip" title="Remove">
                         <i class="fa fa-user-times"></i>

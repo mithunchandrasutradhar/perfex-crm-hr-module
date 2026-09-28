@@ -300,6 +300,12 @@ class Email_templates_model extends App_Model
                 'placeholders' => '{employee_name}, {training_title}, {instructor_name}, {venue}, {schedule}, {description}',
                 'body' => "Hi {employee_name},\n\nYou have been enrolled in the following training:\n\nTraining: {training_title}\nInstructor: {instructor_name}\nVenue: {venue}\nDate & Time: {schedule}\nDescription: {description}",
             ],
+            'training_cancelled' => [
+                'name' => 'Training: Cancelled (to Participants & Instructor)',
+                'subject' => 'Training Cancelled: {training_title}',
+                'placeholders' => '{recipient_name}, {training_title}, {venue}, {schedule}',
+                'body' => "Hi {recipient_name},\n\nPlease be informed that the following training has been cancelled:\n\nTraining: {training_title}\nVenue: {venue}\nDate & Time: {schedule}",
+            ],
             'holiday_reminder' => [
                 'name' => 'Holiday Reminder (Broadcast, Day Before)',
                 'subject' => 'Holiday Notice: {holiday_name} on {day_name}, {date}',
