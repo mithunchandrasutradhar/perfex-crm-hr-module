@@ -422,13 +422,25 @@ sort($participant_departments);
     </div>
     <div class="modal-body">
       <p class="text-muted">Select employees to enroll. Already enrolled employees are excluded.</p>
+      <div class="form-group select-placeholder">
+        <label class="tw-text-sm">Select Whole Department(s)
+          <i class="fa fa-info-circle text-muted" data-toggle="tooltip" title="Picking a department checks every not-yet-enrolled employee from it below - individual selections can still be adjusted afterward."></i>
+        </label>
+        <select id="enroll-department" class="selectpicker" multiple data-width="100%"
+                data-live-search="true" data-actions-box="true"
+                data-none-selected-text="<?php echo _l('hr_select'); ?>">
+          <?php foreach ($departments as $d): ?>
+          <option value="<?php echo $d->id; ?>"><?php echo htmlspecialchars($d->name); ?></option>
+          <?php endforeach; ?>
+        </select>
+      </div>
       <div class="form-group select-placeholder tw-mb-0">
         <select id="enroll-select" class="selectpicker" multiple data-width="100%"
                 data-live-search="true" data-actions-box="true"
                 data-none-selected-text="<?php echo _l('hr_select'); ?>">
           <?php foreach ($employees as $eid => $ename): ?>
           <?php if (in_array($eid, $enrolled_ids)) continue; ?>
-          <option value="<?php echo $eid; ?>"><?php echo htmlspecialchars($ename); ?></option>
+          <option value="<?php echo $eid; ?>" data-department="<?php echo (int) ($employee_departments[$eid] ?? 0); ?>"><?php echo htmlspecialchars($ename); ?></option>
           <?php endforeach; ?>
         </select>
       </div>
@@ -622,6 +634,22 @@ $(function(){
                 mainWrapperHeightFix();
             }
         }, 300);
+    });
+
+    // Picking one or more departments auto-checks every one of their
+    // not-yet-enrolled employee options already in #enroll-select -
+    // individual picks can still be added/removed afterward before actually
+    // enrolling.
+    $('#enroll-department').on('change', function(){
+        var deptIds = $(this).val() || [];
+        if (!deptIds.length) return;
+        var ids = $('#enroll-select').val() || [];
+        var selector = deptIds.map(function(d){ return '[data-department="' + d + '"]'; }).join(', ');
+        $('#enroll-select option').filter(selector).each(function(){
+            var v = $(this).val();
+            if (ids.indexOf(v) === -1) ids.push(v);
+        });
+        $('#enroll-select').val(ids).selectpicker('refresh');
     });
 
     $('#enroll-btn').on('click', function(){

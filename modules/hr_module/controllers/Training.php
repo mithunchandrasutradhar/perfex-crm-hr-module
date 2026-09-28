@@ -106,6 +106,15 @@ class Training extends AdminController
         $data['training']      = $training;
         $data['participants']  = $this->Training_model->get_participants($id);
         $data['employees']     = $this->Hr_module_model->get_active_employees_dropdown();
+        // For the Enroll modal's "select a whole department at once" option -
+        // a small supplementary map, kept separate from the shared
+        // get_active_employees_dropdown() (used elsewhere) rather than
+        // changing what that method returns.
+        $this->load->model('hr_module/Departments_model');
+        $data['departments'] = $this->Departments_model->get_active();
+        $emp_dept_rows = $this->db->select('id, department_id')
+            ->where('status', 1)->get(db_prefix() . 'hr_employees')->result();
+        $data['employee_departments'] = array_column($emp_dept_rows, 'department_id', 'id');
         $data['is_instructor'] = $is_instructor;
         $data['own_emp_id']    = $own_emp_id;
         $data['can_mark_attendance'] = staff_can('edit', 'hr_training') || $is_instructor;

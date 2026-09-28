@@ -16,11 +16,14 @@ if (!empty($filters['from_date'])) $filters['from_date'] = to_sql_date($filters[
 if (!empty($filters['to_date']))   $filters['to_date']   = to_sql_date($filters['to_date']);
 
 if (!is_admin() && !staff_can('view', 'hr_training')) {
+    // Both checks are applied together (OR'd in the model) rather than one
+    // exclusively - a 'view_department' viewer who is also personally the
+    // instructor/a participant must still see that training even if nobody
+    // from their department happens to be enrolled in it yet.
     if (staff_can('view_department', 'hr_training')) {
         $filters['department_id'] = hr_get_own_department_id();
-    } else {
-        $filters['own_or_instructor'] = ['employee_id' => hr_get_own_employee_id(), 'staff_id' => get_staff_user_id()];
     }
+    $filters['own_or_instructor'] = ['employee_id' => hr_get_own_employee_id(), 'staff_id' => get_staff_user_id()];
 }
 
 // The DataTable's own search box - rows here are built manually (below)

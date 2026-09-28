@@ -48,19 +48,29 @@ class Performance_model extends App_Model
             ->join(db_prefix() . 'staff s', 's.staffid = t.assigned_by', 'left')
             ->join(db_prefix() . $this->sub_targets_table . ' st', 'st.target_id = t.id', 'left');
 
-        // Self-service (no module-wide "view"): only targets assigned to them, or targets
-        // containing a sub-target they've been named an evaluator on.
+        // Self-service (no module-wide "view"): only targets assigned to them, targets
+        // containing a sub-target they've been named an evaluator on, or (for a
+        // 'view_department' viewer) targets belonging to their own department -
+        // OR'd together rather than picked exclusively, so someone who is BOTH a
+        // department-level viewer AND personally the employee/an evaluator on a
+        // target from a different department doesn't lose visibility into it.
+        $visibility_conditions = [];
         if (!empty($filters['own_or_evaluator'])) {
             $own = $filters['own_or_evaluator'];
             $this->db->join(db_prefix() . $this->evaluators_table . ' ev', 'ev.sub_target_id = st.id', 'left');
-            $this->db->group_start()
-                ->where('t.employee_id', $own['employee_id'])
-                ->or_where('ev.staff_id', $own['staff_id'])
-                ->group_end();
+            $visibility_conditions[] = '(t.employee_id = ' . (int) $own['employee_id'] . ' OR ev.staff_id = ' . (int) $own['staff_id'] . ')';
         } elseif (!empty($filters['employee_id'])) {
             $this->db->where('t.employee_id', $filters['employee_id']);
         }
+        if (!empty($filters['scope_department_id'])) {
+            $visibility_conditions[] = 'e.department_id = ' . (int) $filters['scope_department_id'];
+        }
+        if ($visibility_conditions) {
+            $this->db->where('(' . implode(' OR ', $visibility_conditions) . ')', null, false);
+        }
 
+        // The page's own department filter dropdown (independent of the
+        // permission-scoping above) - a plain AND-narrow, untouched.
         if (!empty($filters['department_id'])) $this->db->where('e.department_id', $filters['department_id']);
         if (!empty($filters['status']))        $this->db->where('st.status', $filters['status']);
         if (!empty($filters['year']))          $this->db->where('YEAR(t.created_at)', $filters['year']);

@@ -11,12 +11,17 @@ foreach (['employee_id', 'department_id', 'status', 'year'] as $key) {
 }
 
 if (!is_admin() && !staff_can('view', 'hr_performance')) {
+    // Both checks are applied together (OR'd in the model via scope_department_id)
+    // rather than one exclusively - a 'view_department' viewer who is also
+    // personally the target's employee or an evaluator must still see it even if
+    // it belongs to a different department. Kept separate from the page's own
+    // $filters['department_id'] (untouched here), which stays a plain AND-narrow
+    // for whoever's allowed to use that filter dropdown.
     if (staff_can('view_department', 'hr_performance')) {
-        $filters['department_id'] = hr_get_own_department_id();
-    } else {
-        $filters['own_or_evaluator'] = ['employee_id' => hr_get_own_employee_id(), 'staff_id' => get_staff_user_id()];
-        unset($filters['employee_id']);
+        $filters['scope_department_id'] = hr_get_own_department_id();
     }
+    $filters['own_or_evaluator'] = ['employee_id' => hr_get_own_employee_id(), 'staff_id' => get_staff_user_id()];
+    unset($filters['employee_id']);
 }
 
 // The DataTable's own search box - rows here are built manually (below)

@@ -117,24 +117,32 @@ class Training_model extends App_Model
                 ->group_end();
         }
 
-        // Self-service (no module-wide "view"): trainings they're enrolled in, or
-        // trainings they've been picked as the instructor for.
-        // Note: the raw EXISTS(...) string needs escape=false, otherwise CI's
+        // Self-service (no module-wide "view"): trainings they're enrolled in, trainings
+        // they've been picked as the instructor for, or (for a 'view_department' viewer)
+        // trainings with a participant from their department - OR'd together rather than
+        // picked exclusively, so someone who is BOTH a department-level viewer AND
+        // personally the instructor/participant on a training doesn't lose visibility
+        // into it just because nobody from their department happens to be enrolled yet.
+        // Note: the raw EXISTS(...) strings need escape=false, otherwise CI's
         // identifier-protection mangles the subquery alias (p2 -> `tblp2`, since
         // db_prefix() is "tbl") and the query fails.
+        $visibility_conditions = [];
         if (!empty($filters['own_or_instructor'])) {
             $own = $filters['own_or_instructor'];
-            $this->db->group_start()
-                ->where("EXISTS (SELECT 1 FROM " . db_prefix() . $this->parts_table . " p2 WHERE p2.training_id = t.id AND p2.employee_id = " . (int) $own['employee_id'] . ")", null, false)
-                ->or_where('t.instructor_id', $own['staff_id'])
-                ->group_end();
-        } elseif (!empty($filters['participant_employee_id'])) {
-            $this->db->where('EXISTS (SELECT 1 FROM ' . db_prefix() . $this->parts_table . ' p2 WHERE p2.training_id = t.id AND p2.employee_id = ' . (int) $filters['participant_employee_id'] . ')', null, false);
-        } elseif (!empty($filters['department_id'])) {
+            $visibility_conditions[] = '(EXISTS (SELECT 1 FROM ' . db_prefix() . $this->parts_table . ' p2 WHERE p2.training_id = t.id AND p2.employee_id = ' . (int) $own['employee_id'] . ')'
+                . ' OR t.instructor_id = ' . (int) $own['staff_id'] . ')';
+        }
+        if (!empty($filters['participant_employee_id'])) {
+            $visibility_conditions[] = 'EXISTS (SELECT 1 FROM ' . db_prefix() . $this->parts_table . ' p2 WHERE p2.training_id = t.id AND p2.employee_id = ' . (int) $filters['participant_employee_id'] . ')';
+        }
+        if (!empty($filters['department_id'])) {
             // 'view_department': trainings with at least one participant from this department.
-            $this->db->where('EXISTS (SELECT 1 FROM ' . db_prefix() . $this->parts_table . ' p2
+            $visibility_conditions[] = 'EXISTS (SELECT 1 FROM ' . db_prefix() . $this->parts_table . ' p2
                 JOIN ' . db_prefix() . 'hr_employees e2 ON e2.id = p2.employee_id
-                WHERE p2.training_id = t.id AND e2.department_id = ' . (int) $filters['department_id'] . ')', null, false);
+                WHERE p2.training_id = t.id AND e2.department_id = ' . (int) $filters['department_id'] . ')';
+        }
+        if ($visibility_conditions) {
+            $this->db->where('(' . implode(' OR ', $visibility_conditions) . ')', null, false);
         }
 
         return $this->db->order_by('t.start_date DESC')->get()->result();
