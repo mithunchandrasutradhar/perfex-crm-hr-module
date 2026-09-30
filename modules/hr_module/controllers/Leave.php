@@ -164,10 +164,25 @@ class Leave extends AdminController
         $balance_rows = $own_only
             ? ($own_emp_id ? $this->Leave_model->get_employee_balances($own_emp_id, $year) : [])
             : $this->Leave_model->get_all_balances($year);
+        // used_days is a sum of each contributing request's already-rounded
+        // day_value, which drifts by a couple of minutes once any hourly-type
+        // leave day is involved - same rounding-drift bug already fixed on the
+        // dashboard widget, leave balances list, and leave view sidebar. Recompute
+        // from the exact hour_start/hour_end (batched: one query for every
+        // employee/type combination on this page, not one per row).
+        $days_by_emp_type = $this->Leave_model->get_approved_days_for_balances(
+            array_column($balance_rows, 'employee_id'),
+            array_column($balance_rows, 'leave_type_id'),
+            $year
+        );
         $balances_map = [];
         foreach ($balance_rows as $b) {
+            $hpd = ((float) ($b->hours_per_day ?? 0)) > 0 ? (float) $b->hours_per_day : 8.0;
+            $day_rows = $days_by_emp_type[$b->employee_id][$b->leave_type_id] ?? [];
+            $used_minutes = hr_leave_days_exact_minutes($day_rows, $hpd);
+            $allocated_minutes = ((float) $b->allocated_days + (float) $b->carry_forward_days) * $hpd * 60;
             $balances_map[$b->employee_id . '_' . $b->leave_type_id] =
-                (float) $b->allocated_days + (float) $b->carry_forward_days - (float) $b->used_days;
+                ($allocated_minutes - $used_minutes) / ($hpd * 60);
         }
         $data['balances_json'] = json_encode($balances_map);
 
@@ -602,7 +617,13 @@ class Leave extends AdminController
         $balance = $this->Leave_model->get_balance($emp_id, $type_id, $year);
         $remaining = 0;
         if ($balance) {
-            $remaining = $balance->allocated_days + $balance->carry_forward_days - $balance->used_days;
+            // Same exact-minutes fix as apply()'s preloaded balances_json above -
+            // used_days alone drifts once any hourly-type leave day is involved.
+            $leave_type = $this->Leave_model->get_type($type_id);
+            $hpd = ($leave_type && (float) $leave_type->hours_per_day > 0) ? (float) $leave_type->hours_per_day : 8.0;
+            $used_minutes = $this->Leave_model->get_used_minutes_exact($emp_id, $type_id, $year, $hpd);
+            $allocated_minutes = ((float) $balance->allocated_days + (float) $balance->carry_forward_days) * $hpd * 60;
+            $remaining = ($allocated_minutes - $used_minutes) / ($hpd * 60);
         }
         echo json_encode(['balance' => $balance, 'remaining' => $remaining]);
     }

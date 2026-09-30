@@ -699,7 +699,7 @@ class Leave_model extends App_Model
     public function get_employee_balances($employee_id, $year = null)
     {
         if (!$year) $year = date('Y');
-        $this->db->select('b.*, lt.name as leave_type_name, lt.days_per_year, lt.carry_forward')
+        $this->db->select('b.*, lt.name as leave_type_name, lt.days_per_year, lt.carry_forward, lt.hours_per_day')
             ->from($this->tbl_balances . ' b')
             ->join($this->tbl_types . ' lt', 'lt.id = b.leave_type_id', 'left')
             ->where('b.employee_id', $employee_id)
