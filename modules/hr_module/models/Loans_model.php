@@ -14,6 +14,21 @@ class Loans_model extends App_Model
         $this->_ensure_deduction_table();
         $this->_ensure_adjustment_schema();
         $this->_ensure_repayment_type_schema();
+        $this->_ensure_deduction_start_schema();
+    }
+
+    // Lazily adds the installment "deduction start period" - same self-contained
+    // migration style as the other _ensure_*_schema() methods. NULL on every
+    // existing loan means "no restriction" (today's behavior: deduct from
+    // whichever period payroll asks about), so nothing changes for a loan until
+    // a start period is explicitly set via approve() or update_deduction_start().
+    private function _ensure_deduction_start_schema()
+    {
+        $col = $this->db->query("SHOW COLUMNS FROM `" . db_prefix() . $this->table . "` LIKE 'deduction_start_month'")->num_rows();
+        if ($col === 0) {
+            $this->db->query("ALTER TABLE `" . db_prefix() . $this->table . "` ADD COLUMN `deduction_start_month` TINYINT UNSIGNED DEFAULT NULL AFTER `carry_forward_amount`");
+            $this->db->query("ALTER TABLE `" . db_prefix() . $this->table . "` ADD COLUMN `deduction_start_year` SMALLINT UNSIGNED DEFAULT NULL AFTER `deduction_start_month`");
+        }
     }
 
     // Lazily adds what the lump-sum repayment type needs, the same
@@ -360,21 +375,70 @@ class Loans_model extends App_Model
             ->get()->result();
     }
 
-    public function approve($id, $disbursement_date = null)
+    // $start_month/$start_year only apply to installment-type loans (lump-sum
+    // already has its own due_month/due_year gate in _pending_loan_deductions()).
+    // Left null/invalid, the loan gets no start restriction - deducted from
+    // whichever period payroll next asks about, same as before this feature.
+    public function approve($id, $disbursement_date = null, $start_month = null, $start_year = null)
     {
         $loan = $this->db->where('id', $id)->get(db_prefix() . $this->table)->row();
         if (!$loan || $loan->status !== 'pending') {
             return ['success' => false, 'message' => 'Only pending loans can be approved.'];
         }
-        $this->db->where('id', $id)->update(db_prefix() . $this->table, [
+        $update = [
             'status'            => 'approved',
             'approved_by'       => get_staff_user_id(),
             'approved_at'       => date('Y-m-d H:i:s'),
             'disbursement_date' => $disbursement_date ?: date('Y-m-d'),
             'updated_at'        => date('Y-m-d H:i:s'),
-        ]);
+        ];
+        if ($loan->repayment_type === 'installment' && $this->_valid_due_period($start_month, $start_year)) {
+            $update['deduction_start_month'] = (int) $start_month;
+            $update['deduction_start_year']  = (int) $start_year;
+        }
+        $this->db->where('id', $id)->update(db_prefix() . $this->table, $update);
         log_activity('HR Loan Approved [ID: ' . $id . ', Amount: ' . $loan->amount . ']');
         return ['success' => true, 'message' => _l('hr_loan_approved_msg')];
+    }
+
+    // Unlike adjust_amount(), this is available on an already approved/active
+    // loan too - not just while pending - because the whole point is fixing an
+    // installment loan whose deduction window turned out wrong (e.g. approved
+    // after a payroll for its start period was already generated, or approved
+    // before this feature existed with no start restriction at all - NULL means
+    // "applies to any period", so the old restriction could have reached ANY
+    // already-generated draft, not just one specific month). Resyncs every
+    // still-draft payroll this employee has, not just the new start period.
+    public function update_deduction_start($id, $month, $year)
+    {
+        $loan = $this->db->where('id', $id)->get(db_prefix() . $this->table)->row();
+        if (!$loan || !in_array($loan->status, ['approved', 'active'], true)) {
+            return ['success' => false, 'message' => 'Loan is not in an approvable state.'];
+        }
+        if ($loan->repayment_type !== 'installment') {
+            return ['success' => false, 'message' => 'Only installment-type loans have a deduction start period.'];
+        }
+        if (!$this->_valid_due_period($month, $year)) {
+            return ['success' => false, 'message' => 'Choose a valid start month (this month or later).'];
+        }
+
+        $this->db->where('id', $id)->update(db_prefix() . $this->table, [
+            'deduction_start_month' => (int) $month,
+            'deduction_start_year'  => (int) $year,
+            'updated_at'            => date('Y-m-d H:i:s'),
+        ]);
+
+        $this->load->model('hr_module/Payroll_model');
+        $drafts = $this->db->select('pay_month, pay_year')
+            ->where('employee_id', $loan->employee_id)
+            ->where('status', 'draft')
+            ->get(db_prefix() . 'hr_payroll')->result();
+        foreach ($drafts as $d) {
+            $this->Payroll_model->sync_loan_deduction_for_period($loan->employee_id, (int) $d->pay_month, (int) $d->pay_year);
+        }
+
+        log_activity('HR Loan Deduction Start Changed [ID: ' . $id . ', ' . (int) $month . '/' . (int) $year . ']');
+        return ['success' => true, 'message' => 'Deduction start period updated.'];
     }
 
     public function reject($id, $reason = '')

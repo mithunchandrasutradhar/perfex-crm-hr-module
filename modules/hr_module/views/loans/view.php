@@ -218,6 +218,16 @@ if (!isset($adjustments)) $adjustments = [];
               <?php if ($loan->approved_by_name): ?>
               <tr><td>Approved By</td><td><?php echo htmlspecialchars($loan->approved_by_name); ?></td></tr>
               <?php endif; ?>
+              <?php if (!$is_lump_sum && in_array($loan->status, ['approved','active'])): ?>
+              <tr><td>Deduction Starts</td><td>
+                <?php echo $loan->deduction_start_month && $loan->deduction_start_year
+                    ? date('F Y', mktime(0,0,0,(int)$loan->deduction_start_month,1,(int)$loan->deduction_start_year))
+                    : '<span class="text-muted">No restriction</span>'; ?>
+                <?php if (staff_can('edit', 'hr_loans')): ?>
+                <a href="#" data-toggle="modal" data-target="#editDeductionStartModal" title="Change"><i class="fa fa-pencil tw-ml-1"></i></a>
+                <?php endif; ?>
+              </td></tr>
+              <?php endif; ?>
               <?php if ($loan->attachment): ?>
               <tr><td>Attachment</td><td><a href="<?php echo admin_url('hr_module/loans/download/'.$loan->id); ?>" target="_blank"><i class="fa fa-file tw-mr-1"></i>View</a></td></tr>
               <?php endif; ?>
@@ -558,6 +568,36 @@ if (!isset($adjustments)) $adjustments = [];
           <div class="input-group-addon"><i class="fa-regular fa-calendar calendar-icon"></i></div>
         </div>
       </div>
+      <?php if (!$is_lump_sum): $def = $deduction_start_default ?? ['month' => (int) date('n'), 'year' => (int) date('Y')]; ?>
+      <div class="row">
+        <div class="col-md-6">
+          <div class="form-group select-placeholder">
+            <label>Start Deduction From</label>
+            <select name="deduction_start_month" class="selectpicker" data-width="100%">
+              <?php for ($m = 1; $m <= 12; $m++): ?>
+              <option value="<?php echo $m; ?>" <?php echo $m === $def['month'] ? 'selected' : ''; ?>>
+                <?php echo date('F', mktime(0,0,0,$m,1)); ?>
+              </option>
+              <?php endfor; ?>
+            </select>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="form-group select-placeholder">
+            <label>Year</label>
+            <select name="deduction_start_year" class="selectpicker" data-width="100%">
+              <?php for ($y = $def['year'] - 1; $y <= $def['year'] + 1; $y++): ?>
+              <option value="<?php echo $y; ?>" <?php echo $y === $def['year'] ? 'selected' : ''; ?>><?php echo $y; ?></option>
+              <?php endfor; ?>
+            </select>
+          </div>
+        </div>
+      </div>
+      <p class="text-muted tw-text-sm tw-mb-0">
+        <i class="fa fa-info-circle tw-mr-1"></i>
+        The monthly installment won't be deducted from any payroll period before this one.
+      </p>
+      <?php endif; ?>
     </div>
     <div class="modal-footer">
       <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
@@ -566,6 +606,57 @@ if (!isset($adjustments)) $adjustments = [];
     <?php echo form_close(); ?>
   </div></div>
 </div>
+
+<?php if (!$is_lump_sum && in_array($loan->status, ['approved','active']) && staff_can('edit', 'hr_loans')):
+    $edit_def = [
+        'month' => (int) ($loan->deduction_start_month ?: ($deduction_start_default['month'] ?? date('n'))),
+        'year'  => (int) ($loan->deduction_start_year  ?: ($deduction_start_default['year']  ?? date('Y'))),
+    ];
+?>
+<!-- Edit Deduction Start Modal -->
+<div class="modal fade" id="editDeductionStartModal" tabindex="-1">
+  <div class="modal-dialog"><div class="modal-content">
+    <div class="modal-header"><button class="close" data-dismiss="modal"><span>&times;</span></button>
+      <h4 class="modal-title">Change Deduction Start</h4></div>
+    <?php echo form_open(admin_url('hr_module/loans/set_deduction_start/'.$loan->id)); ?>
+    <div class="modal-body">
+      <div class="row">
+        <div class="col-md-6">
+          <div class="form-group select-placeholder">
+            <label>Month</label>
+            <select name="deduction_start_month" class="selectpicker" data-width="100%">
+              <?php for ($m = 1; $m <= 12; $m++): ?>
+              <option value="<?php echo $m; ?>" <?php echo $m === $edit_def['month'] ? 'selected' : ''; ?>>
+                <?php echo date('F', mktime(0,0,0,$m,1)); ?>
+              </option>
+              <?php endfor; ?>
+            </select>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="form-group select-placeholder">
+            <label>Year</label>
+            <select name="deduction_start_year" class="selectpicker" data-width="100%">
+              <?php for ($y = $edit_def['year'] - 1; $y <= $edit_def['year'] + 1; $y++): ?>
+              <option value="<?php echo $y; ?>" <?php echo $y === $edit_def['year'] ? 'selected' : ''; ?>><?php echo $y; ?></option>
+              <?php endfor; ?>
+            </select>
+          </div>
+        </div>
+      </div>
+      <p class="text-muted tw-text-sm tw-mb-0">
+        <i class="fa fa-info-circle tw-mr-1"></i>
+        Any already-generated draft payroll for the old or new start period is recalculated immediately.
+      </p>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+      <button type="submit" class="btn btn-success"><i class="fa fa-check tw-mr-1"></i>Save</button>
+    </div>
+    <?php echo form_close(); ?>
+  </div></div>
+</div>
+<?php endif; ?>
 
 <!-- Reject Modal -->
 <div class="modal fade" id="rejectModal" tabindex="-1">

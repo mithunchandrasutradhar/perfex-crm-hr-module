@@ -238,6 +238,10 @@ class Loans extends AdminController
         $data['can_manage_deductions'] = staff_can('edit', 'hr_loans') || staff_can('create', 'hr_loans');
         $data['can_adjust']  = staff_can('edit', 'hr_loans') && $this->Loans_model->can_adjust($loan);
         $data['adjustments'] = $this->Loans_model->get_adjustments($id);
+        if ($loan->repayment_type === 'installment') {
+            $this->load->model('hr_module/Payroll_model');
+            $data['deduction_start_default'] = $this->Payroll_model->get_next_unscheduled_period($loan->employee_id);
+        }
         $this->load->view('hr_module/loans/view', $data);
     }
 
@@ -259,8 +263,10 @@ class Loans extends AdminController
     public function approve($id)
     {
         if (staff_cant('edit', 'hr_loans')) access_denied('hr_loans');
-        $date   = to_sql_date($this->input->post('disbursement_date')) ?: date('Y-m-d');
-        $result = $this->Loans_model->approve($id, $date);
+        $date         = to_sql_date($this->input->post('disbursement_date')) ?: date('Y-m-d');
+        $start_month  = $this->input->post('deduction_start_month');
+        $start_year   = $this->input->post('deduction_start_year');
+        $result = $this->Loans_model->approve($id, $date, $start_month, $start_year);
         if ($result['success']) {
             if ($this->Hr_module_model->notifications_enabled('notify_loan_approve')) {
                 $this->_send_loan_status_email($id, 'approved');
@@ -269,6 +275,19 @@ class Loans extends AdminController
         } else {
             set_alert('danger', $result['message']);
         }
+        redirect(admin_url('hr_module/loans/view/' . $id));
+    }
+
+    public function set_deduction_start($id)
+    {
+        if (staff_cant('edit', 'hr_loans')) access_denied('hr_loans');
+        $result = $this->Loans_model->update_deduction_start(
+            $id,
+            $this->input->post('deduction_start_month'),
+            $this->input->post('deduction_start_year')
+        );
+        if ($result['success']) set_alert('success', $result['message']);
+        else                    set_alert('danger',  $result['message']);
         redirect(admin_url('hr_module/loans/view/' . $id));
     }
 

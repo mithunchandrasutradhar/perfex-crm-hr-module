@@ -583,6 +583,28 @@ class Payroll_model extends App_Model
         ]);
     }
 
+    // First period (month/year, current month or later) that has no hr_payroll row
+    // (draft or paid) yet for this employee - used as the smart default "Start Deduction
+    // From" value on the loan Approve modal, so approving a loan never silently lands its
+    // first installment on a period that's already been generated/paid.  Capped at 24
+    // months out purely as a sanity bound against an unexpected run of existing rows.
+    public function get_next_unscheduled_period($employee_id)
+    {
+        $month = (int) date('n');
+        $year  = (int) date('Y');
+        for ($i = 0; $i < 24; $i++) {
+            $exists = $this->db
+                ->where('employee_id', $employee_id)
+                ->where('pay_month',   $month)
+                ->where('pay_year',    $year)
+                ->count_all_results(db_prefix() . $this->table) > 0;
+            if (!$exists) return ['month' => $month, 'year' => $year];
+            $month++;
+            if ($month > 12) { $month = 1; $year++; }
+        }
+        return ['month' => $month, 'year' => $year];
+    }
+
     // Recomputes an already-generated (draft) payroll's overtime amount/day count and the
     // gross/tax/net figures that depend on it, using the same rule generate() uses. Called
     // after an overtime request gets approved, so a draft payroll's shown numbers keep
@@ -755,6 +777,12 @@ class Payroll_model extends App_Model
                 $due_ym = (int) $loan->due_year * 100 + (int) $loan->due_month;
                 $this_ym = (int) $year * 100 + (int) $month;
                 $amount = ($loan->due_month && $this_ym >= $due_ym) ? round((float) $loan->outstanding, 2) : 0.0;
+                $clears_carry = false;
+            } elseif ($loan->deduction_start_month && $loan->deduction_start_year
+                && ((int) $year * 100 + (int) $month) < ((int) $loan->deduction_start_year * 100 + (int) $loan->deduction_start_month)) {
+                // Approved with a future deduction start (e.g. approved after a payroll
+                // for an earlier period was already generated) - not due yet this period.
+                $amount = 0.0;
                 $clears_carry = false;
             } else {
                 $amount = round(min((float) $loan->monthly_installment + (float) $loan->carry_forward_amount, (float) $loan->outstanding), 2);
