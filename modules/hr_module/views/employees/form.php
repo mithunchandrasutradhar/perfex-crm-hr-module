@@ -216,6 +216,25 @@ function ev($obj, $key, $default = '') {
                   </select>
                 </div>
               </div>
+              <div class="col-md-4 col-sm-6">
+                <div class="form-group select-placeholder">
+                  <label style="color:inherit;opacity:1">
+                    <?php echo _l('hr_employee_default_shift'); ?>
+                    <?php if ($restrict_sensitive_fields): ?>
+                    <i class="fa-solid fa-circle-info tw-text-neutral-400" data-toggle="tooltip" data-title="<?php echo _l('hr_employee_default_shift_hint'); ?>" style="cursor:help;"></i>
+                    <?php endif; ?>
+                  </label>
+                  <select name="default_shift_id" id="emp_default_shift" class="selectpicker" data-width="100%"
+                    <?php echo $restrict_sensitive_fields ? 'disabled' : ''; ?>>
+                    <option value=""><?php echo _l('hr_select'); ?></option>
+                    <?php foreach ($shift_types as $st): ?>
+                    <option value="<?php echo $st->id; ?>" <?php if($is_edit && $e->default_shift_id == $st->id) echo 'selected'; ?>>
+                      <?php echo htmlspecialchars($st->name); ?>
+                    </option>
+                    <?php endforeach; ?>
+                  </select>
+                </div>
+              </div>
             </div>
 
             <?php $mapped_device_ids = array_map(function($m) { return (int) $m->device_id; }, $device_mappings); ?>

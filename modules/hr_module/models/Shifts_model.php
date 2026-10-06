@@ -117,6 +117,9 @@ class Shifts_model extends App_Model
         if ($this->db->where('shift_type_id', $id)->count_all_results($this->tbl_assignments) > 0) {
             return ['success' => false, 'message' => 'This shift is already assigned to employees and cannot be deleted.'];
         }
+        if ($this->db->where('default_shift_id', $id)->count_all_results(db_prefix() . 'hr_employees') > 0) {
+            return ['success' => false, 'message' => 'This shift is set as an employee\'s default shift and cannot be deleted.'];
+        }
         $this->db->where('id', $id)->delete($this->tbl_types);
         log_activity('HR Shift Type Deleted [ID: ' . $id . ']');
         return ['success' => true];
@@ -351,13 +354,15 @@ class Shifts_model extends App_Model
             $shift_type_by_employee[$a->employee_id] = (int) $a->shift_type_id;
         }
 
-        $employees = $this->db->select('id, first_name, last_name, employee_code')
+        $employees = $this->db->select('id, first_name, last_name, employee_code, default_shift_id')
             ->where('status', 1)
             ->order_by('first_name', 'ASC')
             ->get(db_prefix() . 'hr_employees')->result();
 
         foreach ($employees as $e) {
-            $type_id = $shift_type_by_employee[$e->id] ?? 0;
+            // An approved request for this date wins; otherwise this employee's
+            // own standing default shift, if set; otherwise the generic bucket.
+            $type_id = $shift_type_by_employee[$e->id] ?? ((int) $e->default_shift_id ?: 0);
             if (!isset($roster[$type_id])) {
                 $type_id = 0; // shift type since deleted/deactivated - fall back to default
             }
@@ -386,13 +391,40 @@ class Shifts_model extends App_Model
             ->get()->row();
     }
 
+    // Same as get_employee_shift_for_date() but falls back to the employee's
+    // standing default_shift_id (Employees > Edit > Work Info) when no approved
+    // request covers this date, instead of returning null. Used everywhere the
+    // actual shift that applies today is needed for its own sake (attendance
+    // start/end time, night-shift detection, the calendar roster, payroll shift
+    // allowances) - NOT by _determine_status()'s holiday/weekly-off/non_working
+    // check, which must keep testing for an actual approved override only, or
+    // every default-shift employee would stop showing non_working on a day off.
+    public function get_employee_effective_shift_for_date($employee_id, $date)
+    {
+        $shift = $this->get_employee_shift_for_date($employee_id, $date);
+        if ($shift) return $shift;
+
+        $emp = $this->db->select('default_shift_id')->where('id', $employee_id)->get(db_prefix() . 'hr_employees')->row();
+        if (!$emp || !$emp->default_shift_id) return null;
+
+        return $this->db->select('id as shift_type_id, name as shift_name, start_time, end_time', false)
+            ->where('id', $emp->default_shift_id)
+            ->get($this->tbl_types)->row();
+    }
+
     // ── Calendar / Payroll helpers ───────────────────────────────────────
 
     // Every approved shift day falling within [$from,$to] (inclusive), with the
-    // employee's name and shift - used for the Official Calendar's shift roster.
+    // employee's name and shift - used for the Official Calendar. Also
+    // synthesizes one range row per employee per contiguous stretch of days in
+    // the window NOT already covered by an approved request, using their
+    // standing default shift - so a shift-fixed employee shows up on the
+    // calendar every working day exactly like an approved request would,
+    // without Holidays::calendar()'s per-day expansion needing to know the
+    // difference between the two.
     public function get_approved_shifts_in_range($from, $to)
     {
-        return $this->db->select('a.employee_id, a.from_date, a.to_date, st.name as shift_name,
+        $rows = $this->db->select('a.employee_id, a.from_date, a.to_date, st.name as shift_name,
                 CONCAT(e.first_name," ",e.last_name) as employee_name, e.employee_code', false)
             ->from($this->tbl_assignments . ' a')
             ->join($this->tbl_types . ' st', 'st.id = a.shift_type_id', 'left')
@@ -401,36 +433,56 @@ class Shifts_model extends App_Model
             ->where('a.from_date <=', $to)
             ->where('a.to_date >=', $from)
             ->get()->result();
-    }
 
-    // Summarizes an employee's approved shift days that fall inside [$from,$to]
-    // (a payroll pay period) as "Night Shift (10), Morning Shift (5)" - clipping
-    // each assignment's range to the period so day counts don't overrun it.
-    public function get_employee_shift_summary($employee_id, $from, $to)
-    {
-        $rows = $this->db->select('st.name as shift_name, a.from_date, a.to_date', false)
-            ->from($this->tbl_assignments . ' a')
-            ->join($this->tbl_types . ' st', 'st.id = a.shift_type_id', 'left')
-            ->where('a.employee_id', $employee_id)
-            ->where('a.status', 'approved')
-            ->where('a.from_date <=', $to)
-            ->where('a.to_date >=', $from)
-            ->get()->result();
-
-        if (empty($rows)) {
-            return '-';
-        }
-
-        $counts = [];
+        $covered = [];
         foreach ($rows as $r) {
             $clip_from = max($r->from_date, $from);
             $clip_to   = min($r->to_date, $to);
-            $days = (strtotime($clip_to) - strtotime($clip_from)) / 86400 + 1;
-            if ($days < 1) continue;
-            $name = $r->shift_name ?: 'Unknown Shift';
-            $counts[$name] = ($counts[$name] ?? 0) + $days;
+            for ($ts = strtotime($clip_from); $ts <= strtotime($clip_to); $ts += 86400) {
+                $covered[$r->employee_id][date('Y-m-d', $ts)] = true;
+            }
         }
 
+        $default_employees = $this->db->select('e.id, e.first_name, e.last_name, e.employee_code,
+                st.name as shift_name', false)
+            ->from(db_prefix() . 'hr_employees e')
+            ->join($this->tbl_types . ' st', 'st.id = e.default_shift_id', 'left')
+            ->where('e.default_shift_id IS NOT NULL')
+            ->where('e.status', 1)
+            ->get()->result();
+
+        $ts_end = strtotime($to);
+        foreach ($default_employees as $emp) {
+            $range_start = null;
+            for ($ts = strtotime($from); $ts <= $ts_end + 86400; $ts += 86400) {
+                $d = $ts <= $ts_end ? date('Y-m-d', $ts) : null;
+                $is_covered = $d && !empty($covered[$emp->id][$d]);
+                if ($d && !$is_covered) {
+                    if ($range_start === null) $range_start = $d;
+                    continue;
+                }
+                if ($range_start !== null) {
+                    $rows[] = (object) [
+                        'employee_id'   => $emp->id,
+                        'from_date'     => $range_start,
+                        'to_date'       => date('Y-m-d', $ts - 86400),
+                        'shift_name'    => $emp->shift_name ?: 'Unknown Shift',
+                        'employee_name' => trim($emp->first_name . ' ' . $emp->last_name),
+                        'employee_code' => $emp->employee_code,
+                    ];
+                    $range_start = null;
+                }
+            }
+        }
+
+        return $rows;
+    }
+
+    // Summarizes an employee's effective shift days that fall inside [$from,$to]
+    // (a payroll pay period) as "Night Shift (10), Morning Shift (5)".
+    public function get_employee_shift_summary($employee_id, $from, $to)
+    {
+        $counts = $this->_shift_day_counts_with_default($employee_id, $from, $to);
         if (empty($counts)) {
             return '-';
         }
@@ -441,10 +493,22 @@ class Shifts_model extends App_Model
         return implode(', ', $parts);
     }
 
-    // Same clipped day-count as get_employee_shift_summary(), but returns the
-    // raw ['Shift Name' => days, ...] array instead of a formatted string -
-    // used by Payroll_model to compute per-shift-type allowances.
+    // Same day-count as get_employee_shift_summary(), but returns the raw
+    // ['Shift Name' => days, ...] array instead of a formatted string - used
+    // by Payroll_model to compute per-shift-type allowances.
     public function get_employee_shift_day_counts($employee_id, $from, $to)
+    {
+        return $this->_shift_day_counts_with_default($employee_id, $from, $to);
+    }
+
+    // Clips each approved assignment's range to the period so day counts
+    // don't overrun it, then attributes any day in the period NOT covered by
+    // an approved assignment to the employee's standing default shift (if
+    // set) - same raw calendar-day counting as an approved assignment already
+    // gets above, no weekend/holiday exclusion added, so both paths count
+    // identically. An employee with no default shift simply gets no entry
+    // for their uncovered days, same as before this existed.
+    private function _shift_day_counts_with_default($employee_id, $from, $to)
     {
         $rows = $this->db->select('st.name as shift_name, a.from_date, a.to_date', false)
             ->from($this->tbl_assignments . ' a')
@@ -456,6 +520,7 @@ class Shifts_model extends App_Model
             ->get()->result();
 
         $counts = [];
+        $covered_days = 0;
         foreach ($rows as $r) {
             $clip_from = max($r->from_date, $from);
             $clip_to   = min($r->to_date, $to);
@@ -463,6 +528,20 @@ class Shifts_model extends App_Model
             if ($days < 1) continue;
             $name = $r->shift_name ?: 'Unknown Shift';
             $counts[$name] = ($counts[$name] ?? 0) + $days;
+            $covered_days += $days;
+        }
+
+        $total_days = (strtotime($to) - strtotime($from)) / 86400 + 1;
+        $remainder  = $total_days - $covered_days;
+        if ($remainder > 0) {
+            $emp = $this->db->select('default_shift_id')->where('id', $employee_id)->get(db_prefix() . 'hr_employees')->row();
+            if ($emp && $emp->default_shift_id) {
+                $default_type = $this->db->select('name')->where('id', $emp->default_shift_id)->get($this->tbl_types)->row();
+                if ($default_type) {
+                    $name = $default_type->name ?: 'Unknown Shift';
+                    $counts[$name] = ($counts[$name] ?? 0) + $remainder;
+                }
+            }
         }
         return $counts;
     }

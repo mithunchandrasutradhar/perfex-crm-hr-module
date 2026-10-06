@@ -163,6 +163,21 @@ if ($CI->db->table_exists(db_prefix() . 'hr_employees')) {
     }
 }
 
+// Upgrade: add default_shift_id - an employee's standing shift (day/evening/
+// night), used as a fallback by Shifts_model::get_employee_effective_shift_for_date()
+// wherever no approved shift request/override covers the date (attendance
+// status, the official calendar roster, and payroll shift allowances). An
+// approved shift request always overrides this for its own date range;
+// nothing about an employee without a default set changes. HR-only - not
+// editable by a view_own-tier employee on their own profile, same as
+// basic_salary/max_loan_amount.
+if ($CI->db->table_exists(db_prefix() . 'hr_employees')) {
+    $col = $CI->db->query("SHOW COLUMNS FROM `" . db_prefix() . "hr_employees` LIKE 'default_shift_id'")->num_rows();
+    if ($col === 0) {
+        $CI->db->query("ALTER TABLE `" . db_prefix() . "hr_employees` ADD COLUMN `default_shift_id` int(11) DEFAULT NULL AFTER `designation_id`");
+    }
+}
+
 // 4. Leave Types
 if (!$CI->db->table_exists(db_prefix() . 'hr_leave_types')) {
     $CI->db->query('CREATE TABLE `' . db_prefix() . 'hr_leave_types` (

@@ -23,7 +23,7 @@ define('HR_MODULE_NAME', 'hr_module');
 // bump this number whenever install.php gains a new guarded table/column, and
 // every site running this module will pick it up automatically on its very
 // next admin page load - no manual reactivation step, ever, on any install.
-define('HR_MODULE_SCHEMA_VERSION', 18);
+define('HR_MODULE_SCHEMA_VERSION', 19);
 
 // ─── Hook registrations ────────────────────────────────────────────────────
 
@@ -835,7 +835,7 @@ function hr_module_auto_mark_absent()
             if (in_array($emp->id, $on_leave)) continue;
             if ($CI->Attendance_model->record_exists($emp->id, $check_date)) continue;
 
-            $shift = $CI->Shifts_model->get_employee_shift_for_date($emp->id, $check_date);
+            $shift = $CI->Shifts_model->get_employee_effective_shift_for_date($emp->id, $check_date);
             if ($shift && $shift->start_time && $shift->end_time) {
                 $crosses_midnight = strtotime($shift->end_time) <= strtotime($shift->start_time);
                 $cutoff_date = $crosses_midnight ? date('Y-m-d', strtotime($check_date) + 86400) : $check_date;

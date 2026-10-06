@@ -72,6 +72,7 @@ function ef($v, $d = '-') { return !empty($v) ? htmlspecialchars($v) : $d; }
                   <tr><th><?php echo _l('hr_department'); ?></th><td><?php echo ef($e->department_name); ?></td></tr>
                   <tr><th><?php echo _l('hr_employee_branch'); ?></th><td><?php echo ef($e->branch_name); ?></td></tr>
                   <tr><th><?php echo _l('hr_designation'); ?></th><td><?php echo ef($e->designation_name); ?></td></tr>
+                  <tr><th><?php echo _l('hr_employee_default_shift'); ?></th><td><?php echo ef($default_shift_name ?? null); ?></td></tr>
                   <tr><th><?php echo _l('hr_employee_joining_date'); ?></th><td><?php echo $e->joining_date ? _d($e->joining_date) : '-'; ?></td></tr>
                   <tr><th><?php echo _l('hr_employee_end_date'); ?></th><td><?php echo $e->end_date ? _d($e->end_date) : '-'; ?></td></tr>
                   <tr><th><?php echo _l('hr_employee_basic_salary'); ?></th><td><?php echo number_format($e->basic_salary, 2); ?></td></tr>

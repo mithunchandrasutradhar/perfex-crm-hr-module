@@ -284,7 +284,7 @@ class Attendance_model extends App_Model
     {
         $CI = &get_instance();
         $CI->load->model('hr_module/Shifts_model');
-        $shift = $CI->Shifts_model->get_employee_shift_for_date($employee_id, $date);
+        $shift = $CI->Shifts_model->get_employee_effective_shift_for_date($employee_id, $date);
         return $shift && $shift->start_time && $shift->end_time && $shift->end_time < $shift->start_time;
     }
 
@@ -308,7 +308,7 @@ class Attendance_model extends App_Model
 
         $CI = &get_instance();
         $CI->load->model('hr_module/Shifts_model');
-        $shift = $CI->Shifts_model->get_employee_shift_for_date($employee_id, $yesterday);
+        $shift = $CI->Shifts_model->get_employee_effective_shift_for_date($employee_id, $yesterday);
 
         $CI->load->model('hr_module/Hr_module_model');
         $grace_hours  = (float) $CI->Hr_module_model->get_setting('night_shift_grace_hours', '4');
@@ -496,7 +496,21 @@ class Attendance_model extends App_Model
                     }
                 }
             }
-            $start_time = $CI->Hr_module_model->get_setting('office_start_time', '09:00');
+            // No approved override for this date (checked above) - fall back to
+            // the employee's own standing default shift before the site-wide
+            // office hours, so a default-shift employee is compared against
+            // their actual scheduled start, not everyone else's office hours.
+            // Deliberately NOT folded into the $has_shift check above: a
+            // default shift must never suppress the non_working/holiday check
+            // just above - only an actual approved override should.
+            $default_start = null;
+            if ($employee_id && $date) {
+                $effective_shift = $CI->Shifts_model->get_employee_effective_shift_for_date($employee_id, $date);
+                if ($effective_shift && $effective_shift->start_time) {
+                    $default_start = $effective_shift->start_time;
+                }
+            }
+            $start_time = $default_start ?: $CI->Hr_module_model->get_setting('office_start_time', '09:00');
         }
 
         // If an approved hourly leave covers the normal shift/office start (its

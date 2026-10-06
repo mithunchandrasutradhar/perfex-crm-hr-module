@@ -12,7 +12,9 @@ class Employees extends AdminController
         $this->load->model('hr_module/Branches_model');
         $this->load->model('hr_module/Hr_module_model');
         $this->load->model('hr_module/Zkteco_model');
+        $this->load->model('hr_module/Shifts_model');
     }
+
 
 
     public function index()
@@ -94,6 +96,7 @@ class Employees extends AdminController
         $data['designations']  = $this->Designations_model->get_active();
         $data['branches']      = $this->Branches_model->get_active();
         $data['staff_members'] = $this->Employees_model->get_unlinked_staff();
+        $data['shift_types']   = $this->Shifts_model->get_active_types();
         $data['devices']         = $this->Zkteco_model->get_devices(true);
         $data['device_mappings'] = [];
         $data['employee_id_prefix'] = $this->Hr_module_model->get_setting('employee_id_prefix', 'EMP');
@@ -143,7 +146,7 @@ class Employees extends AdminController
                 // includes them in the SQL UPDATE at all, so whatever is
                 // already stored is left untouched - not just re-saved with
                 // the same value, genuinely never written by this request.
-                unset($data['basic_salary'], $data['max_loan_amount'], $data['auto_payroll_excluded']);
+                unset($data['basic_salary'], $data['max_loan_amount'], $data['auto_payroll_excluded'], $data['default_shift_id']);
             } else {
                 $device_user_id = $this->input->post('device_user_id', true);
                 if (empty($device_user_id)) {
@@ -183,6 +186,7 @@ class Employees extends AdminController
         $data['departments']  = $this->Departments_model->get_active();
         $data['designations'] = $this->Designations_model->get_active();
         $data['branches']     = $this->Branches_model->get_active();
+        $data['shift_types']  = $this->Shifts_model->get_active_types();
         $data['devices']         = $this->Zkteco_model->get_devices(true);
         $data['device_mappings'] = $this->Zkteco_model->get_mappings_for_employee($id);
         $data['employee_id_prefix'] = $this->Hr_module_model->get_setting('employee_id_prefix', 'EMP');
@@ -211,6 +215,8 @@ class Employees extends AdminController
         $data['employee'] = $employee;
         $data['device_mappings'] = $this->Zkteco_model->get_mappings_for_employee($id);
         $data['devices']         = $this->Zkteco_model->get_devices(true);
+        $default_shift = $employee->default_shift_id ? $this->Shifts_model->get_type($employee->default_shift_id) : null;
+        $data['default_shift_name'] = $default_shift ? $default_shift->name : null;
         $this->load->view('hr_module/employees/view', $data);
     }
 
@@ -288,6 +294,7 @@ class Employees extends AdminController
             'department_id'           => $this->input->post('department_id') ?: null,
             'branch_id'               => $this->input->post('branch_id') ?: null,
             'designation_id'          => $this->input->post('designation_id') ?: null,
+            'default_shift_id'        => $this->input->post('default_shift_id') ?: null,
             'joining_date'            => to_sql_date($this->input->post('joining_date')) ?: null,
             'end_date'                => to_sql_date($this->input->post('end_date')) ?: null,
             'basic_salary'            => (float) $this->input->post('basic_salary'),

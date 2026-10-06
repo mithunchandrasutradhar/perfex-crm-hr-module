@@ -419,7 +419,7 @@ class Attendance extends AdminController
                 if (!isset($dates[$date]) || !isset($dates[$prev_date])) continue;
                 if (date('Y-m-d', strtotime($prev_date . ' +1 day')) !== $date) continue;
 
-                $shift = $this->Shifts_model->get_employee_shift_for_date($employee_id, $prev_date);
+                $shift = $this->Shifts_model->get_employee_effective_shift_for_date($employee_id, $prev_date);
                 if (!$shift || !$shift->start_time || !$shift->end_time || $shift->end_time >= $shift->start_time) {
                     continue;
                 }
