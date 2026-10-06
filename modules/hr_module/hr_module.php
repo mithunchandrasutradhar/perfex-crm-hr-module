@@ -23,7 +23,7 @@ define('HR_MODULE_NAME', 'hr_module');
 // bump this number whenever install.php gains a new guarded table/column, and
 // every site running this module will pick it up automatically on its very
 // next admin page load - no manual reactivation step, ever, on any install.
-define('HR_MODULE_SCHEMA_VERSION', 17);
+define('HR_MODULE_SCHEMA_VERSION', 18);
 
 // ─── Hook registrations ────────────────────────────────────────────────────
 
@@ -891,6 +891,9 @@ function hr_module_auto_generate_payroll()
 
     $success = $skipped = 0;
     foreach ($employees as $emp) {
+        // Opted out of automatic generation only - manual generation from the
+        // Payroll page still lists and allows this employee exactly as before.
+        if (!empty($emp->auto_payroll_excluded)) continue;
         $r = $CI->Payroll_model->generate($emp->id, $month, $year, ['notes' => 'Auto-generated']);
         if ($r['success']) $success++; else $skipped++;
     }

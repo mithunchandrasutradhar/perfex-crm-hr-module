@@ -151,6 +151,18 @@ if ($CI->db->table_exists(db_prefix() . 'hr_employees')) {
     }
 }
 
+// Upgrade: add auto_payroll_excluded flag - lets HR opt a specific employee
+// out of hr_module_auto_generate_payroll()'s scheduled cron run (manual
+// generation from the Payroll page is unaffected) without touching their
+// status or any other HR record. Defaults to 0 (not excluded) so every
+// existing employee keeps today's behavior.
+if ($CI->db->table_exists(db_prefix() . 'hr_employees')) {
+    $col = $CI->db->query("SHOW COLUMNS FROM `" . db_prefix() . "hr_employees` LIKE 'auto_payroll_excluded'")->num_rows();
+    if ($col === 0) {
+        $CI->db->query("ALTER TABLE `" . db_prefix() . "hr_employees` ADD COLUMN `auto_payroll_excluded` tinyint(1) NOT NULL DEFAULT 0 AFTER `status`");
+    }
+}
+
 // 4. Leave Types
 if (!$CI->db->table_exists(db_prefix() . 'hr_leave_types')) {
     $CI->db->query('CREATE TABLE `' . db_prefix() . 'hr_leave_types` (

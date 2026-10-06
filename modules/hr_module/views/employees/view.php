@@ -35,6 +35,9 @@ function ef($v, $d = '-') { return !empty($v) ? htmlspecialchars($v) : $d; }
             <?php else: ?>
             <span class="label label-danger"><?php echo _l('hr_inactive'); ?></span>
             <?php endif; ?>
+            <?php if (!empty($e->auto_payroll_excluded)): ?>
+            <span class="label label-warning"><?php echo _l('hr_employee_no_auto_payroll'); ?></span>
+            <?php endif; ?>
             <hr>
             <?php if (staff_can('edit', 'hr_employees')): ?>
             <a href="<?php echo admin_url('hr_module/employees/edit/' . $e->id); ?>" class="btn btn-default btn-block btn-sm">

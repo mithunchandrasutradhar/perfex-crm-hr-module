@@ -162,6 +162,22 @@ function ev($obj, $key, $default = '') {
                 </div>
               </div>
               <div class="col-md-4 col-sm-6">
+                <div class="form-group">
+                  <label style="color:inherit;opacity:1">&nbsp;</label>
+                  <div class="checkbox checkbox-primary">
+                    <input type="checkbox" name="auto_payroll_excluded" id="auto_payroll_excluded" value="1"
+                      <?php echo ($is_edit && $e->auto_payroll_excluded == 1) ? 'checked' : ''; ?>
+                      <?php echo $restrict_sensitive_fields ? 'disabled' : ''; ?>>
+                    <label for="auto_payroll_excluded">
+                      <?php echo _l('hr_employee_auto_payroll_excluded'); ?>
+                      <?php if ($restrict_sensitive_fields): ?>
+                      <i class="fa-solid fa-circle-info tw-text-neutral-400" data-toggle="tooltip" data-title="<?php echo _l('hr_employee_auto_payroll_excluded_hint'); ?>" style="cursor:help;"></i>
+                      <?php endif; ?>
+                    </label>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-4 col-sm-6">
                 <div class="form-group select-placeholder">
                   <label><?php echo _l('hr_department'); ?></label>
                   <select name="department_id" id="emp_dept" class="selectpicker" data-width="100%" data-live-search="true">

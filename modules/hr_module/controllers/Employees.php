@@ -14,6 +14,7 @@ class Employees extends AdminController
         $this->load->model('hr_module/Zkteco_model');
     }
 
+
     public function index()
     {
         if (staff_cant('view', 'hr_employees') && staff_cant('view_own', 'hr_employees')) {
@@ -142,7 +143,7 @@ class Employees extends AdminController
                 // includes them in the SQL UPDATE at all, so whatever is
                 // already stored is left untouched - not just re-saved with
                 // the same value, genuinely never written by this request.
-                unset($data['basic_salary'], $data['max_loan_amount']);
+                unset($data['basic_salary'], $data['max_loan_amount'], $data['auto_payroll_excluded']);
             } else {
                 $device_user_id = $this->input->post('device_user_id', true);
                 if (empty($device_user_id)) {
@@ -295,6 +296,7 @@ class Employees extends AdminController
             'max_loan_amount'         => $this->input->post('max_loan_amount') !== '' && $this->input->post('max_loan_amount') !== null
                 ? (float) $this->input->post('max_loan_amount')
                 : null,
+            'auto_payroll_excluded'   => $this->input->post('auto_payroll_excluded') ? 1 : 0,
             'bank_name'               => $this->input->post('bank_name', true),
             'bank_account'            => $this->input->post('bank_account', true),
             'bank_branch'             => $this->input->post('bank_branch', true),
