@@ -568,7 +568,13 @@ if (!isset($adjustments)) $adjustments = [];
           <div class="input-group-addon"><i class="fa-regular fa-calendar calendar-icon"></i></div>
         </div>
       </div>
-      <?php if (!$is_lump_sum): $def = $deduction_start_default ?? ['month' => (int) date('n'), 'year' => (int) date('Y')]; ?>
+      <?php if (!$is_lump_sum):
+        // The employee's own preference (set at apply time) takes priority over the
+        // smart default - still just a pre-fill, the approver can change it either way.
+        $def = ($loan->deduction_start_month && $loan->deduction_start_year)
+            ? ['month' => (int) $loan->deduction_start_month, 'year' => (int) $loan->deduction_start_year]
+            : ($deduction_start_default ?? ['month' => (int) date('n'), 'year' => (int) date('Y')]);
+      ?>
       <div class="row">
         <div class="col-md-6">
           <div class="form-group select-placeholder">
@@ -596,6 +602,9 @@ if (!isset($adjustments)) $adjustments = [];
       <p class="text-muted tw-text-sm tw-mb-0">
         <i class="fa fa-info-circle tw-mr-1"></i>
         The monthly installment won't be deducted from any payroll period before this one.
+        <?php if ($loan->deduction_start_month && $loan->deduction_start_year): ?>
+        Pre-filled with the employee's requested start month — change it if needed.
+        <?php endif; ?>
       </p>
       <?php endif; ?>
     </div>

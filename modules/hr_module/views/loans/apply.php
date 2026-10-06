@@ -103,6 +103,39 @@ if (!isset($default_max_loan_amount)) $default_max_loan_amount = 99999999.99;
                   </div>
                   <div id="calcSummary" class="alert alert-info tw-mb-3 tw-py-2 tw-px-3" style="display:none;font-size:13px"></div>
 
+                  <!-- Optional preference only - the approver sees this pre-filled but can
+                       change it, and nothing is deducted until the loan is approved anyway. -->
+                  <div id="preferredStartFields" class="row">
+                    <div class="col-md-6">
+                      <div class="form-group select-placeholder">
+                        <label>Preferred Deduction Start <span class="text-muted">(optional)</span></label>
+                        <select name="preferred_deduction_start_month" class="selectpicker" data-width="100%">
+                          <option value="">No preference</option>
+                          <?php for ($m = 1; $m <= 12; $m++): ?>
+                          <option value="<?php echo $m; ?>"><?php echo date('F', mktime(0, 0, 0, $m, 1)); ?></option>
+                          <?php endfor; ?>
+                        </select>
+                      </div>
+                    </div>
+                    <div class="col-md-6">
+                      <div class="form-group select-placeholder">
+                        <label>Year</label>
+                        <select name="preferred_deduction_start_year" class="selectpicker" data-width="100%">
+                          <option value="">-</option>
+                          <?php $cur_y = (int) date('Y'); for ($y = $cur_y; $y <= $cur_y + 3; $y++): ?>
+                          <option value="<?php echo $y; ?>"><?php echo $y; ?></option>
+                          <?php endfor; ?>
+                        </select>
+                      </div>
+                    </div>
+                    <div class="col-md-12">
+                      <div class="text-muted" style="font-size:11px">
+                        <i class="fa fa-info-circle"></i>
+                        When should the monthly installment start? Leave blank to let the approver decide.
+                      </div>
+                    </div>
+                  </div>
+
                   <!-- Lump-sum field -->
                   <div id="lumpSumFields" class="row" style="display:none">
                     <div class="col-md-6">

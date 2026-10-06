@@ -79,6 +79,14 @@ class Loans extends AdminController
                 'due_year'            => (int) $this->input->post('due_year'),
                 'notes'               => $this->input->post('notes', true),
             ];
+            // Optional - just a preference the approver sees pre-filled and can still
+            // change; left out entirely (not even zero) when the employee didn't pick one.
+            $preferred_month = $this->input->post('preferred_deduction_start_month');
+            $preferred_year  = $this->input->post('preferred_deduction_start_year');
+            if ($preferred_month && $preferred_year) {
+                $data['preferred_deduction_start_month'] = (int) $preferred_month;
+                $data['preferred_deduction_start_year']  = (int) $preferred_year;
+            }
 
             // Handle attachment
             $upload_path = FCPATH . 'uploads/hr_module/loans/';

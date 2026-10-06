@@ -269,6 +269,17 @@ class Loans_model extends App_Model
             );
             $record['repayment_months']    = $calc['months'];
             $record['monthly_installment'] = $calc['installment'];
+
+            // Optional employee preference, reusing the same column the approver's
+            // "Start Deduction From" picker reads/writes - pre-fills that picker at
+            // approval time but has no effect before then (a pending loan is never
+            // deducted) and the approver can still change it. Silently ignored if
+            // invalid/already past, rather than blocking the application over it.
+            if (!empty($data['preferred_deduction_start_month']) && !empty($data['preferred_deduction_start_year'])
+                && $this->_valid_due_period($data['preferred_deduction_start_month'], $data['preferred_deduction_start_year'])) {
+                $record['deduction_start_month'] = (int) $data['preferred_deduction_start_month'];
+                $record['deduction_start_year']  = (int) $data['preferred_deduction_start_year'];
+            }
         }
 
         if (!empty($data['attachment'])) $record['attachment'] = $data['attachment'];
