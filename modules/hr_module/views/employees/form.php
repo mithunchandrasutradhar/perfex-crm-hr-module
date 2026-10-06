@@ -392,6 +392,15 @@ function ev($obj, $key, $default = '') {
                       <input type="text" name="passport_number" class="form-control" value="<?php echo $is_edit ? ev($e,'passport_number') : ''; ?>">
                     </div>
                   </div>
+                  <div class="col-md-4 col-sm-6">
+                    <div class="form-group">
+                      <label>
+                        <?php echo _l('hr_phone'); ?>
+                        <i class="fa-solid fa-circle-info tw-text-neutral-400" data-toggle="tooltip" data-placement="top" data-container="body" data-title="Taken from the linked staff member above." style="cursor:help;"></i>
+                      </label>
+                      <input type="text" id="personal-phone-field" class="form-control" value="<?php echo $is_edit ? ev($e,'phone') : ''; ?>" disabled>
+                    </div>
+                  </div>
                 </div>
                 <div class="row">
                   <div class="col-md-6 col-sm-6">
@@ -481,6 +490,7 @@ $(function(){
         $('#preview-name').text(fullname);
         $('#preview-email').text(email || '');
         $('#preview-phone').text(phone || '');
+        $('#personal-phone-field').val(phone || '');
         if (photo) {
             $('#staff-photo-img').attr('src', photo).show();
             $('#staff-photo-initials').hide();
