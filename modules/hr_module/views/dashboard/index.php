@@ -465,6 +465,21 @@ $task_status_colors = [
             </div>
         </a>
     </div>
+    <div class="col-md-3 col-sm-6">
+        <a href="<?php echo admin_url('hr_module/attendance?status=remote'); ?>" class="block-link">
+            <div class="panel_s hr-stat-card">
+                <div class="panel-body tw-p-4 tw-flex tw-items-center tw-gap-4">
+                    <div class="hr-stat-icon" style="background:#8b5cf6">
+                        <i class="fa fa-house-laptop fa-2x tw-text-white"></i>
+                    </div>
+                    <div>
+                        <div class="tw-text-2xl tw-font-bold tw-text-neutral-800"><?php echo $stats['remote_today']; ?></div>
+                        <div class="tw-text-sm tw-text-neutral-500"><?php echo _l('hr_dashboard_remote_today'); ?></div>
+                    </div>
+                </div>
+            </div>
+        </a>
+    </div>
 </div>
 
 <!-- KPI Row 2 -->

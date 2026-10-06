@@ -23,7 +23,7 @@ define('HR_MODULE_NAME', 'hr_module');
 // bump this number whenever install.php gains a new guarded table/column, and
 // every site running this module will pick it up automatically on its very
 // next admin page load - no manual reactivation step, ever, on any install.
-define('HR_MODULE_SCHEMA_VERSION', 19);
+define('HR_MODULE_SCHEMA_VERSION', 20);
 
 // ─── Hook registrations ────────────────────────────────────────────────────
 
@@ -845,14 +845,21 @@ function hr_module_auto_mark_absent()
             }
             if ($now < $cutoff) continue;
 
+            // A remote/work-from-home employee never punches a physical device by
+            // design - same no-punch-by-cutoff condition as everyone else, but
+            // recorded as 'remote' instead of 'absent' so they're never wrongly
+            // docked pay for a day they were actually working (Payroll_model's
+            // absence deduction only ever counts literal 'absent' rows).
             $CI->Attendance_model->add([
                 'employee_id'     => $emp->id,
                 'attendance_date' => $check_date,
                 'in_time'         => null,
                 'out_time'        => null,
-                'status'          => 'absent',
+                'status'          => !empty($emp->is_remote) ? 'remote' : 'absent',
                 'source'          => 'auto',
-                'notes'           => 'Automatically marked absent - no punch recorded.',
+                'notes'           => !empty($emp->is_remote)
+                    ? 'Automatically marked remote (work from home) - no punch expected.'
+                    : 'Automatically marked absent - no punch recorded.',
             ]);
         }
     }

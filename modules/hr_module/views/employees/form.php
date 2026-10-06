@@ -178,6 +178,25 @@ function ev($obj, $key, $default = '') {
                 </div>
               </div>
               <div class="col-md-4 col-sm-6">
+                <div class="form-group">
+                  <label style="color:inherit;opacity:1">&nbsp;</label>
+                  <div class="checkbox checkbox-primary">
+                    <input type="checkbox" name="is_remote" id="is_remote" value="1"
+                      <?php echo ($is_edit && $e->is_remote == 1) ? 'checked' : ''; ?>
+                      <?php echo $restrict_sensitive_fields ? 'disabled' : ''; ?>>
+                    <label for="is_remote">
+                      <?php echo _l('hr_employee_is_remote'); ?>
+                      <?php if ($restrict_sensitive_fields): ?>
+                      <i class="fa-solid fa-circle-info tw-text-neutral-400" data-toggle="tooltip" data-title="<?php echo _l('hr_employee_is_remote_hint'); ?>" style="cursor:help;"></i>
+                      <?php endif; ?>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="row">
+              <div class="col-md-4 col-sm-6">
                 <div class="form-group select-placeholder">
                   <label><?php echo _l('hr_department'); ?></label>
                   <select name="department_id" id="emp_dept" class="selectpicker" data-width="100%" data-live-search="true">
@@ -224,12 +243,16 @@ function ev($obj, $key, $default = '') {
                     <i class="fa-solid fa-circle-info tw-text-neutral-400" data-toggle="tooltip" data-title="<?php echo _l('hr_employee_default_shift_hint'); ?>" style="cursor:help;"></i>
                     <?php endif; ?>
                   </label>
+                  <?php $shift_time_fmt = (get_option('time_format') == 24) ? 'H:i' : 'g:i A'; ?>
                   <select name="default_shift_id" id="emp_default_shift" class="selectpicker" data-width="100%"
                     <?php echo $restrict_sensitive_fields ? 'disabled' : ''; ?>>
                     <option value=""><?php echo _l('hr_select'); ?></option>
                     <?php foreach ($shift_types as $st): ?>
                     <option value="<?php echo $st->id; ?>" <?php if($is_edit && $e->default_shift_id == $st->id) echo 'selected'; ?>>
                       <?php echo htmlspecialchars($st->name); ?>
+                      <?php if ($st->start_time && $st->end_time): ?>
+                      (<?php echo date($shift_time_fmt, strtotime($st->start_time)) . ' - ' . date($shift_time_fmt, strtotime($st->end_time)); ?>)
+                      <?php endif; ?>
                     </option>
                     <?php endforeach; ?>
                   </select>

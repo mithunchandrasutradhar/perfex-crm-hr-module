@@ -14,6 +14,7 @@ $att_labels = [
     // A punch logged outside any scheduled work day (weekly-off/holiday, no
     // shift, no approved overtime) - see Attendance_model::_determine_status().
     'non_working' => ['label' => 'Personal Visit', 'class' => 'tw-text-neutral-500'],
+    'remote'      => ['label' => 'Remote',   'class' => '', 'style' => 'color:#8b5cf6'],
 ];
 $att = $employee_id ? ($hr_stats['attendance_today'] ?? null) : null;
 $att_info = $att ? ($att_labels[$att] ?? ['label' => ucfirst($att), 'class' => 'tw-text-neutral-800']) : null;
@@ -38,7 +39,8 @@ $att_in_time = $hr_stats['attendance_today_in_time'] ?? null;
             <hr class="-tw-mx-3 tw-mt-2 tw-mb-4">
 
             <div class="tw-text-center tw-py-2">
-                <div class="tw-text-2xl tw-font-bold <?php echo $att_info ? $att_info['class'] : 'tw-text-neutral-400'; ?>">
+                <div class="tw-text-2xl tw-font-bold <?php echo $att_info ? $att_info['class'] : 'tw-text-neutral-400'; ?>"
+                    <?php if (!empty($att_info['style'])): ?>style="<?php echo $att_info['style']; ?>"<?php endif; ?>>
                     <?php echo $att_info ? $att_info['label'] : 'Not Marked'; ?>
                     <?php if ($att_in_time): ?>
                     <span class="tw-text-xs tw-font-normal tw-text-neutral-500">(<?php echo date('h:i A', strtotime($att_in_time)); ?>)</span>

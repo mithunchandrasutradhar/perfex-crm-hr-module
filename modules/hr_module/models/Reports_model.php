@@ -60,12 +60,17 @@ class Reports_model extends App_Model
                 ->where('attendance_date >=', $from_date)
                 ->where('attendance_date <=', $to_date)
                 ->group_by('status');
-            $counts = ['present' => 0, 'late' => 0, 'half_day' => 0, 'absent' => 0];
+            $counts = ['present' => 0, 'late' => 0, 'half_day' => 0, 'absent' => 0, 'remote' => 0];
             foreach ($this->db->get(db_prefix() . 'hr_attendance')->result() as $c) {
                 if (isset($counts[$c->status])) $counts[$c->status] = (int) $c->cnt;
             }
 
-            $attended        = $counts['present'] + $counts['half_day'] + $counts['late'];
+            // A 'remote' day is accounted for (same as present/late/half_day for
+            // the missing-day calculation below) but kept as its own distinct
+            // figure rather than merged into 'present' - without counting it
+            // here, it would wrongly fall into $missing and get reported as
+            // absent even though the employee was actually working that day.
+            $attended        = $counts['present'] + $counts['half_day'] + $counts['late'] + $counts['remote'];
             $explicit_absent = $counts['absent'];
             $leave           = $leave_counts[$emp->id] ?? 0;
             $missing         = max(0, $expected_days - $attended - $explicit_absent - $leave);
@@ -79,6 +84,7 @@ class Reports_model extends App_Model
                 'present'         => $counts['present'] + $counts['half_day'],
                 'late'            => $counts['late'],
                 'absent'          => $explicit_absent + $missing,
+                'remote'          => $counts['remote'],
                 'leave'           => $leave,
             ];
         }
@@ -89,7 +95,7 @@ class Reports_model extends App_Model
     public function attendance_summary($f = [])
     {
         $rows = $this->attendance($f);
-        $s = ['present'=>0,'absent'=>0,'late'=>0,'half_day'=>0,'total_hours'=>0];
+        $s = ['present'=>0,'absent'=>0,'late'=>0,'half_day'=>0,'remote'=>0,'total_hours'=>0];
         foreach ($rows as $r) {
             $key = $r->status ?? 'present';
             if (isset($s[$key])) $s[$key]++;

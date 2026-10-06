@@ -49,7 +49,7 @@ $output = [
     'aaData'               => [],
 ];
 
-$badge  = ['present' => 'success', 'late' => 'warning', 'absent' => 'danger', 'half_day' => 'info', 'non_working' => 'default'];
+$badge  = ['present' => 'success', 'late' => 'warning', 'absent' => 'danger', 'half_day' => 'info', 'non_working' => 'default', 'remote' => 'primary'];
 // A punch logged outside any scheduled work day (weekly-off/holiday, no shift,
 // no approved overtime - see Attendance_model::_determine_status()); the raw
 // generic-transform label ("Non working") reads oddly, so it gets its own text.

@@ -38,6 +38,9 @@ function ef($v, $d = '-') { return !empty($v) ? htmlspecialchars($v) : $d; }
             <?php if (!empty($e->auto_payroll_excluded)): ?>
             <span class="label label-warning"><?php echo _l('hr_employee_no_auto_payroll'); ?></span>
             <?php endif; ?>
+            <?php if (!empty($e->is_remote)): ?>
+            <span class="label label-info"><?php echo _l('hr_employee_remote_badge'); ?></span>
+            <?php endif; ?>
             <hr>
             <?php if (staff_can('edit', 'hr_employees')): ?>
             <a href="<?php echo admin_url('hr_module/employees/edit/' . $e->id); ?>" class="btn btn-default btn-block btn-sm">
@@ -72,7 +75,18 @@ function ef($v, $d = '-') { return !empty($v) ? htmlspecialchars($v) : $d; }
                   <tr><th><?php echo _l('hr_department'); ?></th><td><?php echo ef($e->department_name); ?></td></tr>
                   <tr><th><?php echo _l('hr_employee_branch'); ?></th><td><?php echo ef($e->branch_name); ?></td></tr>
                   <tr><th><?php echo _l('hr_designation'); ?></th><td><?php echo ef($e->designation_name); ?></td></tr>
-                  <tr><th><?php echo _l('hr_employee_default_shift'); ?></th><td><?php echo ef($default_shift_name ?? null); ?></td></tr>
+                  <tr><th><?php echo _l('hr_employee_default_shift'); ?></th><td><?php
+                    if (!empty($default_shift)) {
+                        $shift_time_fmt = (get_option('time_format') == 24) ? 'H:i' : 'g:i A';
+                        echo ef($default_shift->name);
+                        if ($default_shift->start_time && $default_shift->end_time) {
+                            echo ' <span class="text-muted">(' . date($shift_time_fmt, strtotime($default_shift->start_time))
+                                . ' - ' . date($shift_time_fmt, strtotime($default_shift->end_time)) . ')</span>';
+                        }
+                    } else {
+                        echo ef(null);
+                    }
+                  ?></td></tr>
                   <tr><th><?php echo _l('hr_employee_joining_date'); ?></th><td><?php echo $e->joining_date ? _d($e->joining_date) : '-'; ?></td></tr>
                   <tr><th><?php echo _l('hr_employee_end_date'); ?></th><td><?php echo $e->end_date ? _d($e->end_date) : '-'; ?></td></tr>
                   <tr><th><?php echo _l('hr_employee_basic_salary'); ?></th><td><?php echo number_format($e->basic_salary, 2); ?></td></tr>

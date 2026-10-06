@@ -76,7 +76,7 @@ class Attendance_model extends App_Model
             ->where('YEAR(attendance_date)', $year)
             ->group_by('status');
         $rows = $this->db->get($this->table)->result();
-        $summary = ['present' => 0, 'absent' => 0, 'late' => 0, 'half_day' => 0, 'total_hours' => 0];
+        $summary = ['present' => 0, 'absent' => 0, 'late' => 0, 'half_day' => 0, 'remote' => 0, 'total_hours' => 0];
         foreach ($rows as $r) {
             $summary[$r->status] = (int) $r->cnt;
         }
@@ -126,11 +126,13 @@ class Attendance_model extends App_Model
     // 'present'/'late' must always reflect in_time against the office start time + late
     // threshold, not whatever the status dropdown happened to have selected - otherwise a
     // manually-entered 09:15 clock-in can get saved as "Present" if the field was left as-is.
-    // 'absent'/'half_day' are legitimate manual calls (e.g. an approved half day) and are kept as-is.
+    // 'absent'/'half_day'/'remote' are legitimate manual calls (e.g. an approved half day,
+    // or a work-from-home employee the auto-absent cron marks instead of absent) and are
+    // kept as-is.
     private function _normalize_status($data)
     {
         $status = $data['status'] ?? null;
-        if (in_array($status, ['absent', 'half_day'], true)) {
+        if (in_array($status, ['absent', 'half_day', 'remote'], true)) {
             return $status;
         }
         return $this->_determine_status($data['in_time'] ?? null, $data['employee_id'] ?? null, $data['attendance_date'] ?? null);

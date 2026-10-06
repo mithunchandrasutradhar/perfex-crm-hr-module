@@ -178,6 +178,20 @@ if ($CI->db->table_exists(db_prefix() . 'hr_employees')) {
     }
 }
 
+// Upgrade: add is_remote flag - an employee who works from home and never
+// punches a physical/device attendance record. hr_module_auto_mark_absent()
+// (hr_module.php) marks this employee 'remote' instead of 'absent' once their
+// shift/office hours have passed with no punch, instead of wrongly docking
+// their pay for a day they were actually working. Defaults to 0 so every
+// existing employee keeps today's behavior. HR-only, same as
+// auto_payroll_excluded/default_shift_id above.
+if ($CI->db->table_exists(db_prefix() . 'hr_employees')) {
+    $col = $CI->db->query("SHOW COLUMNS FROM `" . db_prefix() . "hr_employees` LIKE 'is_remote'")->num_rows();
+    if ($col === 0) {
+        $CI->db->query("ALTER TABLE `" . db_prefix() . "hr_employees` ADD COLUMN `is_remote` tinyint(1) NOT NULL DEFAULT 0 AFTER `auto_payroll_excluded`");
+    }
+}
+
 // 4. Leave Types
 if (!$CI->db->table_exists(db_prefix() . 'hr_leave_types')) {
     $CI->db->query('CREATE TABLE `' . db_prefix() . 'hr_leave_types` (

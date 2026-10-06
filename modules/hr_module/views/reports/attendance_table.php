@@ -43,12 +43,14 @@ hr_module_apply_datatable_order($rows, [
     3 => 'present',
     4 => 'late',
     5 => 'absent',
-    6 => 'leave',
+    6 => 'remote',
+    7 => 'leave',
 ]);
 
 $total_present = array_sum(array_column((array) $rows, 'present'));
 $total_late    = array_sum(array_column((array) $rows, 'late'));
 $total_absent  = array_sum(array_column((array) $rows, 'absent'));
+$total_remote  = array_sum(array_column((array) $rows, 'remote'));
 $total_leave   = array_sum(array_column((array) $rows, 'leave'));
 
 // DataTables (serverSide:true) expects only the requested page's rows back -
@@ -67,6 +69,7 @@ $output = [
         'present' => $total_present,
         'late'    => $total_late,
         'absent'  => $total_absent,
+        'remote'  => $total_remote,
         'leave'   => $total_leave,
     ],
 ];
@@ -79,6 +82,7 @@ foreach ($paged_rows as $r) {
         '<span class="label label-success" style="font-weight:700">' . $r->present . '</span>',
         '<span class="label label-warning" style="font-weight:700">' . $r->late . '</span>',
         '<span class="label label-danger" style="font-weight:700">' . $r->absent . '</span>',
+        '<span class="label" style="background:#8b5cf6;font-weight:700">' . $r->remote . '</span>',
         '<span class="label" style="background:#6f42c1;font-weight:700">' . $r->leave . '</span>',
     ];
 }

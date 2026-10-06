@@ -413,6 +413,13 @@ class Hr_module_model extends App_Model
         $this->db->where('status', 'late');
         $stats['late_today'] = $this->db->count_all_results(db_prefix() . 'hr_attendance');
 
+        // Kept as its own figure rather than folded into present_today - a
+        // remote/work-from-home employee is accounted for, but still visibly
+        // distinct from someone physically present.
+        $this->db->where('attendance_date', $today);
+        $this->db->where('status', 'remote');
+        $stats['remote_today'] = $this->db->count_all_results(db_prefix() . 'hr_attendance');
+
         return $stats;
     }
 

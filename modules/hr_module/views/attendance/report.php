@@ -1,8 +1,8 @@
 <?php defined('BASEPATH') or exit('No direct script access allowed');
-$status_badge  = ['present'=>'success','late'=>'warning','absent'=>'danger','half_day'=>'info','non_working'=>'default'];
+$status_badge  = ['present'=>'success','late'=>'warning','absent'=>'danger','half_day'=>'info','non_working'=>'default','remote'=>'primary'];
 // See attendance/table.php - same "Personal Visit" label for the same status.
 $status_labels = ['non_working' => 'Personal Visit'];
-$totals = ['present'=>0,'late'=>0,'absent'=>0,'half_day'=>0,'hours'=>0];
+$totals = ['present'=>0,'late'=>0,'absent'=>0,'half_day'=>0,'remote'=>0,'hours'=>0];
 foreach ($records as $r) {
     if (isset($totals[$r->status])) $totals[$r->status]++;
     $totals['hours'] += (float)$r->working_hours;
@@ -81,6 +81,10 @@ foreach ($records as $r) {
           <div class="col-md-2 col-sm-4"><div class="panel_s"><div class="panel-body tw-text-center">
             <div class="tw-text-2xl tw-font-bold text-info"><?php echo $totals['half_day']; ?></div>
             <div class="text-muted">Half Day</div>
+          </div></div></div>
+          <div class="col-md-2 col-sm-4"><div class="panel_s"><div class="panel-body tw-text-center">
+            <div class="tw-text-2xl tw-font-bold" style="color:#8b5cf6"><?php echo $totals['remote']; ?></div>
+            <div class="text-muted">Remote</div>
           </div></div></div>
           <div class="col-md-2 col-sm-4"><div class="panel_s"><div class="panel-body tw-text-center">
             <div class="tw-text-2xl tw-font-bold text-primary"><?php echo hr_format_hours($totals['hours']); ?></div>

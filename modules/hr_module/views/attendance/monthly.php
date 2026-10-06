@@ -4,8 +4,8 @@ $prev_month = $month == 1 ? 12 : $month - 1;
 $prev_year  = $month == 1 ? $year - 1 : $year;
 $next_month = $month == 12 ? 1 : $month + 1;
 $next_year  = $month == 12 ? $year + 1 : $year;
-$status_colors = ['present'=>'#22c55e','late'=>'#f59e0b','absent'=>'#ef4444','half_day'=>'#3b82f6'];
-$status_labels = ['present'=>'P','late'=>'L','absent'=>'A','half_day'=>'H'];
+$status_colors = ['present'=>'#22c55e','late'=>'#f59e0b','absent'=>'#ef4444','half_day'=>'#3b82f6','remote'=>'#8b5cf6'];
+$status_labels = ['present'=>'P','late'=>'L','absent'=>'A','half_day'=>'H','remote'=>'R'];
 ?>
 <?php init_head(); ?>
 <div id="wrapper">

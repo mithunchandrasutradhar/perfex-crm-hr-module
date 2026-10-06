@@ -48,6 +48,7 @@ if (!isset($is_global))   $is_global   = is_admin() || staff_can('view', 'hr_att
               <option value="absent">Absent</option>
               <option value="half_day">Half Day</option>
               <option value="non_working">Personal Visit</option>
+              <option value="remote">Remote</option>
             </select>
             <button type="button" id="btn-reset-filters" class="btn btn-default btn-sm" title="Reset filters">
               <i class="fa fa-rotate-left tw-mr-1"></i><?php echo _l('hr_reset_filters'); ?>
@@ -136,6 +137,7 @@ if (!isset($is_global))   $is_global   = is_admin() || staff_can('view', 'hr_att
                 <option value="late">Late</option>
                 <option value="absent">Absent</option>
                 <option value="half_day">Half Day</option>
+                <option value="remote">Remote</option>
               </select>
             </div>
           </div>

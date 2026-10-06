@@ -43,7 +43,7 @@ if (!staff_can('view', 'hr_employees') && staff_can('view_own', 'hr_employees'))
     $where[] = 'AND e.staff_id = ' . (int) get_staff_user_id();
 }
 
-$result  = data_tables_init($aColumns, $sIndexColumn, $sTable, $join, $where, ['e.photo', 'e.staff_id', 'e.id', 'e.auto_payroll_excluded']);
+$result  = data_tables_init($aColumns, $sIndexColumn, $sTable, $join, $where, ['e.photo', 'e.staff_id', 'e.id', 'e.auto_payroll_excluded', 'e.is_remote']);
 $output  = $result['output'];
 $rResult = $result['rResult'];
 
@@ -90,6 +90,9 @@ foreach ($rResult as $aRow) {
         : '<span class="label label-danger">' . _l('hr_inactive') . '</span>';
     if (!empty($aRow['auto_payroll_excluded'])) {
         $status_badge .= ' <span class="label label-warning">' . _l('hr_employee_no_auto_payroll') . '</span>';
+    }
+    if (!empty($aRow['is_remote'])) {
+        $status_badge .= ' <span class="label label-info">' . _l('hr_employee_remote_badge') . '</span>';
     }
     $row[] = $status_badge;
 
