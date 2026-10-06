@@ -217,9 +217,13 @@ $task_status_colors = [
                     </div>
                     <div>
                         <div class="tw-text-xs tw-text-neutral-500 tw-uppercase tw-tracking-wide">Loan Outstanding</div>
-                        <div class="tw-text-xl tw-font-bold tw-text-neutral-800">
+                        <div class="tw-text-xl tw-font-bold tw-text-neutral-800 tw-flex tw-items-center tw-gap-2">
                             <?php if ($loan): ?>
-                                <?php echo app_format_money($loan->outstanding, get_base_currency()); ?>
+                                <span id="loan-outstanding-masked">****</span>
+                                <span id="loan-outstanding-value" style="display:none"><?php echo app_format_money($loan->outstanding, get_base_currency()); ?></span>
+                                <button type="button" id="loan-outstanding-toggle" class="tw-bg-transparent tw-border-0 tw-p-0 tw-text-neutral-400" style="cursor:pointer" title="Show/hide amount">
+                                    <i class="fa-regular fa-eye"></i>
+                                </button>
                             <?php else: ?>
                                 <span class="tw-text-base text-muted">No active loan</span>
                             <?php endif; ?>
@@ -227,10 +231,15 @@ $task_status_colors = [
                     </div>
                 </div>
                 <div class="tw-text-xs text-muted">
-                    <?php if ($loan && $loan->repayment_type === 'lump_sum'): ?>
-                        Due in full <?php echo $loan->due_month ? date('M Y', mktime(0,0,0,$loan->due_month,1,$loan->due_year)) : '-'; ?>
-                    <?php elseif ($loan): ?>
-                        <?php echo app_format_money($loan->monthly_installment, get_base_currency()); ?>/month &bull; <?php echo $loan->repayment_months; ?> months
+                    <?php if ($loan): ?>
+                        <span id="loan-outstanding-sub-masked">****</span>
+                        <span id="loan-outstanding-sub-value" style="display:none">
+                            <?php if ($loan->repayment_type === 'lump_sum'): ?>
+                                Due in full <?php echo $loan->due_month ? date('M Y', mktime(0,0,0,$loan->due_month,1,$loan->due_year)) : '-'; ?>
+                            <?php else: ?>
+                                <?php echo app_format_money($loan->monthly_installment, get_base_currency()); ?>/month &bull; <?php echo $loan->repayment_months; ?> months
+                            <?php endif; ?>
+                        </span>
                     <?php else: ?>
                         Click to view loan history
                     <?php endif; ?>
@@ -603,6 +612,31 @@ $(function () {
         } else {
             $masked.hide();
             $value.show();
+            $icon.removeClass('fa-eye').addClass('fa-eye-slash');
+        }
+    });
+
+    // Same masking, same reason - the Loan Outstanding card is wrapped in an
+    // <a> too (click anywhere navigates to Loans).
+    $('#loan-outstanding-toggle').on('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        var $masked    = $('#loan-outstanding-masked');
+        var $value     = $('#loan-outstanding-value');
+        var $subMasked = $('#loan-outstanding-sub-masked');
+        var $subValue  = $('#loan-outstanding-sub-value');
+        var $icon      = $(this).find('i');
+        if ($value.is(':visible')) {
+            $value.hide();
+            $masked.show();
+            $subValue.hide();
+            $subMasked.show();
+            $icon.removeClass('fa-eye-slash').addClass('fa-eye');
+        } else {
+            $masked.hide();
+            $value.show();
+            $subMasked.hide();
+            $subValue.show();
             $icon.removeClass('fa-eye').addClass('fa-eye-slash');
         }
     });
