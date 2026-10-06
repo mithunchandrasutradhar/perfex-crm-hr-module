@@ -89,26 +89,40 @@ class Email_templates_model extends App_Model
     // leave dates joined by "\n") still render correctly.
     // Returns null if the template key doesn't exist (should not happen once
     // _ensure_tables() has run, since every default key is always seeded).
-    public function render($key, array $placeholders)
+    // $raw_tokens: placeholder tokens (e.g. '{description}') whose value is
+    // already-trusted HTML (a TinyMCE field, typically) and must be inserted
+    // as-is instead of htmlspecialchars()'d like every other placeholder -
+    // see render_text()'s own comment for why this defaults to none.
+    public function render($key, array $placeholders, array $raw_tokens = [])
     {
         $tpl = $this->get_by_key($key);
         if (!$tpl) {
             return null;
         }
-        return $this->render_text($tpl->subject, $tpl->body, $placeholders);
+        return $this->render_text($tpl->subject, $tpl->body, $placeholders, $raw_tokens);
     }
 
     // Same substitution/escaping as render(), but for a raw subject/body pair
     // instead of a stored template - used by the "Send Test Email" preview so
     // it can render whatever the admin currently has typed in the edit form,
     // even before they've saved it.
-    public function render_text($subject_text, $body_text, array $placeholders)
+    //
+    // Every placeholder value is htmlspecialchars()'d before substitution by
+    // default - the safe choice for an ordinary text field (name, venue,
+    // schedule...), so a stray "<" typed into one can never break the email or
+    // be misinterpreted as markup. $raw_tokens opts specific tokens out of
+    // that, for a value that is already trusted HTML (e.g. a TinyMCE-authored
+    // description) and would otherwise show its tags as literal escaped text
+    // instead of being rendered - everything not listed keeps today's escaping.
+    public function render_text($subject_text, $body_text, array $placeholders, array $raw_tokens = [])
     {
         $subject = strtr($subject_text, $placeholders);
 
         $escaped = [];
         foreach ($placeholders as $token => $value) {
-            $escaped[$token] = htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
+            $escaped[$token] = in_array($token, $raw_tokens, true)
+                ? (string) $value
+                : htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
         }
         $body = nl2br(strtr(htmlspecialchars($body_text, ENT_QUOTES, 'UTF-8'), $escaped));
 

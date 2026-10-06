@@ -486,7 +486,7 @@ class Training extends AdminController
                 '{status}'          => ucfirst($training->status),
                 '{description}'     => $training->description ?: '-',
             ];
-            $tpl = $this->Email_templates_model->render('training_instructor_assigned', $placeholders);
+            $tpl = $this->Email_templates_model->render('training_instructor_assigned', $placeholders, ['{description}']);
 
             $this->Hr_module_model->send_employee_email($email, $tpl->subject, $tpl->body, $link);
         } catch (Exception $e) {
@@ -525,7 +525,7 @@ class Training extends AdminController
                     '{schedule}'        => $this->_training_schedule_label($training_id, $training),
                     '{description}'     => $training->description ?: '-',
                 ];
-                $tpl = $this->Email_templates_model->render('training_enrolled', $placeholders);
+                $tpl = $this->Email_templates_model->render('training_enrolled', $placeholders, ['{description}']);
 
                 $this->Hr_module_model->send_employee_email($emp->email, $tpl->subject, $tpl->body, $link);
             }
