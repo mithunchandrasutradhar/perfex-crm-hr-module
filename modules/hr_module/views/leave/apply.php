@@ -651,16 +651,30 @@ if (!isset($employee_genders_json)) $employee_genders_json = '{}';
                 return false;
             }
             var dates = [];
-            var invalid = false;
+            var hasMissingDate = false, hasDuplicateDate = false, hasInvalidRange = false;
             $rows.each(function(){
                 var d = $(this).find('.day-date').val();
-                if (!d || dates.indexOf(d) !== -1) invalid = true;
+                if (!d) hasMissingDate = true;
+                else if (dates.indexOf(d) !== -1) hasDuplicateDate = true;
                 dates.push(d);
-                if (computeRowValue($(this)) <= 0) invalid = true;
+                if (computeRowValue($(this)) <= 0) hasInvalidRange = true;
             });
-            if (invalid) {
+            // Checked in this order so the most likely actual mistake is the one
+            // reported - a blank date or a real duplicate would otherwise be masked
+            // by also tripping the invalid-range check below.
+            if (hasMissingDate) {
+                e.preventDefault();
+                alert_float('danger', '<?php echo _l('hr_val_missing_leave_date'); ?>');
+                return false;
+            }
+            if (hasDuplicateDate) {
                 e.preventDefault();
                 alert_float('danger', '<?php echo _l('hr_val_duplicate_leave_dates'); ?>');
+                return false;
+            }
+            if (hasInvalidRange) {
+                e.preventDefault();
+                alert_float('danger', '<?php echo _l('hr_val_invalid_leave_time_range'); ?>');
                 return false;
             }
         });

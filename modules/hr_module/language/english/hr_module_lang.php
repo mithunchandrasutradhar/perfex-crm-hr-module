@@ -776,6 +776,8 @@ $lang['hr_val_overlapping_leave']          = 'Overlapping leave request exists';
 $lang['hr_val_duplicate_attendance']       = 'Attendance record already exists for this date';
 $lang['hr_val_no_leave_days']              = 'Please add at least one day to this leave request';
 $lang['hr_val_duplicate_leave_dates']      = 'The same date was added more than once';
+$lang['hr_val_missing_leave_date']         = 'Please choose a date for every day added';
+$lang['hr_val_invalid_leave_time_range']   = 'For an hourly day, the end time must be after the start time';
 $lang['hr_val_invalid_leave_day']          = 'Invalid leave day entry';
 $lang['hr_val_attachment_required']        = 'This leave type requires a supporting document to be attached';
 
