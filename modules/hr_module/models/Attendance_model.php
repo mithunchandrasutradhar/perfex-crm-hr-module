@@ -35,6 +35,7 @@ class Attendance_model extends App_Model
 
         if (!empty($filters['employee_id']))   $this->db->where('a.employee_id', $filters['employee_id']);
         if (!empty($filters['department_id'])) $this->db->where('e.department_id', $filters['department_id']);
+        if (!empty($filters['branch_id']))     $this->db->where('e.branch_id', $filters['branch_id']);
         if (!empty($filters['status']))        $this->db->where('a.status', $filters['status']);
         if (!empty($filters['from_date']))     $this->db->where('a.attendance_date >=', $filters['from_date']);
         if (!empty($filters['to_date']))       $this->db->where('a.attendance_date <=', $filters['to_date']);

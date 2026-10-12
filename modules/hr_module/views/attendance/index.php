@@ -1,9 +1,11 @@
 <?php defined('BASEPATH') or exit('No direct script access allowed'); ?>
 <?php
 /** @var array $departments */
+/** @var array $branches    */
 /** @var array $employees   */
 /** @var bool  $is_global   */
 if (!isset($departments)) $departments = [];
+if (!isset($branches))    $branches    = [];
 if (!isset($employees))   $employees   = [];
 if (!isset($is_global))   $is_global   = is_admin() || staff_can('view', 'hr_attendance');
 ?>
@@ -21,6 +23,12 @@ if (!isset($is_global))   $is_global   = is_admin() || staff_can('view', 'hr_att
               <option value=""><?php echo _l('hr_all') . ' Dept'; ?></option>
               <?php foreach ($departments as $d): ?>
               <option value="<?php echo $d->id; ?>"><?php echo htmlspecialchars($d->name); ?></option>
+              <?php endforeach; ?>
+            </select>
+            <select id="f-branch" class="selectpicker" data-width="150px">
+              <option value=""><?php echo _l('hr_all') . ' ' . _l('hr_employee_branch'); ?></option>
+              <?php foreach ($branches as $b): ?>
+              <option value="<?php echo $b->id; ?>"><?php echo htmlspecialchars($b->name); ?></option>
               <?php endforeach; ?>
             </select>
             <?php endif; ?>
@@ -216,10 +224,12 @@ $(function(){
     // (non-empty) filter value and silently zeroing out every result for
     // any restricted role, regardless of other filters.
     function buildFilterUrl() {
-        var deptVal = $('#f-dept').length ? $('#f-dept').val() : '';
-        var empVal  = $('#f-emp').length  ? $('#f-emp').val()  : '';
+        var deptVal   = $('#f-dept').length   ? $('#f-dept').val()   : '';
+        var branchVal = $('#f-branch').length ? $('#f-branch').val() : '';
+        var empVal    = $('#f-emp').length    ? $('#f-emp').val()    : '';
         return window.location.href.split('?')[0]
             + '?department_id=' + encodeURIComponent(deptVal || '')
+            + '&branch_id=' + encodeURIComponent(branchVal || '')
             + '&employee_id=' + encodeURIComponent(empVal || '')
             + '&status=' + encodeURIComponent($('#f-status').val() || '')
             + '&from_date=' + encodeURIComponent($('#f-from').val() || '')
@@ -234,7 +244,7 @@ $(function(){
     function reload() {
         $('.table-hr-attendance').DataTable().ajax.url(buildFilterUrl()).load();
     }
-    $('#f-dept, #f-emp, #f-status, #f-from, #f-to').on('change changed.bs.select', reload);
+    $('#f-dept, #f-branch, #f-emp, #f-status, #f-from, #f-to').on('change changed.bs.select', reload);
 
     // Reset every filter to blank/"All" in one click, instead of clearing
     // each dropdown/date by hand - a single reload() at the end picks up all
@@ -242,8 +252,9 @@ $(function(){
     // today) - only the page's own first-load default is today; Reset means
     // "no filter at all", matching what the Shifts list's Reset now does.
     $('#btn-reset-filters').on('click', function(){
-        if ($('#f-dept').length) $('#f-dept').val('').selectpicker('refresh');
-        if ($('#f-emp').length)  $('#f-emp').val('').selectpicker('refresh');
+        if ($('#f-dept').length)   $('#f-dept').val('').selectpicker('refresh');
+        if ($('#f-branch').length) $('#f-branch').val('').selectpicker('refresh');
+        if ($('#f-emp').length)    $('#f-emp').val('').selectpicker('refresh');
         $('#f-status').val('').selectpicker('refresh');
         $('#f-from').val('');
         $('#f-to').val('');

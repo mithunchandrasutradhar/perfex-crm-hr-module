@@ -5,7 +5,7 @@ $CI = &get_instance();
 $CI->load->model('hr_module/Attendance_model');
 
 $filters = [];
-foreach (['department_id', 'employee_id', 'status', 'from_date', 'to_date'] as $key) {
+foreach (['department_id', 'branch_id', 'employee_id', 'status', 'from_date', 'to_date'] as $key) {
     $v = $CI->input->get($key);
     if ($v !== null && $v !== '') $filters[$key] = $v;
 }

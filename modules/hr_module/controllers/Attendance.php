@@ -10,6 +10,7 @@ class Attendance extends AdminController
         $this->load->model('hr_module/Hr_module_model');
         $this->load->model('hr_module/Employees_model');
         $this->load->model('hr_module/Departments_model');
+        $this->load->model('hr_module/Branches_model');
         $this->load->model('hr_module/Holidays_model');
     }
 
@@ -24,6 +25,7 @@ class Attendance extends AdminController
         }
         $data['title']       = _l('hr_attendance_list');
         $data['departments'] = $this->Departments_model->get_active();
+        $data['branches']    = $this->Branches_model->get_active();
         $is_global = is_admin() || staff_can('view', 'hr_attendance');
         if ($is_global) {
             $data['employees'] = $this->Hr_module_model->get_active_employees_dropdown();
